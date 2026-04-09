@@ -108,6 +108,12 @@ export interface StudioProject {
   notes: string[];
 }
 
+export interface RecentProject {
+  path: string;
+  name: string;
+  updatedAt: number;
+}
+
 export interface WorkspaceBootstrap {
   appVersion: string;
   captureSources: CaptureSource[];
@@ -115,11 +121,13 @@ export interface WorkspaceBootstrap {
   project: StudioProject;
   recordingMode: RecordingMode;
   activityFeed: string[];
+  recentProjects: RecentProject[];
   lastSavedPath?: string | null;
 }
 
 export interface SaveProjectResponse {
   path: string;
+  recentProjects: RecentProject[];
 }
 
 export interface ExportRequest {

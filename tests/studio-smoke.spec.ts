@@ -39,6 +39,31 @@ test("saves through the global shortcut", async ({ page }) => {
 
   await expect(page.getByText(/Project state saved to/i)).toBeVisible();
   await expect(
-    page.getByText("/tmp/fluxlocus-demo-session.fluxlocus", { exact: true }),
+    page.getByText("/tmp/fluxlocus-demo-session.fluxlocus", { exact: true }).last(),
   ).toBeVisible();
+});
+
+test("resumes and reopens a saved recent project", async ({ page }) => {
+  await page.goto("/");
+  await page.mouse.click(30, 30);
+  await page.keyboard.press(saveShortcut);
+
+  await expect(
+    page.getByText("/tmp/fluxlocus-demo-session.fluxlocus", { exact: true }).last(),
+  ).toBeVisible();
+
+  await page.reload();
+
+  await expect(page.locator("header input")).toHaveValue("FluxLocus Demo Session");
+  await expect(page.getByText("Recent Projects")).toBeVisible();
+
+  const systemAudioToggle = page.getByRole("button", { name: /System audio/ });
+  await expect(systemAudioToggle).toHaveAttribute("aria-pressed", "true");
+  await systemAudioToggle.click();
+  await expect(systemAudioToggle).toHaveAttribute("aria-pressed", "false");
+
+  await page.getByRole("button", { name: /FluxLocus Demo Session/ }).click();
+
+  await expect(systemAudioToggle).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByText(/Opened FluxLocus Demo Session/)).toBeVisible();
 });

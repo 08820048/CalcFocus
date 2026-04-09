@@ -58,6 +58,7 @@ export function createFallbackWorkspace(): WorkspaceBootstrap {
     captureSources,
     exportPresets,
     recordingMode: "editing",
+    recentProjects: [],
     lastSavedPath: null,
     activityFeed: [
       "Loaded the FluxLocus studio shell with local preview data.",

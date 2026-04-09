@@ -3,6 +3,7 @@ import { createFallbackWorkspace } from "../lib/mock-project";
 import type {
   CameraSettings,
   EffectSettings,
+  RecentProject,
   RecordingMode,
   RecordingSettings,
   StyleSettings,
@@ -51,7 +52,7 @@ interface StudioState {
   updateStyle: (patch: Partial<StyleSettings>) => void;
   setRecordingMode: (mode: RecordingMode, detail?: string) => void;
   setStatusMessage: (message: string) => void;
-  markSaved: (path: string) => void;
+  markSaved: (path: string, recentProjects: RecentProject[]) => void;
 }
 
 export const useStudioStore = create<StudioState>((set) => ({
@@ -177,8 +178,17 @@ export const useStudioStore = create<StudioState>((set) => ({
       statusMessage: detail ?? state.statusMessage,
     })),
   setStatusMessage: (message) => set(() => ({ statusMessage: message })),
-  markSaved: (path) =>
-    set(() => ({
+  markSaved: (path, recentProjects) =>
+    set((state) => ({
+      workspace: {
+        ...state.workspace,
+        recentProjects,
+        lastSavedPath: path,
+        activityFeed: [
+          `Saved ${state.project.name} to ${path}.`,
+          ...state.workspace.activityFeed,
+        ].slice(0, 4),
+      },
       lastSavedPath: path,
       statusMessage: `Project state saved to ${path}.`,
     })),

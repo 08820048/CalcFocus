@@ -1,5 +1,10 @@
 use serde::{Deserialize, Serialize};
-use std::{fs, path::PathBuf, sync::Mutex};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    sync::Mutex,
+    time::UNIX_EPOCH,
+};
 
 #[derive(Default)]
 struct RuntimeState {
@@ -138,6 +143,14 @@ struct StudioProject {
     notes: Vec<String>,
 }
 
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RecentProject {
+    path: String,
+    name: String,
+    updated_at: u64,
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct WorkspaceBootstrap {
@@ -147,6 +160,7 @@ struct WorkspaceBootstrap {
     project: StudioProject,
     recording_mode: String,
     activity_feed: Vec<String>,
+    recent_projects: Vec<RecentProject>,
     last_saved_path: Option<String>,
 }
 
@@ -154,6 +168,7 @@ struct WorkspaceBootstrap {
 #[serde(rename_all = "camelCase")]
 struct SaveProjectResponse {
     path: String,
+    recent_projects: Vec<RecentProject>,
 }
 
 #[derive(Debug, Serialize)]
@@ -187,35 +202,101 @@ fn bootstrap_workspace(
         .map_err(|_| "Failed to access runtime session".to_string())?
         .recording_mode
         .clone();
+    let recent_projects = list_recent_projects()?;
+    let resumed_project = recent_projects.iter().find_map(|recent_project| {
+        read_project_from_path(Path::new(&recent_project.path))
+            .ok()
+            .map(|project| (project, recent_project.path.clone()))
+    });
+
+    let (project, activity_feed, last_saved_path) = match resumed_project {
+        Some((project, path)) => (
+            project,
+            vec![
+                format!("Resumed the latest FluxLocus project from {path}."),
+                "Recent .fluxlocus sessions were indexed from the workspace directory.".into(),
+                "Recording and export commands are still wired as MVP-compatible placeholders."
+                    .into(),
+            ],
+            Some(path),
+        ),
+        None => (
+            build_demo_project(),
+            vec![
+                "Bootstrapped the FluxLocus workspace from the Rust core.".into(),
+                "Project persistence is already serializing to .fluxlocus JSON.".into(),
+                "Recording and export commands are wired as MVP-compatible placeholders.".into(),
+            ],
+            None,
+        ),
+    };
 
     Ok(WorkspaceBootstrap {
         app_version: env!("CARGO_PKG_VERSION").into(),
         capture_sources: build_capture_sources(),
         export_presets: build_export_presets(),
-        project: build_demo_project(),
+        project,
         recording_mode,
-        activity_feed: vec![
-            "Bootstrapped the FluxLocus workspace from the Rust core.".into(),
-            "Project persistence is already serializing to .fluxlocus JSON.".into(),
-            "Recording and export commands are wired as MVP-compatible placeholders.".into(),
-        ],
-        last_saved_path: None,
+        activity_feed,
+        recent_projects,
+        last_saved_path,
     })
 }
 
 #[tauri::command]
 fn save_project(project: StudioProject) -> Result<SaveProjectResponse, String> {
-    let workspace_dir = project_workspace_dir().join("projects");
+    let workspace_dir = projects_dir();
     fs::create_dir_all(&workspace_dir).map_err(|error| error.to_string())?;
 
-    let file_name = format!("{}.fluxlocus", slugify(&project.name));
+    let slug = {
+        let slug = slugify(&project.name);
+        if slug.is_empty() {
+            "fluxlocus-project".to_string()
+        } else {
+            slug
+        }
+    };
+    let file_name = format!("{slug}.fluxlocus");
     let output_path = workspace_dir.join(file_name);
     let payload = serde_json::to_vec_pretty(&project).map_err(|error| error.to_string())?;
 
     fs::write(&output_path, payload).map_err(|error| error.to_string())?;
+    let recent_projects = list_recent_projects()?;
 
     Ok(SaveProjectResponse {
         path: output_path.display().to_string(),
+        recent_projects,
+    })
+}
+
+#[tauri::command]
+fn open_project(
+    path: String,
+    state: tauri::State<'_, RuntimeState>,
+) -> Result<WorkspaceBootstrap, String> {
+    let recording_mode = state
+        .session
+        .lock()
+        .map_err(|_| "Failed to access runtime session".to_string())?
+        .recording_mode
+        .clone();
+    let project = read_project_from_path(Path::new(&path))?;
+    let project_name = project.name.clone();
+    let recent_projects = list_recent_projects()?;
+
+    Ok(WorkspaceBootstrap {
+        app_version: env!("CARGO_PKG_VERSION").into(),
+        capture_sources: build_capture_sources(),
+        export_presets: build_export_presets(),
+        project,
+        recording_mode,
+        activity_feed: vec![
+            format!("Opened {} from {}.", project_name, path),
+            "Recent .fluxlocus sessions were indexed from the workspace directory.".into(),
+            "Recording and export commands are still wired as MVP-compatible placeholders.".into(),
+        ],
+        recent_projects,
+        last_saved_path: Some(path),
     })
 }
 
@@ -285,6 +366,75 @@ fn project_workspace_dir() -> PathBuf {
         .or_else(dirs::home_dir)
         .unwrap_or_else(|| PathBuf::from("."))
         .join("FluxLocus")
+}
+
+fn projects_dir() -> PathBuf {
+    project_workspace_dir().join("projects")
+}
+
+fn read_project_from_path(path: &Path) -> Result<StudioProject, String> {
+    let payload = fs::read(path).map_err(|error| error.to_string())?;
+    serde_json::from_slice(&payload).map_err(|error| error.to_string())
+}
+
+fn list_recent_projects() -> Result<Vec<RecentProject>, String> {
+    let projects_dir = projects_dir();
+
+    if !projects_dir.exists() {
+        return Ok(Vec::new());
+    }
+
+    let mut recent_projects = Vec::new();
+
+    for entry in fs::read_dir(projects_dir).map_err(|error| error.to_string())? {
+        let entry = entry.map_err(|error| error.to_string())?;
+        let path = entry.path();
+        let is_project_file = path
+            .extension()
+            .and_then(|extension| extension.to_str())
+            .is_some_and(|extension| extension.eq_ignore_ascii_case("fluxlocus"));
+
+        if !is_project_file {
+            continue;
+        }
+
+        let metadata = entry.metadata().map_err(|error| error.to_string())?;
+        let updated_at = metadata
+            .modified()
+            .ok()
+            .and_then(|modified| modified.duration_since(UNIX_EPOCH).ok())
+            .map(|duration| {
+                duration
+                    .as_millis()
+                    .min(u128::from(u64::MAX))
+                    .try_into()
+                    .unwrap_or(u64::MAX)
+            })
+            .unwrap_or(0);
+        let name = read_project_from_path(&path)
+            .map(|project| project.name)
+            .unwrap_or_else(|_| {
+                path.file_stem()
+                    .and_then(|stem| stem.to_str())
+                    .unwrap_or("Untitled FluxLocus Project")
+                    .to_string()
+            });
+
+        recent_projects.push(RecentProject {
+            path: path.display().to_string(),
+            name,
+            updated_at,
+        });
+    }
+
+    recent_projects.sort_by(|left, right| {
+        right
+            .updated_at
+            .cmp(&left.updated_at)
+            .then_with(|| left.name.cmp(&right.name))
+    });
+
+    Ok(recent_projects)
 }
 
 fn slugify(input: &str) -> String {
@@ -579,6 +729,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             bootstrap_workspace,
             save_project,
+            open_project,
             set_recording_mode,
             queue_export
         ])

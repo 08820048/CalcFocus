@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   Camera,
   Command,
+  FolderOpen,
   Download,
   Mic,
   Monitor,
@@ -34,17 +35,33 @@ import { formatTime } from "./lib/locus";
 import {
   bootstrapWorkspace,
   exportProject,
+  openProject,
   saveProject,
   updateRecordingMode,
 } from "./lib/tauri";
 import { useSelectedExportPreset, useStudioStore } from "./store/studio-store";
 import type {
   ExportPreset,
+  RecentProject,
   RecordingMode,
 } from "./types/studio";
 
 const aspectRatios = ["16:9", "9:16", "1:1", "4:3"] as const;
 const backgroundPresets = ["aurora", "obsidian", "studio"] as const;
+const recentProjectDateFormatter = new Intl.DateTimeFormat(undefined, {
+  month: "short",
+  day: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+function formatRecentProjectTime(updatedAt: number) {
+  if (!Number.isFinite(updatedAt) || updatedAt <= 0) {
+    return "Saved earlier";
+  }
+
+  return recentProjectDateFormatter.format(updatedAt);
+}
 
 function App() {
   const workspace = useStudioStore((state) => state.workspace);
@@ -175,9 +192,22 @@ function App() {
 
     try {
       const response = await saveProject(project);
-      markSaved(response.path);
+      markSaved(response.path, response.recentProjects);
     } catch (error) {
       setStatusMessage(`Saving the project failed: ${String(error)}`);
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function handleOpenProject(path: string) {
+    setBusyAction(`open:${path}`);
+
+    try {
+      const workspacePayload = await openProject(path);
+      hydrate(workspacePayload);
+    } catch (error) {
+      setStatusMessage(`Opening the project failed: ${String(error)}`);
     } finally {
       setBusyAction(null);
     }
@@ -282,6 +312,20 @@ function App() {
       keywords: ["save", "project", "file"],
       run: () => void handleSave(),
     },
+    ...(workspace.recentProjects[0]
+      ? [
+          {
+            id: "command-palette-open-latest",
+            title: `Open latest project: ${workspace.recentProjects[0].name}`,
+            section: "Recent",
+            description: `Resume the most recently saved session from ${formatRecentProjectTime(
+              workspace.recentProjects[0].updatedAt,
+            )}.`,
+            keywords: ["open", "latest", "recent", workspace.recentProjects[0].name],
+            run: () => void handleOpenProject(workspace.recentProjects[0].path),
+          } satisfies StudioCommand,
+        ]
+      : []),
     {
       id: "command-palette-export",
       title: "Queue export",
@@ -330,6 +374,22 @@ function App() {
       description: marker.note,
       keywords: [marker.kind, marker.label, formatTime(marker.time)],
       run: () => focusMarker(marker.id),
+    })),
+    ...workspace.recentProjects.slice(1).map((recentProject) => ({
+      id: `command-palette-recent-${recentProject.path}`,
+      title: `Open ${recentProject.name}`,
+      section: "Recent",
+      description: `Resume ${recentProject.name} from ${formatRecentProjectTime(
+        recentProject.updatedAt,
+      )}.`,
+      keywords: [
+        "open",
+        "recent",
+        "project",
+        recentProject.name,
+        recentProject.path,
+      ],
+      run: () => void handleOpenProject(recentProject.path),
     })),
   ];
 
@@ -679,6 +739,28 @@ function App() {
                 </GlassPanel>
 
                 <GlassPanel
+                  title="Recent Projects"
+                  subtitle="Resume saved .fluxlocus sessions or switch context without leaving the studio."
+                  className="space-y-3"
+                >
+                  {workspace.recentProjects.length > 0 ? (
+                    workspace.recentProjects.slice(0, 5).map((recentProject) => (
+                      <RecentProjectButton
+                        key={recentProject.path}
+                        project={recentProject}
+                        active={lastSavedPath === recentProject.path}
+                        pending={busyAction === `open:${recentProject.path}`}
+                        onClick={() => handleOpenProject(recentProject.path)}
+                      />
+                    ))
+                  ) : (
+                    <div className="rounded-[22px] border border-dashed border-white/10 bg-white/3 px-4 py-4 text-sm leading-6 text-slate-400">
+                      Save the first session to start a recent-project stack.
+                    </div>
+                  )}
+                </GlassPanel>
+
+                <GlassPanel
                   title="Notes"
                   subtitle="Implementation reminders carried directly from the MVP project model."
                   className="space-y-3"
@@ -1016,6 +1098,55 @@ function ActionButton({
     >
       {icon}
       {pending ? "Working..." : label}
+    </button>
+  );
+}
+
+function RecentProjectButton({
+  project,
+  active,
+  pending,
+  onClick,
+}: {
+  project: RecentProject;
+  active: boolean;
+  pending: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={pending}
+      className={[
+        "w-full rounded-[22px] border px-4 py-4 text-left transition disabled:cursor-wait disabled:opacity-70",
+        active
+          ? "border-cyan-300/18 bg-cyan-400/10"
+          : "border-white/8 bg-white/4 hover:bg-white/8",
+      ].join(" ")}
+    >
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 rounded-2xl border border-white/10 bg-white/8 p-2 text-slate-200">
+          <FolderOpen size={14} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-3">
+            <p className="truncate text-sm font-medium text-slate-100">{project.name}</p>
+            <span
+              className={[
+                "shrink-0 rounded-full px-3 py-1 text-[11px] tracking-[0.2em] uppercase",
+                active
+                  ? "border border-cyan-300/18 bg-cyan-400/12 text-cyan-100"
+                  : "border border-white/10 bg-white/6 text-slate-400",
+              ].join(" ")}
+            >
+              {pending ? "Opening" : active ? "Current" : "Open"}
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-slate-400">{formatRecentProjectTime(project.updatedAt)}</p>
+          <p className="mt-2 break-all text-xs leading-5 text-slate-500">{project.path}</p>
+        </div>
+      </div>
     </button>
   );
 }
