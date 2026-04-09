@@ -31,7 +31,8 @@ import {
 import { GlassPanel } from "./components/glass-panel";
 import { PreviewCanvas } from "./components/preview-canvas";
 import { TimelinePanel } from "./components/timeline-panel";
-import { formatTime } from "./lib/locus";
+import { clamp, formatTime } from "./lib/locus";
+import { buildProjectFromRecordingSamples } from "./lib/recording";
 import {
   bootstrapWorkspace,
   exportProject,
@@ -43,7 +44,9 @@ import { useSelectedExportPreset, useStudioStore } from "./store/studio-store";
 import type {
   ExportPreset,
   RecentProject,
+  RecordingSample,
   RecordingMode,
+  StudioProject,
 } from "./types/studio";
 
 const aspectRatios = ["16:9", "9:16", "1:1", "4:3"] as const;
@@ -54,6 +57,24 @@ const recentProjectDateFormatter = new Intl.DateTimeFormat(undefined, {
   hour: "2-digit",
   minute: "2-digit",
 });
+const recordingSampleRate = 1 / 30;
+
+interface RecordingStats {
+  duration: number;
+  samples: number;
+}
+
+interface LiveRecordingSession {
+  baseProjectName: string;
+  baseProjectSnapshot: StudioProject;
+  samples: RecordingSample[];
+  pointer: { x: number; y: number };
+  startedAtMs: number | null;
+  elapsedOffsetMs: number;
+  pendingClickFrames: number;
+  lastSampleAtSeconds: number;
+  lastPreviewSampleCount: number;
+}
 
 function formatRecentProjectTime(updatedAt: number) {
   if (!Number.isFinite(updatedAt) || updatedAt <= 0) {
@@ -61,6 +82,20 @@ function formatRecentProjectTime(updatedAt: number) {
   }
 
   return recentProjectDateFormatter.format(updatedAt);
+}
+
+function structuredCloneProject(project: StudioProject) {
+  return {
+    ...project,
+    recordingSettings: { ...project.recordingSettings },
+    effects: { ...project.effects },
+    camera: { ...project.camera },
+    style: { ...project.style },
+    cursorKeyframes: project.cursorKeyframes.map((keyframe) => ({ ...keyframe })),
+    segments: project.segments.map((segment) => ({ ...segment })),
+    markers: project.markers.map((marker) => ({ ...marker })),
+    notes: [...project.notes],
+  };
 }
 
 function App() {
@@ -74,6 +109,7 @@ function App() {
   const statusMessage = useStudioStore((state) => state.statusMessage);
   const lastSavedPath = useStudioStore((state) => state.lastSavedPath);
   const hydrate = useStudioStore((state) => state.hydrate);
+  const replaceProject = useStudioStore((state) => state.replaceProject);
   const setProjectName = useStudioStore((state) => state.setProjectName);
   const setPlayhead = useStudioStore((state) => state.setPlayhead);
   const advancePlayhead = useStudioStore((state) => state.advancePlayhead);
@@ -98,13 +134,18 @@ function App() {
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
   const [activeCommandIndex, setActiveCommandIndex] = useState(0);
+  const [recordingStats, setRecordingStats] = useState<RecordingStats | null>(null);
   const lastFrameRef = useRef<number | null>(null);
   const deferredCommandQuery = useDeferredValue(commandQuery);
+  const pointerPositionRef = useRef({ x: 0.5, y: 0.5 });
+  const recordingSessionRef = useRef<LiveRecordingSession | null>(null);
 
   const selectedMarker =
     project.markers.find((marker) => marker.id === selectedMarkerId) ??
     project.markers[0] ??
     null;
+  const canTogglePlayback =
+    recordingMode === "editing" || recordingMode === "idle" || recordingMode === "exporting";
 
   useEffect(() => {
     let cancelled = false;
@@ -134,6 +175,109 @@ function App() {
       cancelled = true;
     };
   }, [hydrate, setStatusMessage]);
+
+  const syncLiveRecordingProject = useEffectEvent((sampleCount?: number) => {
+    const session = recordingSessionRef.current;
+    if (!session) {
+      return null;
+    }
+
+    const nextProject = buildProjectFromRecordingSamples(
+      session.baseProjectSnapshot,
+      session.samples,
+    );
+    replaceProject(nextProject);
+
+    if (typeof sampleCount === "number") {
+      session.lastPreviewSampleCount = sampleCount;
+    }
+
+    return nextProject;
+  });
+
+  const startLiveRecording = useEffectEvent(() => {
+    const initialSample: RecordingSample = {
+      time: 0,
+      x: pointerPositionRef.current.x,
+      y: pointerPositionRef.current.y,
+      click: false,
+    };
+
+    recordingSessionRef.current = {
+      baseProjectName: project.name,
+      baseProjectSnapshot: structuredCloneProject(project),
+      samples: [initialSample],
+      pointer: { ...pointerPositionRef.current },
+      startedAtMs: performance.now(),
+      elapsedOffsetMs: 0,
+      pendingClickFrames: 0,
+      lastSampleAtSeconds: 0,
+      lastPreviewSampleCount: 0,
+    };
+
+    setRecordingStats({ duration: 0, samples: 1 });
+    setPlayhead(0);
+    setPlaying(false);
+    syncLiveRecordingProject(1);
+    setStatusMessage("Recording live cursor movement inside the studio window.");
+  });
+
+  const pauseLiveRecording = useEffectEvent(() => {
+    const session = recordingSessionRef.current;
+    if (!session || session.startedAtMs === null) {
+      return;
+    }
+
+    const now = performance.now();
+    session.elapsedOffsetMs += now - session.startedAtMs;
+    session.startedAtMs = null;
+    setPlaying(false);
+    setRecordingStats({
+      duration: session.elapsedOffsetMs / 1000,
+      samples: session.samples.length,
+    });
+    setStatusMessage(
+      `Recording paused at ${formatTime(session.elapsedOffsetMs / 1000)} with ${session.samples.length} samples captured.`,
+    );
+  });
+
+  const resumeLiveRecording = useEffectEvent(() => {
+    const session = recordingSessionRef.current;
+    if (!session || session.startedAtMs !== null) {
+      return;
+    }
+
+    session.startedAtMs = performance.now();
+    setPlaying(false);
+    setStatusMessage("Recording resumed. Live cursor sampling is active again.");
+  });
+
+  const stopLiveRecording = useEffectEvent(() => {
+    const session = recordingSessionRef.current;
+    if (!session) {
+      setRecordingStats(null);
+      return;
+    }
+
+    if (session.startedAtMs !== null) {
+      session.elapsedOffsetMs += performance.now() - session.startedAtMs;
+      session.startedAtMs = null;
+    }
+
+    const finalProject = syncLiveRecordingProject(session.samples.length);
+    recordingSessionRef.current = null;
+    setRecordingStats(null);
+    setPlayhead(0);
+    setPlaying(true);
+
+    if (!finalProject) {
+      return;
+    }
+
+    setStatusMessage(
+      `Captured ${session.samples.length} cursor samples over ${finalProject.duration.toFixed(1)}s and switched back to editing.`,
+    );
+  });
 
   const animatePreview = useEffectEvent((now: number) => {
     if (lastFrameRef.current === null) {
@@ -166,6 +310,100 @@ function App() {
     };
   }, [animatePreview, isPlaying]);
 
+  useEffect(() => {
+    const updatePointerPosition = (clientX: number, clientY: number) => {
+      const nextPosition = {
+        x: clamp(clientX / window.innerWidth, 0.04, 0.96),
+        y: clamp(clientY / window.innerHeight, 0.06, 0.94),
+      };
+
+      pointerPositionRef.current = nextPosition;
+
+      if (recordingSessionRef.current) {
+        recordingSessionRef.current.pointer = nextPosition;
+      }
+    };
+
+    const handlePointerMove = (event: PointerEvent) => {
+      updatePointerPosition(event.clientX, event.clientY);
+    };
+
+    const handlePointerDown = () => {
+      const session = recordingSessionRef.current;
+      if (!session || session.startedAtMs === null) {
+        return;
+      }
+
+      session.pendingClickFrames = 3;
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerdown", handlePointerDown);
+
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, []);
+
+  const sampleLiveRecording = useEffectEvent((now: number) => {
+    const session = recordingSessionRef.current;
+    if (!session || session.startedAtMs === null) {
+      return;
+    }
+
+    const elapsedSeconds = (session.elapsedOffsetMs + (now - session.startedAtMs)) / 1000;
+    setPlayhead(elapsedSeconds);
+
+    if (elapsedSeconds - session.lastSampleAtSeconds < recordingSampleRate) {
+      return;
+    }
+
+    const sample: RecordingSample = {
+      time: elapsedSeconds,
+      x: session.pointer.x,
+      y: session.pointer.y,
+      click: session.pendingClickFrames > 0,
+    };
+
+    session.samples.push(sample);
+    session.lastSampleAtSeconds = elapsedSeconds;
+    if (session.pendingClickFrames > 0) {
+      session.pendingClickFrames -= 1;
+    }
+
+    setRecordingStats({
+      duration: elapsedSeconds,
+      samples: session.samples.length,
+    });
+
+    if (
+      session.samples.length - session.lastPreviewSampleCount >= 6 ||
+      sample.click
+    ) {
+      syncLiveRecordingProject(session.samples.length);
+    }
+  });
+
+  useEffect(() => {
+    if (recordingMode !== "recording") {
+      return;
+    }
+
+    let frame = 0;
+
+    const loop = (now: number) => {
+      sampleLiveRecording(now);
+      frame = window.requestAnimationFrame(loop);
+    };
+
+    frame = window.requestAnimationFrame(loop);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+    };
+  }, [recordingMode, sampleLiveRecording]);
+
   async function handleRecordingMode(mode: RecordingMode) {
     setBusyAction(mode);
 
@@ -174,11 +412,19 @@ function App() {
       applyRecordingMode(response.mode, response.detail);
 
       if (response.mode === "recording") {
-        setPlaying(true);
+        if (recordingSessionRef.current) {
+          resumeLiveRecording();
+        } else {
+          startLiveRecording();
+        }
       }
 
       if (response.mode === "paused") {
-        setPlaying(false);
+        pauseLiveRecording();
+      }
+
+      if (response.mode === "editing" || response.mode === "idle") {
+        stopLiveRecording();
       }
     } catch (error) {
       setStatusMessage(`Unable to switch studio mode: ${String(error)}`);
@@ -481,6 +727,9 @@ function App() {
     }
 
     if (event.key === " ") {
+      if (!canTogglePlayback) {
+        return;
+      }
       event.preventDefault();
       togglePlayback();
       return;
@@ -560,8 +809,9 @@ function App() {
                 placeholder="FluxLocus Project"
               />
               <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-400">
-                All-in-One recording, locus smoothing, flux zoom styling, and export
-                orchestration in a single professional workspace.
+                {recordingStats
+                  ? `Live capture ${formatTime(recordingStats.duration)} · ${recordingStats.samples} samples · stop recording to turn this take into editable Locus and Flux data.`
+                  : "All-in-One recording, locus smoothing, flux zoom styling, and export orchestration in a single professional workspace."}
               </p>
             </div>
           </div>
@@ -580,6 +830,12 @@ function App() {
               icon={<Monitor size={14} />}
               label={focusMode ? "Focus Mode" : "Studio Mode"}
             />
+            {recordingStats ? (
+              <StatusPill
+                icon={<MousePointer2 size={14} />}
+                label={`${formatTime(recordingStats.duration)} · ${recordingStats.samples} samples`}
+              />
+            ) : null}
 
             <ActionButton
               label="Palette"
@@ -801,8 +1057,9 @@ function App() {
                   <div className="flex min-w-0 items-center gap-3">
                     <button
                       type="button"
-                      onClick={togglePlayback}
-                      className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/12 bg-white/10 text-slate-50 transition hover:scale-[1.03] hover:bg-white/16"
+                      onClick={canTogglePlayback ? togglePlayback : undefined}
+                      disabled={!canTogglePlayback}
+                      className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/12 bg-white/10 text-slate-50 transition hover:scale-[1.03] hover:bg-white/16 disabled:cursor-not-allowed disabled:opacity-55"
                     >
                       {isPlaying ? <Pause size={16} /> : <Radio size={16} />}
                     </button>
@@ -834,7 +1091,7 @@ function App() {
                 playhead={playhead}
                 selectedMarkerId={selectedMarkerId}
                 isPlaying={isPlaying}
-                onTogglePlayback={togglePlayback}
+                onTogglePlayback={canTogglePlayback ? togglePlayback : () => {}}
                 onScrub={setPlayhead}
                 onSelectMarker={focusMarker}
               />
@@ -1004,6 +1261,12 @@ function App() {
                   <div className="rounded-[22px] border border-white/8 bg-white/4 px-4 py-3 text-sm leading-6 text-slate-300">
                     <p className="font-medium text-slate-100">Studio status</p>
                     <p className="mt-2">{statusMessage}</p>
+                    {recordingStats ? (
+                      <p className="mt-3 text-xs text-slate-400">
+                        Live recording: {formatTime(recordingStats.duration)} with{" "}
+                        {recordingStats.samples} cursor samples.
+                      </p>
+                    ) : null}
                     {lastSavedPath ? (
                       <p className="mt-3 break-all text-xs text-slate-500">
                         {lastSavedPath}

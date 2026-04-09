@@ -37,6 +37,13 @@ export interface CursorKeyframe {
   zoom: number;
 }
 
+export interface RecordingSample {
+  time: number;
+  x: number;
+  y: number;
+  click: boolean;
+}
+
 export interface TimelineSegment {
   id: string;
   label: string;

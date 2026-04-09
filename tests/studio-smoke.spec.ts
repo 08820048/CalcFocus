@@ -22,7 +22,7 @@ test("opens the command palette and toggles focus mode", async ({ page }) => {
   await expect(page.getByRole("dialog", { name: "Command palette" })).toBeVisible();
 
   await page.getByPlaceholder("Search commands, markers, and layout actions").fill("focus mode");
-  await page.keyboard.press("Enter");
+  await page.getByRole("button", { name: /Enter focus mode|Exit focus mode/ }).click();
 
   await expect(page.getByRole("dialog", { name: "Command palette" })).toHaveCount(0);
   await expect(page.locator("aside")).toHaveCount(0);
@@ -66,4 +66,27 @@ test("resumes and reopens a saved recent project", async ({ page }) => {
 
   await expect(systemAudioToggle).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByText(/Opened FluxLocus Demo Session/)).toBeVisible();
+});
+
+test("records live cursor movement into editable project data", async ({ page }) => {
+  await page.goto("/");
+
+  const mainBox = await page.locator("main").boundingBox();
+  if (!mainBox) {
+    throw new Error("Main layout is not measurable.");
+  }
+
+  await page.getByRole("button", { name: "Record", exact: true }).click();
+  await page.mouse.move(mainBox.x + mainBox.width * 0.44, mainBox.y + mainBox.height * 0.26, {
+    steps: 6,
+  });
+  await page.mouse.click(mainBox.x + mainBox.width * 0.55, mainBox.y + mainBox.height * 0.38);
+  await page.mouse.move(mainBox.x + mainBox.width * 0.65, mainBox.y + mainBox.height * 0.52, {
+    steps: 10,
+  });
+  await page.getByRole("button", { name: "Stop", exact: true }).click();
+
+  await expect(page.getByText(/Captured \d+ cursor samples over/i)).toBeVisible();
+  await expect(page.getByText(/Live cursor recording captured/i)).toBeVisible();
+  await expect(page.getByText(/Click emphasis/i).first()).toBeVisible();
 });

@@ -37,6 +37,7 @@ interface StudioState {
   statusMessage: string;
   lastSavedPath: string | null;
   hydrate: (workspace: WorkspaceBootstrap) => void;
+  replaceProject: (project: StudioProject) => void;
   setProjectName: (name: string) => void;
   setPlayhead: (seconds: number) => void;
   advancePlayhead: (deltaSeconds: number) => void;
@@ -78,6 +79,14 @@ export const useStudioStore = create<StudioState>((set) => ({
       selectedExportPresetId: workspace.exportPresets[0]?.id ?? "",
       statusMessage: workspace.activityFeed[0] ?? "FluxLocus workspace ready.",
       lastSavedPath: workspace.lastSavedPath ?? null,
+    })),
+  replaceProject: (project) =>
+    set((state) => ({
+      project,
+      playhead: clampPlayhead(state.playhead, project.duration),
+      selectedMarkerId: project.markers.some((marker) => marker.id === state.selectedMarkerId)
+        ? state.selectedMarkerId
+        : project.markers[0]?.id ?? null,
     })),
   setProjectName: (name) =>
     set((state) => ({
