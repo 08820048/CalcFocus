@@ -1,0 +1,21 @@
+{
+  "productName": "FluxLocus Dev",
+  "identifier": "com.fluxlocus.app.dev",
+  "app": {
+    "windows": [
+      {
+        "label": "hud-overlay",
+        "title": "FluxLocus Dev",
+        "url": "index.html?windowType=hud-overlay",
+        "width": 780,
+        "height": 155,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "shadow": false
+      }
+    ]
+  }
+}
