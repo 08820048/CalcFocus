@@ -1,1 +1,81 @@
-{}
+{
+	"hints": {
+		"panDefault": "Shift + Ctrl + 滚动",
+		"zoomDefault": "Ctrl + 滚动",
+		"sideScroll": "横向滚动",
+		"pan": "平移",
+		"zoom": "缩放"
+	},
+	"aspect": {
+		"invalid": "自定义宽高比必须为正数。",
+		"custom": "自定义",
+		"customWidth": "自定义宽度",
+		"customHeight": "自定义高度",
+		"set": "设置"
+	},
+	"zoom": {
+		"cannotPlace": "无法在这里放置缩放",
+		"cannotPlaceDescription": "该位置已存在缩放区域，或没有足够的可用空间。",
+		"suggestionUnavailable": "缩放建议处理器不可用",
+		"noCursorTelemetry": "没有可用的光标遥测数据",
+		"noCursorTelemetryDescription": "请先录制一次屏幕操作，再生成基于光标的缩放建议。",
+		"noUsableCursorTelemetry": "没有可用的光标数据",
+		"noUsableCursorTelemetryDescription": "当前录制内容没有足够的光标移动数据。",
+		"noInteractionMoments": "没有找到明显的交互时刻",
+		"noInteractionMomentsDescription": "尝试录制包含停顿或点击的重要操作过程。",
+		"noSlots": "没有可用的自动缩放插槽",
+		"noSlotsDescription": "检测到的停留点与现有缩放区域重叠。",
+		"suggestionsAdded": "已添加 {{count}} 个基于交互的缩放建议"
+	},
+	"trim": {
+		"cannotPlace": "无法在这里放置裁剪区域",
+		"cannotPlaceDescription": "该位置已存在裁剪区域，或没有足够的可用空间。"
+	},
+	"speed": {
+		"cannotPlace": "无法在这里放置变速区域",
+		"cannotPlaceDescription": "该位置已存在变速区域，或没有足够的可用空间。"
+	},
+	"items": {
+		"zoom": "缩放 {{index}}",
+		"trim": "裁剪 {{index}}",
+		"emptyText": "空文本",
+		"image": "图片",
+		"annotation": "标注",
+		"speed": "变速 {{index}}"
+	},
+	"empty": {
+		"title": "还没有加载视频",
+		"description": "拖入一个视频开始编辑"
+	},
+	"toolbar": {
+		"addZoom": "添加缩放（{{shortcut}}）",
+		"suggestZooms": "根据光标生成缩放建议",
+		"addTrim": "添加裁剪（{{shortcut}}）",
+		"addAnnotation": "添加标注（{{shortcut}}）",
+		"addSpeed": "添加变速（{{shortcut}}）"
+	},
+	"rows": {
+		"zoomHint": "按 {{shortcut}} 添加缩放",
+		"trimHint": "按 {{shortcut}} 添加裁剪",
+		"annotationHint": "按 {{shortcut}} 添加标注",
+		"speedHint": "按 {{shortcut}} 添加变速"
+	},
+	"trimTutorial": {
+		"trigger": "裁剪是怎么工作的",
+		"title": "裁剪是怎么工作的",
+		"description": "理解如何剪掉视频中不需要的部分。",
+		"explanation": "裁剪工具的工作方式，是先定义你想要移除的时间段。时间线上任何被红色裁剪片段覆盖的部分，都会在导出时被剪掉。",
+		"visualExample": "可视化示例",
+		"removed": "已移除",
+		"kept": "保留",
+		"part1": "片段 1",
+		"part2": "片段 2",
+		"part3": "片段 3",
+		"finalVideo": "最终视频",
+		"step1Title": "1. 添加裁剪",
+		"step1Prefix": "按",
+		"step1Suffix": "或点击剪刀图标，标记要移除的片段。",
+		"step2Title": "2. 调整范围",
+		"step2Description": "拖动红色区域的边缘，精确覆盖你想剪掉的内容。"
+	}
+}

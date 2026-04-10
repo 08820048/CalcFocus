@@ -1,5 +1,6 @@
 import { Pause, Play } from "lucide-react";
 import { memo } from "react";
+import { useScopedT } from "@/contexts/I18nContext";
 import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
 import { type TimeStore, useTimeValue } from "./useTimeStore";
@@ -20,6 +21,7 @@ function PlaybackControls({
 	onSeek,
 }: PlaybackControlsProps) {
 	console.log("render <PlaybackControls>");
+	const t = useScopedT("editor");
 	const currentTime = useTimeValue(timeStore);
 
 	function formatTime(seconds: number) {
@@ -46,7 +48,11 @@ function PlaybackControls({
 						? "bg-white/10 text-white hover:bg-white/20"
 						: "bg-white text-black hover:bg-white/90 hover:scale-105 shadow-[0_0_15px_rgba(255,255,255,0.3)]",
 				)}
-				aria-label={isPlaying ? "Pause" : "Play"}
+				aria-label={
+					isPlaying
+						? t("playback.pause", "Pause")
+						: t("playback.play", "Play")
+				}
 			>
 				{isPlaying ? (
 					<Pause className="w-3.5 h-3.5 fill-current" />

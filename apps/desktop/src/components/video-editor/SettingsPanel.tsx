@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useScopedT } from "@/contexts/I18nContext";
 import {
 	createDefaultFacecamSettings,
 	FACECAM_ANCHORS,
@@ -92,39 +93,6 @@ type SettingsTabDefinition = {
 	description: string;
 	icon: LucideIcon;
 };
-
-const SETTINGS_SIDEBAR_TABS: SettingsTabDefinition[] = [
-	{
-		id: "appearance",
-		label: "Appearance",
-		description: "Frame styling, crop, and composition.",
-		icon: SlidersHorizontal,
-	},
-	{
-		id: "cursor",
-		label: "Cursor",
-		description: "Cursor visibility and motion effects.",
-		icon: MousePointer2,
-	},
-	{
-		id: "camera",
-		label: "Camera",
-		description: "Facecam overlay settings.",
-		icon: Camera,
-	},
-	{
-		id: "background",
-		label: "Background",
-		description: "Wallpaper, colors, and gradients.",
-		icon: Palette,
-	},
-	{
-		id: "audio",
-		label: "Audio",
-		description: "Master preview and MP4 export audio.",
-		icon: Volume2,
-	},
-];
 
 interface SettingsPanelProps {
 	selected: string;
@@ -218,6 +186,14 @@ type WallpaperPreviewTileProps = {
 	children?: ReactNode;
 };
 
+const flatControlClass = "pb-2";
+const flatRowControlClass = "flex items-center justify-between gap-3 pb-2";
+const flatTabsListClass = "mb-2 w-full grid grid-cols-3 h-7 rounded-none bg-transparent p-0";
+const flatTabsTriggerClass =
+	"rounded-none border-b-2 border-transparent data-[state=active]:border-[#09cf67] data-[state=active]:bg-transparent data-[state=active]:text-white text-slate-400 text-[10px] py-1 transition-colors";
+const flatOptionButtonClass =
+	"h-auto w-full rounded-none border-x-0 border-t-0 bg-transparent px-1 py-2 text-center shadow-none transition-all duration-200 ease-out opacity-100 cursor-pointer";
+
 function WallpaperPreviewTile({
 	label,
 	previewSrc,
@@ -228,10 +204,10 @@ function WallpaperPreviewTile({
 	return (
 		<div
 			className={cn(
-				"aspect-square w-9 h-9 rounded-md border-2 overflow-hidden cursor-pointer transition-all duration-200 relative shadow-sm group",
+				"aspect-square w-9 h-9 rounded-none border-2 overflow-hidden cursor-pointer transition-all duration-200 relative shadow-none group",
 				isSelected
 					? "border-[#09cf67] ring-1 ring-[#09cf67]/30"
-					: "border-white/10 hover:border-[#09cf67]/40 opacity-80 hover:opacity-100 bg-white/5",
+					: "border-white/10 hover:border-[#09cf67]/40 opacity-80 hover:opacity-100 bg-transparent",
 			)}
 			aria-label={label}
 			title={label}
@@ -307,6 +283,7 @@ function SettingsPanelInner({
 	onSpeedChange,
 	onSpeedDelete,
 }: SettingsPanelProps) {
+	const t = useScopedT("settings");
 	const [activeTab, setActiveTab] = useState<SettingsSidebarTab>("appearance");
 	const [backgroundTab, setBackgroundTab] = useState<"image" | "color" | "gradient">("image");
 	const [customImages, setCustomImages] = useState<string[]>([]);
@@ -315,9 +292,44 @@ function SettingsPanelInner({
 	const [gradient, setGradient] = useState<string>(GRADIENTS[0]);
 	const [showCropModal, setShowCropModal] = useState(false);
 	const cropSnapshotRef = useRef<CropRegion | null>(null);
+	const settingsSidebarTabs = useMemo<SettingsTabDefinition[]>(
+		() => [
+			{
+				id: "appearance",
+				label: t("tabs.appearance.label", "Appearance"),
+				description: t("tabs.appearance.description", "Frame styling, crop, and composition."),
+				icon: SlidersHorizontal,
+			},
+			{
+				id: "cursor",
+				label: t("tabs.cursor.label", "Cursor"),
+				description: t("tabs.cursor.description", "Cursor visibility and motion effects."),
+				icon: MousePointer2,
+			},
+			{
+				id: "camera",
+				label: t("tabs.camera.label", "Camera"),
+				description: t("tabs.camera.description", "Facecam overlay settings."),
+				icon: Camera,
+			},
+			{
+				id: "background",
+				label: t("tabs.background.label", "Background"),
+				description: t("tabs.background.description", "Wallpaper, colors, and gradients."),
+				icon: Palette,
+			},
+			{
+				id: "audio",
+				label: t("tabs.audio.label", "Audio"),
+				description: t("tabs.audio.description", "Master preview and MP4 export audio."),
+				icon: Volume2,
+			},
+		],
+		[t],
+	);
 	const activeTabDefinition = useMemo(
-		() => SETTINGS_SIDEBAR_TABS.find((tab) => tab.id === activeTab) ?? SETTINGS_SIDEBAR_TABS[0],
-		[activeTab],
+		() => settingsSidebarTabs.find((tab) => tab.id === activeTab) ?? settingsSidebarTabs[0],
+		[activeTab, settingsSidebarTabs],
 	);
 
 	const zoomEnabled = Boolean(selectedZoomDepth);
@@ -366,8 +378,11 @@ function SettingsPanelInner({
 		// Validate file type - only allow JPG/JPEG
 		const validTypes = ["image/jpeg", "image/jpg"];
 		if (!validTypes.includes(file.type)) {
-			toast.error("Invalid file type", {
-				description: "Please upload a JPG or JPEG image file.",
+			toast.error(t("background.invalidFileType", "Invalid file type"), {
+				description: t(
+					"background.invalidFileDescription",
+					"Please upload a JPG or JPEG image file.",
+				),
 			});
 			event.target.value = "";
 			return;
@@ -380,13 +395,16 @@ function SettingsPanelInner({
 			if (dataUrl) {
 				setCustomImages((prev) => [...prev, dataUrl]);
 				onWallpaperChange(dataUrl);
-				toast.success("Custom image uploaded successfully!");
+				toast.success(t("background.uploadedSuccessfully", "Custom image uploaded successfully!"));
 			}
 		};
 
 		reader.onerror = () => {
-			toast.error("Failed to upload image", {
-				description: "There was an error reading the file.",
+			toast.error(t("background.uploadFailed", "Failed to upload image"), {
+				description: t(
+					"background.uploadFailedDescription",
+					"There was an error reading the file.",
+				),
 			});
 		};
 
@@ -441,9 +459,11 @@ function SettingsPanelInner({
 				return (
 					<div className="space-y-3">
 						<div className="grid grid-cols-2 gap-2">
-							<div className="p-2 rounded-lg bg-white/5 border border-white/5">
+							<div className={flatControlClass}>
 								<div className="flex items-center justify-between mb-1">
-									<div className="text-[10px] font-medium text-slate-300">Shadow</div>
+									<div className="text-[10px] font-medium text-slate-300">
+										{t("appearance.shadow", "Shadow")}
+									</div>
 									<span className="text-[10px] text-slate-500 font-mono">
 										{Math.round(shadowIntensity * 100)}%
 									</span>
@@ -457,9 +477,11 @@ function SettingsPanelInner({
 									className="w-full [&_[role=slider]]:bg-[#09cf67] [&_[role=slider]]:border-[#09cf67] [&_[role=slider]]:h-3 [&_[role=slider]]:w-3"
 								/>
 							</div>
-							<div className="p-2 rounded-lg bg-white/5 border border-white/5">
+							<div className={flatControlClass}>
 								<div className="flex items-center justify-between mb-1">
-									<div className="text-[10px] font-medium text-slate-300">Roundness</div>
+									<div className="text-[10px] font-medium text-slate-300">
+										{t("appearance.roundness", "Roundness")}
+									</div>
 									<span className="text-[10px] text-slate-500 font-mono">{borderRadius}px</span>
 								</div>
 								<Slider
@@ -473,9 +495,11 @@ function SettingsPanelInner({
 							</div>
 						</div>
 						<div className="grid grid-cols-2 gap-2">
-							<div className="p-2 rounded-lg bg-white/5 border border-white/5">
+							<div className={flatControlClass}>
 								<div className="flex items-center justify-between mb-1">
-									<div className="text-[10px] font-medium text-slate-300">Padding</div>
+									<div className="text-[10px] font-medium text-slate-300">
+										{t("appearance.padding", "Padding")}
+									</div>
 									<span className="text-[10px] text-slate-500 font-mono">{padding}%</span>
 								</div>
 								<Slider
@@ -487,9 +511,11 @@ function SettingsPanelInner({
 									className="w-full [&_[role=slider]]:bg-[#09cf67] [&_[role=slider]]:border-[#09cf67] [&_[role=slider]]:h-3 [&_[role=slider]]:w-3"
 								/>
 							</div>
-							<div className="p-2 rounded-lg bg-white/5 border border-white/5">
+							<div className={flatControlClass}>
 								<div className="flex items-center justify-between mb-1">
-									<div className="text-[10px] font-medium text-slate-300">Background Blur</div>
+									<div className="text-[10px] font-medium text-slate-300">
+										{t("appearance.backgroundBlur", "Background Blur")}
+									</div>
 									<span className="text-[10px] text-slate-500 font-mono">
 										{backgroundBlur.toFixed(1)}px
 									</span>
@@ -508,10 +534,10 @@ function SettingsPanelInner({
 						<Button
 							onClick={handleCropToggle}
 							variant="outline"
-							className="w-full gap-1.5 bg-white/5 text-slate-200 border-white/10 hover:bg-white/10 hover:border-white/20 hover:text-white text-[10px] h-8 transition-all"
+							className="h-8 w-full gap-1.5 rounded-none border-x-0 border-t-0 border-white/10 bg-transparent text-[10px] text-slate-200 shadow-none transition-all hover:border-white/20 hover:bg-transparent hover:text-white"
 						>
 							<Crop className="w-3 h-3" />
-							Crop Video
+							{t("appearance.cropVideo", "Crop Video")}
 						</Button>
 					</div>
 				);
@@ -519,16 +545,20 @@ function SettingsPanelInner({
 				return (
 					<div className="space-y-3">
 						<div className="grid grid-cols-2 gap-2">
-							<div className="flex items-center justify-between p-2 rounded-lg bg-white/5 border border-white/5">
-								<div className="text-[10px] font-medium text-slate-300">Show Cursor</div>
+							<div className={flatRowControlClass}>
+								<div className="text-[10px] font-medium text-slate-300">
+									{t("cursor.showCursor", "Show Cursor")}
+								</div>
 								<Switch
 									checked={showCursor}
 									onCheckedChange={onShowCursorChange}
 									className="data-[state=checked]:bg-[#09cf67] scale-90"
 								/>
 							</div>
-							<div className="flex items-center justify-between p-2 rounded-lg bg-white/5 border border-white/5">
-								<div className="text-[10px] font-medium text-slate-300">Loop Cursor</div>
+							<div className={flatRowControlClass}>
+								<div className="text-[10px] font-medium text-slate-300">
+									{t("cursor.loopCursor", "Loop Cursor")}
+								</div>
 								<Switch
 									checked={loopCursor}
 									onCheckedChange={onLoopCursorChange}
@@ -537,9 +567,11 @@ function SettingsPanelInner({
 							</div>
 						</div>
 						<div className="grid grid-cols-2 gap-2">
-							<div className="p-2 rounded-lg bg-white/5 border border-white/5">
+							<div className={flatControlClass}>
 								<div className="flex items-center justify-between mb-1">
-									<div className="text-[10px] font-medium text-slate-300">Size</div>
+									<div className="text-[10px] font-medium text-slate-300">
+										{t("cursor.size", "Size")}
+									</div>
 									<span className="text-[10px] text-slate-500 font-mono">
 										{cursorSize.toFixed(2)}×
 									</span>
@@ -553,11 +585,13 @@ function SettingsPanelInner({
 									className="w-full [&_[role=slider]]:bg-[#09cf67] [&_[role=slider]]:border-[#09cf67] [&_[role=slider]]:h-3 [&_[role=slider]]:w-3"
 								/>
 							</div>
-							<div className="p-2 rounded-lg bg-white/5 border border-white/5">
+							<div className={flatControlClass}>
 								<div className="flex items-center justify-between mb-1">
-									<div className="text-[10px] font-medium text-slate-300">Smoothing</div>
+									<div className="text-[10px] font-medium text-slate-300">
+										{t("cursor.smoothing", "Smoothing")}
+									</div>
 									<span className="text-[10px] text-slate-500 font-mono">
-										{cursorSmoothing <= 0 ? "Off" : cursorSmoothing.toFixed(2)}
+										{cursorSmoothing <= 0 ? t("cursor.off", "Off") : cursorSmoothing.toFixed(2)}
 									</span>
 								</div>
 								<Slider
@@ -571,9 +605,11 @@ function SettingsPanelInner({
 							</div>
 						</div>
 						<div className="grid grid-cols-2 gap-2">
-							<div className="p-2 rounded-lg bg-white/5 border border-white/5">
+							<div className={flatControlClass}>
 								<div className="flex items-center justify-between mb-1">
-									<div className="text-[10px] font-medium text-slate-300">Motion Blur</div>
+									<div className="text-[10px] font-medium text-slate-300">
+										{t("cursor.motionBlur", "Motion Blur")}
+									</div>
 									<span className="text-[10px] text-slate-500 font-mono">
 										{cursorMotionBlur.toFixed(2)}×
 									</span>
@@ -587,9 +623,11 @@ function SettingsPanelInner({
 									className="w-full [&_[role=slider]]:bg-[#09cf67] [&_[role=slider]]:border-[#09cf67] [&_[role=slider]]:h-3 [&_[role=slider]]:w-3"
 								/>
 							</div>
-							<div className="p-2 rounded-lg bg-white/5 border border-white/5">
+							<div className={flatControlClass}>
 								<div className="flex items-center justify-between mb-1">
-									<div className="text-[10px] font-medium text-slate-300">Click Bounce</div>
+									<div className="text-[10px] font-medium text-slate-300">
+										{t("cursor.clickBounce", "Click Bounce")}
+									</div>
 									<span className="text-[10px] text-slate-500 font-mono">
 										{cursorClickBounce.toFixed(2)}×
 									</span>
@@ -609,13 +647,18 @@ function SettingsPanelInner({
 			case "camera":
 				return (
 					<div className="space-y-3">
-						<div className="flex items-center justify-between gap-3 p-2 rounded-lg bg-white/5 border border-white/5">
+						<div className={flatRowControlClass}>
 							<div>
-								<div className="text-[11px] font-medium text-slate-200">Facecam</div>
+								<div className="text-[11px] font-medium text-slate-200">
+									{t("camera.facecam", "Facecam")}
+								</div>
 								<div className="text-[10px] text-slate-500">
 									{facecamAvailable
-										? "Show a Loom-style facecam overlay."
-										: "Record with facecam enabled to customize."}
+										? t("camera.availableDescription", "Show a Loom-style facecam overlay.")
+										: t(
+												"camera.unavailableDescription",
+												"Record with facecam enabled to customize.",
+											)}
 								</div>
 							</div>
 							<Switch
@@ -635,30 +678,30 @@ function SettingsPanelInner({
 										variant="outline"
 										onClick={() => updateFacecamSettings({ shape: "circle" })}
 										className={cn(
-											"h-8 text-[10px] border-white/10 bg-white/5 text-slate-300 hover:bg-white/10",
-											facecamSettings.shape === "circle" &&
-												"border-[#09cf67]/60 bg-[#09cf67]/15 text-white",
+											"h-8 rounded-none border-x-0 border-t-0 border-white/10 bg-transparent text-[10px] text-slate-300 shadow-none hover:border-white/20 hover:bg-transparent",
+											facecamSettings.shape === "circle" && "border-[#09cf67]/60 text-white",
 										)}
 									>
-										Circle
+										{t("camera.circle", "Circle")}
 									</Button>
 									<Button
 										type="button"
 										variant="outline"
 										onClick={() => updateFacecamSettings({ shape: "square" })}
 										className={cn(
-											"h-8 text-[10px] border-white/10 bg-white/5 text-slate-300 hover:bg-white/10",
-											facecamSettings.shape === "square" &&
-												"border-[#09cf67]/60 bg-[#09cf67]/15 text-white",
+											"h-8 rounded-none border-x-0 border-t-0 border-white/10 bg-transparent text-[10px] text-slate-300 shadow-none hover:border-white/20 hover:bg-transparent",
+											facecamSettings.shape === "square" && "border-[#09cf67]/60 text-white",
 										)}
 									>
-										Square
+										{t("camera.square", "Square")}
 									</Button>
 								</div>
 
-								<div className="p-2 rounded-lg bg-white/5 border border-white/5">
+								<div className={flatControlClass}>
 									<div className="flex items-center justify-between mb-1">
-										<div className="text-[10px] font-medium text-slate-300">Facecam Size</div>
+										<div className="text-[10px] font-medium text-slate-300">
+											{t("camera.facecamSize", "Facecam Size")}
+										</div>
 										<span className="text-[10px] text-slate-500 font-mono">
 											{facecamSettings.size.toFixed(0)}%
 										</span>
@@ -674,9 +717,11 @@ function SettingsPanelInner({
 								</div>
 
 								{facecamSettings.shape === "square" && (
-									<div className="p-2 rounded-lg bg-white/5 border border-white/5">
+									<div className={flatControlClass}>
 										<div className="flex items-center justify-between mb-1">
-											<div className="text-[10px] font-medium text-slate-300">Square Roundness</div>
+											<div className="text-[10px] font-medium text-slate-300">
+												{t("camera.squareRoundness", "Square Roundness")}
+											</div>
 											<span className="text-[10px] text-slate-500 font-mono">
 												{facecamSettings.cornerRadius.toFixed(0)}%
 											</span>
@@ -691,9 +736,11 @@ function SettingsPanelInner({
 										/>
 									</div>
 								)}
-								<div className="p-2 rounded-lg bg-white/5 border border-white/5">
+								<div className={flatControlClass}>
 									<div className="flex items-center justify-between mb-1">
-										<div className="text-[10px] font-medium text-slate-300">Border Width</div>
+										<div className="text-[10px] font-medium text-slate-300">
+											{t("camera.borderWidth", "Border Width")}
+										</div>
 										<span className="text-[10px] text-slate-500 font-mono">
 											{facecamSettings.borderWidth.toFixed(0)}px
 										</span>
@@ -708,8 +755,10 @@ function SettingsPanelInner({
 									/>
 								</div>
 
-								<div className="p-2 rounded-lg bg-white/5 border border-white/5">
-									<div className="text-[10px] font-medium text-slate-300 mb-1.5">Border Color</div>
+								<div className={flatControlClass}>
+									<div className="text-[10px] font-medium text-slate-300 mb-1.5">
+										{t("camera.borderColor", "Border Color")}
+									</div>
 									<Block
 										color={facecamSettings.borderColor}
 										colors={COLOR_PALETTE}
@@ -717,9 +766,11 @@ function SettingsPanelInner({
 									/>
 								</div>
 
-								<div className="p-2 rounded-lg bg-white/5 border border-white/5">
+								<div className={flatControlClass}>
 									<div className="flex items-center justify-between mb-1">
-										<div className="text-[10px] font-medium text-slate-300">Margin</div>
+										<div className="text-[10px] font-medium text-slate-300">
+											{t("camera.margin", "Margin")}
+										</div>
 										<span className="text-[10px] text-slate-500 font-mono">
 											{facecamSettings.margin.toFixed(0)}%
 										</span>
@@ -734,15 +785,17 @@ function SettingsPanelInner({
 									/>
 								</div>
 
-								<div className="p-2 rounded-lg bg-white/5 border border-white/5">
-									<div className="text-[10px] font-medium text-slate-300 mb-1.5">Position</div>
+								<div className={flatControlClass}>
+									<div className="text-[10px] font-medium text-slate-300 mb-1.5">
+										{t("camera.position", "Position")}
+									</div>
 									<div className="grid grid-cols-2 gap-1.5">
 										{FACECAM_ANCHORS.map((anchorOption) => {
 											const labels: Record<string, string> = {
-												"top-left": "Top Left",
-												"top-right": "Top Right",
-												"bottom-left": "Bottom Left",
-												"bottom-right": "Bottom Right",
+												"top-left": t("camera.positions.topLeft", "Top Left"),
+												"top-right": t("camera.positions.topRight", "Top Right"),
+												"bottom-left": t("camera.positions.bottomLeft", "Bottom Left"),
+												"bottom-right": t("camera.positions.bottomRight", "Bottom Right"),
 											};
 											const isActive =
 												facecamSettings.anchor === anchorOption ||
@@ -760,8 +813,8 @@ function SettingsPanelInner({
 														})
 													}
 													className={cn(
-														"h-7 text-[9px] border-white/10 bg-white/5 text-slate-300 hover:bg-white/10",
-														isActive && "border-[#09cf67]/60 bg-[#09cf67]/15 text-white",
+														"h-7 rounded-none border-x-0 border-t-0 border-white/10 bg-transparent text-[9px] text-slate-300 shadow-none hover:border-white/20 hover:bg-transparent",
+														isActive && "border-[#09cf67]/60 text-white",
 													)}
 												>
 													{labels[anchorOption] ?? anchorOption}
@@ -771,7 +824,7 @@ function SettingsPanelInner({
 									</div>
 									{facecamSettings.anchor === "custom" && (
 										<div className="mt-1.5 text-[9px] text-slate-500">
-											Drag the bubble in the preview to reposition.
+											{t("camera.dragHint", "Drag the bubble in the preview to reposition.")}
 										</div>
 									)}
 								</div>
@@ -786,24 +839,15 @@ function SettingsPanelInner({
 						onValueChange={(value) => setBackgroundTab(value as typeof backgroundTab)}
 						className="w-full"
 					>
-						<TabsList className="mb-2 bg-white/5 border border-white/5 p-0.5 w-full grid grid-cols-3 h-7 rounded-lg">
-							<TabsTrigger
-								value="image"
-								className="data-[state=active]:bg-[#09cf67] data-[state=active]:text-white text-slate-400 text-[10px] py-1 rounded-md transition-all"
-							>
-								Image
+						<TabsList className={flatTabsListClass}>
+							<TabsTrigger value="image" className={flatTabsTriggerClass}>
+								{t("background.image", "Image")}
 							</TabsTrigger>
-							<TabsTrigger
-								value="color"
-								className="data-[state=active]:bg-[#09cf67] data-[state=active]:text-white text-slate-400 text-[10px] py-1 rounded-md transition-all"
-							>
-								Color
+							<TabsTrigger value="color" className={flatTabsTriggerClass}>
+								{t("background.color", "Color")}
 							</TabsTrigger>
-							<TabsTrigger
-								value="gradient"
-								className="data-[state=active]:bg-[#09cf67] data-[state=active]:text-white text-slate-400 text-[10px] py-1 rounded-md transition-all"
-							>
-								Gradient
+							<TabsTrigger value="gradient" className={flatTabsTriggerClass}>
+								{t("background.gradient", "Gradient")}
 							</TabsTrigger>
 						</TabsList>
 
@@ -819,10 +863,10 @@ function SettingsPanelInner({
 								<Button
 									onClick={() => fileInputRef.current?.click()}
 									variant="outline"
-									className="w-full gap-2 bg-white/5 text-slate-200 border-white/10 hover:bg-[#09cf67] hover:text-white hover:border-[#09cf67] transition-all h-7 text-[10px]"
+									className="h-7 w-full gap-2 rounded-none border-x-0 border-t-0 border-white/10 bg-transparent text-[10px] text-slate-200 shadow-none transition-all hover:border-[#09cf67] hover:bg-transparent hover:text-white"
 								>
 									<Upload className="w-3 h-3" />
-									Upload Custom
+									{t("background.uploadCustom", "Upload Custom")}
 								</Button>
 
 								<div className="grid grid-cols-7 gap-1.5">
@@ -831,7 +875,9 @@ function SettingsPanelInner({
 										return (
 											<WallpaperPreviewTile
 												key={`custom-${idx}`}
-												label={`Custom wallpaper ${idx + 1}`}
+												label={t("background.customWallpaper", "Custom wallpaper {{index}}", {
+													index: idx + 1,
+												})}
 												previewSrc={imageUrl}
 												isSelected={isSelected}
 												onSelect={() => onWallpaperChange(imageUrl)}
@@ -872,7 +918,7 @@ function SettingsPanelInner({
 										}}
 										style={{
 											width: "100%",
-											borderRadius: "8px",
+											borderRadius: "0px",
 										}}
 									/>
 								</div>
@@ -884,13 +930,15 @@ function SettingsPanelInner({
 										<div
 											key={currentGradient}
 											className={cn(
-												"aspect-square w-9 h-9 rounded-md border-2 overflow-hidden cursor-pointer transition-all duration-200 shadow-sm",
+												"aspect-square w-9 h-9 rounded-none border-2 overflow-hidden cursor-pointer transition-all duration-200 shadow-none",
 												gradient === currentGradient
 													? "border-[#09cf67] ring-1 ring-[#09cf67]/30"
-													: "border-white/10 hover:border-[#09cf67]/40 opacity-80 hover:opacity-100 bg-white/5",
+													: "border-white/10 hover:border-[#09cf67]/40 opacity-80 hover:opacity-100 bg-transparent",
 											)}
 											style={{ background: currentGradient }}
-											aria-label={`Gradient ${idx + 1}`}
+											aria-label={t("background.gradientItem", "Gradient {{index}}", {
+												index: idx + 1,
+											})}
 											onClick={() => {
 												setGradient(currentGradient);
 												onWallpaperChange(currentGradient);
@@ -906,11 +954,13 @@ function SettingsPanelInner({
 			case "audio":
 				return (
 					<div className="space-y-3">
-						<div className="flex items-center justify-between gap-3 p-2 rounded-lg bg-white/5 border border-white/5">
+						<div className={flatRowControlClass}>
 							<div>
-								<div className="text-[11px] font-medium text-slate-200">Mute Audio</div>
+								<div className="text-[11px] font-medium text-slate-200">
+									{t("audio.muteAudio", "Mute Audio")}
+								</div>
 								<div className="text-[10px] text-slate-500">
-									Silence preview playback and MP4 exports.
+									{t("audio.muteDescription", "Silence preview playback and MP4 exports.")}
 								</div>
 							</div>
 							<Switch
@@ -920,9 +970,11 @@ function SettingsPanelInner({
 							/>
 						</div>
 
-						<div className="p-2 rounded-lg bg-white/5 border border-white/5">
+						<div className={flatControlClass}>
 							<div className="flex items-center justify-between mb-1">
-								<div className="text-[10px] font-medium text-slate-300">Master Volume</div>
+								<div className="text-[10px] font-medium text-slate-300">
+									{t("audio.masterVolume", "Master Volume")}
+								</div>
 								<span className="text-[10px] text-slate-500 font-mono">
 									{Math.round(audioVolume * 100)}%
 								</span>
@@ -937,8 +989,11 @@ function SettingsPanelInner({
 							/>
 						</div>
 
-						<div className="rounded-lg border border-white/5 bg-white/[0.03] p-2 text-[10px] text-slate-500">
-							These controls affect editor playback immediately and apply to MP4 exports.
+						<div className="pb-2 text-[10px] text-slate-500">
+							{t(
+								"audio.note",
+								"These controls affect editor playback immediately and apply to MP4 exports.",
+							)}
 						</div>
 					</div>
 				);
@@ -946,14 +1001,14 @@ function SettingsPanelInner({
 	};
 
 	return (
-		<div className="h-full w-full min-w-0 rounded-2xl border border-white/5 bg-[#09090b] shadow-xl overflow-hidden">
+		<div className="h-full w-full min-w-0 bg-[#09090b] overflow-hidden">
 			<div className="flex flex-1 min-h-0 overflow-hidden">
 				<div
-					className="flex flex-col items-center gap-3 px-3 py-4"
+					className="flex flex-col items-center gap-2 px-3 pt-2 pb-4"
 					role="tablist"
 					aria-orientation="vertical"
 				>
-					{SETTINGS_SIDEBAR_TABS.map((tab) => {
+					{settingsSidebarTabs.map((tab) => {
 						const TabIcon = tab.icon;
 						const isActive = tab.id === activeTab;
 
@@ -980,11 +1035,13 @@ function SettingsPanelInner({
 				</div>
 
 				<div className="flex flex-1 min-h-0 flex-col">
-					<div className="flex-1 overflow-y-auto custom-scrollbar p-4">
+					<div className="flex-1 overflow-y-auto custom-scrollbar px-4 pt-3 pb-4">
 						{zoomEnabled && (
-							<div className="mb-3 rounded-xl border border-[#09cf67]/20 bg-[#09cf67]/5 p-3">
+							<div className="mb-4 pb-4">
 								<div className="flex items-center justify-between mb-3">
-									<span className="text-sm font-medium text-slate-200">Zoom Settings</span>
+									<span className="text-sm font-medium text-slate-200">
+										{t("zoom.title", "Zoom Settings")}
+									</span>
 									<div className="flex items-center gap-2">
 										{selectedZoomDepth && (
 											<span className="text-[10px] uppercase tracking-wider font-medium text-[#09cf67] bg-[#09cf67]/10 px-2 py-0.5 rounded-full">
@@ -1003,12 +1060,10 @@ function SettingsPanelInner({
 												type="button"
 												onClick={() => onZoomDepthChange?.(option.depth)}
 												className={cn(
-													"h-auto w-full rounded-lg border px-1 py-2 text-center shadow-sm transition-all",
-													"duration-200 ease-out",
-													"opacity-100 cursor-pointer",
+													flatOptionButtonClass,
 													isActive
-														? "border-[#09cf67] bg-[#09cf67] text-white shadow-[#09cf67]/20"
-														: "border-white/5 bg-white/5 text-slate-400 hover:bg-white/10 hover:border-white/10 hover:text-slate-200",
+														? "border-[#09cf67] text-white"
+														: "border-white/5 text-slate-400 hover:border-white/10 hover:text-slate-200",
 												)}
 											>
 												<span className="text-xs font-semibold">{option.label}</span>
@@ -1017,9 +1072,11 @@ function SettingsPanelInner({
 									})}
 								</div>
 								<div className="grid grid-cols-2 gap-2 mb-3">
-									<div className="p-2 rounded-lg bg-white/5 border border-white/5">
+									<div className={flatControlClass}>
 										<div className="flex items-center justify-between mb-1">
-											<div className="text-[10px] font-medium text-slate-300">Motion Blur</div>
+											<div className="text-[10px] font-medium text-slate-300">
+												{t("zoom.motionBlur", "Motion Blur")}
+											</div>
 											<span className="text-[10px] text-slate-500 font-mono">
 												{zoomMotionBlur.toFixed(2)}×
 											</span>
@@ -1033,8 +1090,10 @@ function SettingsPanelInner({
 											className="w-full [&_[role=slider]]:bg-[#09cf67] [&_[role=slider]]:border-[#09cf67] [&_[role=slider]]:h-3 [&_[role=slider]]:w-3"
 										/>
 									</div>
-									<div className="flex items-center justify-between p-2 rounded-lg bg-white/5 border border-white/5">
-										<div className="text-[10px] font-medium text-slate-300">Connect Zooms</div>
+									<div className={flatRowControlClass}>
+										<div className="text-[10px] font-medium text-slate-300">
+											{t("zoom.connect", "Connect Zooms")}
+										</div>
 										<Switch
 											checked={connectZooms}
 											onCheckedChange={onConnectZoomsChange}
@@ -1049,13 +1108,13 @@ function SettingsPanelInner({
 									className="mt-3 w-full gap-2 bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 hover:border-red-500/30 transition-all h-8 text-xs"
 								>
 									<Trash2 className="w-3 h-3" />
-									Delete Zoom
+									{t("zoom.delete", "Delete Zoom")}
 								</Button>
 							</div>
 						)}
 
 						{trimEnabled && (
-							<div className="mb-3 rounded-xl border border-red-500/20 bg-red-500/5 p-3">
+							<div className="mb-4 pb-4">
 								<Button
 									onClick={handleTrimDeleteClick}
 									variant="destructive"
@@ -1063,15 +1122,17 @@ function SettingsPanelInner({
 									className="w-full gap-2 bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 hover:border-red-500/30 transition-all h-8 text-xs"
 								>
 									<Trash2 className="w-3 h-3" />
-									Delete Trim Region
+									{t("trim.delete", "Delete Trim Region")}
 								</Button>
 							</div>
 						)}
 
 						{selectedSpeedId && (
-							<div className="mb-3 rounded-xl border border-[#d97706]/20 bg-[#d97706]/5 p-3">
+							<div className="mb-4 pb-4">
 								<div className="flex items-center justify-between mb-3">
-									<span className="text-sm font-medium text-slate-200">Speed Settings</span>
+									<span className="text-sm font-medium text-slate-200">
+										{t("speed.title", "Speed Settings")}
+									</span>
 									{selectedSpeedValue && (
 										<span className="text-[10px] uppercase tracking-wider font-medium text-[#d97706] bg-[#d97706]/10 px-2 py-0.5 rounded-full">
 											{SPEED_OPTIONS.find((o) => o.speed === selectedSpeedValue)?.label ??
@@ -1088,12 +1149,10 @@ function SettingsPanelInner({
 												type="button"
 												onClick={() => onSpeedChange?.(option.speed)}
 												className={cn(
-													"h-auto w-full rounded-lg border px-1 py-2 text-center shadow-sm transition-all",
-													"duration-200 ease-out",
-													"opacity-100 cursor-pointer",
+													flatOptionButtonClass,
 													isActive
-														? "border-[#d97706] bg-[#d97706] text-white shadow-[#d97706]/20"
-														: "border-white/5 bg-white/5 text-slate-400 hover:bg-white/10 hover:border-white/10 hover:text-slate-200",
+														? "border-[#d97706] text-white"
+														: "border-white/5 text-slate-400 hover:border-white/10 hover:text-slate-200",
 												)}
 											>
 												<span className="text-xs font-semibold">{option.label}</span>
@@ -1108,7 +1167,7 @@ function SettingsPanelInner({
 									className="mt-3 w-full gap-2 bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 hover:border-red-500/30 transition-all h-8 text-xs"
 								>
 									<Trash2 className="w-3 h-3" />
-									Delete Speed Region
+									{t("speed.delete", "Delete Speed Region")}
 								</Button>
 							</div>
 						)}
@@ -1117,7 +1176,7 @@ function SettingsPanelInner({
 							role="tabpanel"
 							id={`settings-panel-${activeTabDefinition.id}`}
 							aria-labelledby={`settings-tab-${activeTabDefinition.id}`}
-							className="rounded-xl border border-white/5 bg-white/[0.02] p-4"
+							className="pt-3"
 						>
 							<div className="mb-4">
 								<div className="flex items-center gap-2">
@@ -1142,9 +1201,11 @@ function SettingsPanelInner({
 					<div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[60] bg-[#09090b] rounded-2xl shadow-2xl border border-white/10 p-8 w-[90vw] max-w-5xl max-h-[90vh] overflow-auto animate-in zoom-in-95 duration-200">
 						<div className="flex items-center justify-between mb-6">
 							<div>
-								<span className="text-xl font-bold text-slate-200">Crop Video</span>
+								<span className="text-xl font-bold text-slate-200">
+									{t("crop.title", "Crop Video")}
+								</span>
 								<p className="text-sm text-slate-400 mt-2">
-									Drag on each side to adjust the crop area
+									{t("crop.description", "Drag on each side to adjust the crop area")}
 								</p>
 							</div>
 							<Button
@@ -1168,7 +1229,7 @@ function SettingsPanelInner({
 								size="lg"
 								className="bg-[#09cf67] hover:bg-[#09cf67]/90 text-white"
 							>
-								Done
+								{t("crop.done", "Done")}
 							</Button>
 						</div>
 					</div>

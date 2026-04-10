@@ -1,1 +1,68 @@
-{}
+{
+  "loading": {
+    "title": "正在加载视频",
+    "description": "正在准备录制内容，并将其载入内存以供编辑。"
+  },
+  "errors": {
+    "invalidProjectFormat": "项目文件格式无效",
+    "noVideoToLoad": "没有可加载的视频。请先录制或选择一个视频。",
+    "loadingVideo": "加载视频出错：{{error}}",
+    "noVideoLoaded": "当前没有加载视频",
+    "sourceVideoPathUnavailable": "无法确定源视频路径",
+    "videoNotReady": "视频尚未准备好",
+    "unknown": "未知错误"
+  },
+  "project": {
+    "saveCanceled": "已取消保存项目",
+    "savedTo": "项目已保存到 {{path}}",
+    "loadedFrom": "项目已从 {{path}} 加载",
+    "loadFailed": "项目加载失败",
+    "loadFailedWithError": "项目加载失败：{{error}}",
+    "loadFile": "加载项目文件"
+  },
+  "annotations": {
+    "defaultText": "输入文字..."
+  },
+  "playback": {
+    "play": "播放",
+    "pause": "暂停"
+  },
+  "shortcuts": {
+    "title": "键盘快捷键"
+  },
+  "settings": {
+    "expand": "展开设置面板",
+    "collapse": "收起设置面板",
+    "panel": "面板"
+  },
+  "recordings": {
+    "openFailed": "打开录制文件夹失败：{{error}}",
+    "openFolder": "打开录制文件夹",
+    "manage": "管理录制文件"
+  },
+  "export": {
+    "successTo": "导出成功：{{path}}",
+    "showInFolder": "在文件夹中显示",
+    "revealError": "在文件夹中显示失败：{{error}}",
+    "saveDialogCanceled": "保存对话框已取消。点击“重新保存”即可直接保存，无需重新渲染。",
+    "saveCanceledRetry": "保存已取消。你可以直接再次保存，无需重新导出。",
+    "saveCanceledTryAgain": "保存已取消。你可以再试一次。",
+    "gifFailed": "GIF 导出失败",
+    "failed": "导出失败",
+    "failedWithError": "导出失败：{{error}}",
+    "canceled": "导出已取消",
+    "exportVideo": "导出视频",
+    "exportGif": "导出 GIF",
+    "quality": {
+      "low": "低",
+      "medium": "中",
+      "high": "高"
+    },
+    "gif": {
+      "sizeOriginal": "原始",
+      "sizeSmall": "小",
+      "sizeMedium": "中",
+      "loop": "循环"
+    }
+  }
+}

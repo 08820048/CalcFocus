@@ -1,1 +1,150 @@
-{}
+{
+  "tabs": {
+    "appearance": {
+      "label": "外观",
+      "description": "画面样式、裁剪与构图。"
+    },
+    "cursor": {
+      "label": "光标",
+      "description": "光标显示与运动效果。"
+    },
+    "camera": {
+      "label": "摄像头",
+      "description": "画中画摄像头设置。"
+    },
+    "background": {
+      "label": "背景",
+      "description": "壁纸、颜色与渐变。"
+    },
+    "audio": {
+      "label": "音频",
+      "description": "预览与 MP4 导出的音频设置。"
+    }
+  },
+  "appearance": {
+    "shadow": "阴影",
+    "roundness": "圆角",
+    "padding": "内边距",
+    "backgroundBlur": "背景模糊",
+    "cropVideo": "裁剪视频"
+  },
+  "cursor": {
+    "showCursor": "显示光标",
+    "loopCursor": "循环光标",
+    "size": "大小",
+    "smoothing": "平滑度",
+    "off": "关闭",
+    "motionBlur": "动态模糊",
+    "clickBounce": "点击弹跳"
+  },
+  "camera": {
+    "facecam": "画中画摄像头",
+    "availableDescription": "显示类似 Loom 的摄像头叠层。",
+    "unavailableDescription": "录制时开启摄像头后，才能在这里继续调整。",
+    "circle": "圆形",
+    "square": "方形",
+    "facecamSize": "摄像头大小",
+    "squareRoundness": "方形圆角",
+    "borderWidth": "边框宽度",
+    "borderColor": "边框颜色",
+    "margin": "边距",
+    "position": "位置",
+    "positions": {
+      "topLeft": "左上",
+      "topRight": "右上",
+      "bottomLeft": "左下",
+      "bottomRight": "右下"
+    },
+    "dragHint": "可在预览中拖动气泡来重新定位。"
+  },
+  "background": {
+    "image": "图片",
+    "color": "纯色",
+    "gradient": "渐变",
+    "uploadCustom": "上传自定义",
+    "customWallpaper": "自定义壁纸 {{index}}",
+    "gradientItem": "渐变 {{index}}",
+    "invalidFileType": "文件类型无效",
+    "invalidFileDescription": "请上传 JPG 或 JPEG 图片文件。",
+    "uploadedSuccessfully": "自定义图片上传成功！",
+    "uploadFailed": "图片上传失败",
+    "uploadFailedDescription": "读取文件时发生错误。"
+  },
+  "audio": {
+    "muteAudio": "静音",
+    "muteDescription": "同时静音编辑器预览和 MP4 导出音频。",
+    "masterVolume": "主音量",
+    "note": "这些设置会立即影响编辑器预览，并应用到 MP4 导出。"
+  },
+  "zoom": {
+    "title": "缩放设置",
+    "motionBlur": "动态模糊",
+    "connect": "连接缩放段",
+    "delete": "删除缩放"
+  },
+  "trim": {
+    "delete": "删除裁剪区域"
+  },
+  "speed": {
+    "title": "变速设置",
+    "delete": "删除变速区域"
+  },
+  "crop": {
+    "title": "裁剪视频",
+    "description": "拖动四边来调整裁剪区域",
+    "done": "完成"
+  },
+  "annotation": {
+    "title": "标注设置",
+    "active": "当前选中",
+    "types": {
+      "text": "文字",
+      "image": "图片",
+      "arrow": "箭头"
+    },
+    "textContent": "文字内容",
+    "enterText": "输入你的文字...",
+    "fontStyle": "字体样式",
+    "selectStyle": "选择样式",
+    "customFonts": "自定义字体",
+    "size": "大小",
+    "toggleBold": "切换粗体",
+    "toggleItalic": "切换斜体",
+    "toggleUnderline": "切换下划线",
+    "alignLeft": "左对齐",
+    "alignCenter": "居中对齐",
+    "alignRight": "右对齐",
+    "textColor": "文字颜色",
+    "background": "背景",
+    "none": "无",
+    "color": "颜色",
+    "clearBackground": "清除背景",
+    "uploadImage": "上传图片",
+    "supportedFormats": "支持格式：JPG、PNG、GIF、WebP",
+    "arrowDirection": "箭头方向",
+    "strokeWidth": "线宽",
+    "arrowColor": "箭头颜色",
+    "delete": "删除标注",
+    "shortcutsTips": "快捷键与提示",
+    "tip1": "把播放头移动到标注重叠的时间段，然后选中其中一个项目。",
+    "tip2Prefix": "使用",
+    "tip2Suffix": "在重叠项目之间循环切换。",
+    "tip3Prefix": "使用",
+    "tip3Suffix": "反向循环切换。",
+    "invalidFileType": "文件类型无效",
+    "invalidFileDescription": "请上传 JPG、PNG、GIF 或 WebP 图片文件。",
+    "imageUploaded": "图片上传成功！",
+    "uploadFailed": "图片上传失败",
+    "uploadFailedDescription": "读取文件时发生错误。",
+    "fonts": {
+      "classic": "经典",
+      "editor": "编辑",
+      "strong": "强调",
+      "typewriter": "打字机",
+      "deco": "装饰",
+      "simple": "简洁",
+      "modern": "现代",
+      "clean": "清爽"
+    }
+  }
+}

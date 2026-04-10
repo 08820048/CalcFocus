@@ -1,1 +1,61 @@
-{}
+{
+  "title": "Keyboard Shortcuts",
+  "customize": "Customize",
+  "actions": {
+    "addZoom": "Add Zoom",
+    "addTrim": "Add Trim",
+    "addSpeed": "Add Speed",
+    "addAnnotation": "Add Annotation",
+    "addKeyframe": "Add Keyframe",
+    "deleteSelected": "Delete Selected",
+    "playPause": "Play / Pause"
+  },
+  "timeline": {
+    "panDefault": "Shift + Ctrl + Scroll",
+    "zoomDefault": "Ctrl + Scroll",
+    "pan": "Pan Timeline",
+    "zoom": "Zoom Timeline",
+    "cycleAnnotations": "Cycle Annotations"
+  },
+  "file": {
+    "openProject": "Open Project",
+    "saveProject": "Save Project",
+    "saveProjectAs": "Save Project As"
+  },
+  "edit": {
+    "undo": "Undo",
+    "redo": "Redo"
+  },
+  "navigation": {
+    "cycleForward": "Cycle Annotations Forward",
+    "cycleBackward": "Cycle Annotations Backward",
+    "deleteAlt": "Delete Selected (alt)"
+  },
+  "sections": {
+    "file": "File",
+    "edit": "Edit",
+    "editor": "Editor",
+    "navigation": "Navigation"
+  },
+  "platform": {
+    "mac": "Showing macOS shortcuts",
+    "other": "Showing Windows / Linux shortcuts"
+  },
+  "config": {
+    "reserved": "This shortcut is reserved for \"{{label}}\" and cannot be reassigned.",
+    "saved": "Keyboard shortcuts saved",
+    "resetInfo": "Reset to default shortcuts - click Save to apply",
+    "configurable": "Configurable",
+    "pressEscToCancel": "Press Esc to cancel",
+    "clickToChange": "Click to change",
+    "pressAKey": "Press a key...",
+    "alreadyUsedBy": "Already used by {{label}}",
+    "swap": "Swap",
+    "cancel": "Cancel",
+    "fixed": "Fixed",
+    "instructions": "Click a shortcut then press the new key combination. Press",
+    "instructionsSuffix": "to cancel.",
+    "reset": "Reset to defaults",
+    "save": "Save"
+  }
+}

@@ -1,1 +1,68 @@
-{}
+{
+  "loading": {
+    "title": "Loading video",
+    "description": "Preparing your recording and loading it into memory for editing."
+  },
+  "errors": {
+    "invalidProjectFormat": "Invalid project file format",
+    "noVideoToLoad": "No video to load. Please record or select a video.",
+    "loadingVideo": "Error loading video: {{error}}",
+    "noVideoLoaded": "No video loaded",
+    "sourceVideoPathUnavailable": "Unable to determine source video path",
+    "videoNotReady": "Video not ready",
+    "unknown": "Unknown error"
+  },
+  "project": {
+    "saveCanceled": "Project save canceled",
+    "savedTo": "Project saved to {{path}}",
+    "loadedFrom": "Project loaded from {{path}}",
+    "loadFailed": "Failed to load project",
+    "loadFailedWithError": "Failed to load project: {{error}}",
+    "loadFile": "Load Project File"
+  },
+  "annotations": {
+    "defaultText": "Enter text..."
+  },
+  "playback": {
+    "play": "Play",
+    "pause": "Pause"
+  },
+  "shortcuts": {
+    "title": "Keyboard shortcuts"
+  },
+  "settings": {
+    "expand": "Expand settings panel",
+    "collapse": "Collapse settings panel",
+    "panel": "Panel"
+  },
+  "recordings": {
+    "openFailed": "Failed to open recordings folder: {{error}}",
+    "openFolder": "Open recordings folder",
+    "manage": "Manage recordings"
+  },
+  "export": {
+    "successTo": "Exported successfully to {{path}}",
+    "showInFolder": "Show in Folder",
+    "revealError": "Error revealing in folder: {{error}}",
+    "saveDialogCanceled": "Save dialog canceled. Click Save Again to save without re-rendering.",
+    "saveCanceledRetry": "Save canceled. You can save again without re-exporting.",
+    "saveCanceledTryAgain": "Save canceled. You can try again.",
+    "gifFailed": "GIF export failed",
+    "failed": "Export failed",
+    "failedWithError": "Export failed: {{error}}",
+    "canceled": "Export canceled",
+    "exportVideo": "Export Video",
+    "exportGif": "Export GIF",
+    "quality": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High"
+    },
+    "gif": {
+      "sizeOriginal": "Orig",
+      "sizeSmall": "Sm",
+      "sizeMedium": "Md",
+      "loop": "Loop"
+    }
+  }
+}

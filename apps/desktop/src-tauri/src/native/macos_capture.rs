@@ -1,3 +1,5 @@
+#[cfg(target_os = "macos")]
+use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use tauri::AppHandle;
 use tokio::sync::Mutex;
@@ -52,6 +54,34 @@ fn parse_display_id_from_source_id(source_id: &str) -> Option<String> {
 }
 
 #[cfg(target_os = "macos")]
+fn build_microphone_output_path(
+    output_path: &str,
+    captures_system_audio: bool,
+    captures_microphone: bool,
+) -> Option<String> {
+    if !(captures_system_audio && captures_microphone) {
+        return None;
+    }
+
+    let output = Path::new(output_path);
+    let parent = output.parent().unwrap_or_else(|| Path::new(""));
+    let stem = output
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .filter(|value| !value.is_empty())
+        .unwrap_or("recording");
+
+    let microphone_file_name = format!("{stem}-mic.m4a");
+    let microphone_path = if parent.as_os_str().is_empty() {
+        PathBuf::from(microphone_file_name)
+    } else {
+        parent.join(microphone_file_name)
+    };
+
+    Some(microphone_path.to_string_lossy().to_string())
+}
+
+#[cfg(target_os = "macos")]
 pub async fn start_capture(
     _app: &AppHandle,
     source: &serde_json::Value,
@@ -80,11 +110,14 @@ pub async fn start_capture(
         .get("cropRect")
         .or_else(|| options.get("crop_rect"))
         .cloned();
+    let microphone_output_path =
+        build_microphone_output_path(output_path, captures_system_audio, captures_microphone);
 
     let display_id_num: u64 = display_id.parse().unwrap_or(0);
 
     let config = serde_json::json!({
         "outputPath": output_path,
+        "microphoneOutputPath": microphone_output_path,
         "displayId": display_id_num,
         "windowId": window_id,
         "fps": fps,
@@ -430,9 +463,15 @@ mod tests {
             let microphone_device_id = read_string(options, &["microphoneDeviceId"]);
             let fps = read_u64(options, &["fps", "frameRate"]).unwrap_or(60);
             let display_id_num: u64 = display_id.parse().unwrap_or(0);
+            let microphone_output_path = build_microphone_output_path(
+                output_path,
+                captures_system_audio,
+                captures_microphone,
+            );
 
             serde_json::json!({
                 "outputPath": output_path,
+                "microphoneOutputPath": microphone_output_path,
                 "displayId": display_id_num,
                 "windowId": window_id,
                 "fps": fps,
@@ -518,6 +557,7 @@ mod tests {
             assert_eq!(config["capturesSystemAudio"], true);
             assert_eq!(config["capturesMicrophone"], true);
             assert_eq!(config["microphoneDeviceId"], "device-123");
+            assert_eq!(config["microphoneOutputPath"], "/tmp/out-mic.m4a");
         }
 
         #[test]
@@ -532,6 +572,19 @@ mod tests {
 
             assert_eq!(config["capturesSystemAudio"], true);
             assert_eq!(config["capturesMicrophone"], true);
+            assert_eq!(config["microphoneOutputPath"], "/tmp/out-mic.m4a");
+        }
+
+        #[test]
+        fn test_config_without_dual_audio_has_no_microphone_output_path() {
+            let source = serde_json::json!({"id": "screen:0:0"});
+            let options = serde_json::json!({
+                "capturesSystemAudio": false,
+                "capturesMicrophone": true
+            });
+            let config = build_capture_config(&source, &options, "/tmp/out.mov");
+
+            assert!(config["microphoneOutputPath"].is_null());
         }
 
         #[test]

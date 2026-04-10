@@ -1,1 +1,49 @@
-{}
+{
+  "common": {
+    "cancel": "Cancel"
+  },
+  "font": {
+    "enterImportUrl": "Please enter a Google Fonts import URL",
+    "validGoogleUrl": "Please enter a valid Google Fonts URL",
+    "enterName": "Please enter a font name",
+    "extractFailed": "Could not extract font family from URL",
+    "added": "Font \"{{name}}\" added successfully",
+    "loadFailed": "Failed to load font",
+    "addFailed": "Failed to add font",
+    "timeout": "Font took too long to load. Please check the URL and try again.",
+    "verifyUrl": "The font could not be loaded. Please verify the Google Fonts URL is correct.",
+    "addGoogle": "Add Google Font",
+    "description": "Add a custom font from Google Fonts to use in your annotations.",
+    "importUrlLabel": "Google Fonts Import URL",
+    "importUrlHelp": "Get this from Google Fonts: Select a font -> Click \"Get font\" -> Copy the @import URL",
+    "displayNameLabel": "Display Name",
+    "displayNamePlaceholder": "My Custom Font",
+    "displayNameHelp": "This is how the font will appear in the font selector",
+    "adding": "Adding...",
+    "addButton": "Add Font"
+  },
+  "export": {
+    "videoFormat": "Video",
+    "tryAgain": "Please try again",
+    "compilingGifProgress": "Compiling GIF... {{progress}}%",
+    "compilingGifLong": "Compiling GIF... This may take a while",
+    "mayTakeMoment": "This may take a moment...",
+    "failed": "Export Failed",
+    "compilingGif": "Compiling GIF",
+    "exporting": "Exporting {{format}}",
+    "revealError": "Error revealing in folder: {{message}}",
+    "complete": "Export Complete",
+    "ready": "Your {{format}} is ready",
+    "showInFolder": "Show in Folder",
+    "saveAgain": "Save Again",
+    "compiling": "Compiling",
+    "renderingFrames": "Rendering Frames",
+    "processing": "Processing...",
+    "status": "Status",
+    "format": "Format",
+    "compilingEllipsis": "Compiling...",
+    "frames": "Frames",
+    "cancelExport": "Cancel Export",
+    "savedSuccessfully": "{{format}} saved successfully!"
+  }
+}

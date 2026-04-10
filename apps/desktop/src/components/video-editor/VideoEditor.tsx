@@ -25,6 +25,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Toaster } from "@/components/ui/sonner";
 import { Switch } from "@/components/ui/switch";
+import { useScopedT } from "@/contexts/I18nContext";
 import { useShortcuts } from "@/contexts/ShortcutsContext";
 import { useWaveformData } from "@/hooks/useWaveformData";
 import { getAssetPath } from "@/lib/assetPath";
@@ -183,6 +184,7 @@ function createHistorySignature(snapshot: Omit<EditorHistorySnapshot, "signature
 }
 
 export default function VideoEditor() {
+	const t = useScopedT("editor");
 	const [videoPath, setVideoPath] = useState<string | null>(null);
 	const [videoSourcePath, setVideoSourcePath] = useState<string | null>(null);
 	const [sourceName, setSourceName] = useState<string | null>(null);
@@ -645,7 +647,7 @@ export default function VideoEditor() {
 					);
 					if (!restored) {
 						setSourceName(null);
-						setError("Invalid project file format");
+						setError(t("errors.invalidProjectFormat", "Invalid project file format"));
 					}
 				} else if (initialState.kind === "session") {
 					const nextFacecamPath = initialState.facecamSourcePath;
@@ -681,30 +683,34 @@ export default function VideoEditor() {
 					setLastSavedSnapshot(null);
 				} else {
 					setSourceName(null);
-					setError("No video to load. Please record or select a video.");
+					setError(t("errors.noVideoToLoad", "No video to load. Please record or select a video."));
 				}
 
 				markVideoEditorTiming("initial-data-ready");
 			} catch (err) {
-				setError("Error loading video: " + String(err));
+				setError(
+					t("errors.loadingVideo", "Error loading video: {{error}}", { error: String(err) }),
+				);
 			} finally {
 				setLoading(false);
 			}
 		}
 
 		loadInitialData();
-	}, [applyLoadedProject, resetPlaybackStateForSourceChange, resolvePlaybackPaths]);
+	}, [applyLoadedProject, resetPlaybackStateForSourceChange, resolvePlaybackPaths, t]);
 
 	const saveProject = useCallback(
 		async (forceSaveAs: boolean) => {
 			if (!videoPath) {
-				toast.error("No video loaded");
+				toast.error(t("errors.noVideoLoaded", "No video loaded"));
 				return;
 			}
 
 			const sourcePath = videoSourcePath;
 			if (!sourcePath) {
-				toast.error("Unable to determine source video path");
+				toast.error(
+					t("errors.sourceVideoPathUnavailable", "Unable to determine source video path"),
+				);
 				return;
 			}
 
@@ -759,14 +765,14 @@ export default function VideoEditor() {
 			);
 
 			if (!savedPath) {
-				toast.info("Project save canceled");
+				toast.info(t("project.saveCanceled", "Project save canceled"));
 				return;
 			}
 
 			setCurrentProjectPath(savedPath);
 			setLastSavedSnapshot(projectSnapshot);
 
-			toast.success(`Project saved to ${savedPath}`);
+			toast.success(t("project.savedTo", "Project saved to {{path}}", { path: savedPath }));
 		},
 		[
 			videoPath,
@@ -802,6 +808,7 @@ export default function VideoEditor() {
 			gifFrameRate,
 			gifLoop,
 			gifSizePreset,
+			t,
 		],
 	);
 
@@ -856,15 +863,23 @@ export default function VideoEditor() {
 
 			const restored = await applyLoadedProject(result.data, result.filePath ?? null);
 			if (!restored) {
-				toast.error("Invalid project file format");
+				toast.error(t("errors.invalidProjectFormat", "Invalid project file format"));
 				return;
 			}
 
-			toast.success(`Project loaded from ${result.filePath}`);
+			toast.success(
+				t("project.loadedFrom", "Project loaded from {{path}}", {
+					path: result.filePath ?? "",
+				}),
+			);
 		} catch (loadError) {
-			toast.error(`Failed to load project: ${String(loadError)}`);
+			toast.error(
+				t("project.loadFailedWithError", "Failed to load project: {{error}}", {
+					error: String(loadError),
+				}),
+			);
 		}
-	}, [applyLoadedProject]);
+	}, [applyLoadedProject, t]);
 
 	useEffect(() => {
 		let unlistenLoad: (() => void) | undefined;
@@ -1353,25 +1368,28 @@ export default function VideoEditor() {
 		[selectedSpeedId],
 	);
 
-	const handleAnnotationAdded = useCallback((span: Span) => {
-		const id = `annotation-${nextAnnotationIdRef.current++}`;
-		const zIndex = nextAnnotationZIndexRef.current++; // Assign z-index based on creation order
-		const newRegion: AnnotationRegion = {
-			id,
-			startMs: Math.round(span.start),
-			endMs: Math.round(span.end),
-			type: "text",
-			content: "Enter text...",
-			position: { ...DEFAULT_ANNOTATION_POSITION },
-			size: { ...DEFAULT_ANNOTATION_SIZE },
-			style: { ...DEFAULT_ANNOTATION_STYLE },
-			zIndex,
-		};
-		setAnnotationRegions((prev) => [...prev, newRegion]);
-		setSelectedAnnotationId(id);
-		setSelectedZoomId(null);
-		setSelectedTrimId(null);
-	}, []);
+	const handleAnnotationAdded = useCallback(
+		(span: Span) => {
+			const id = `annotation-${nextAnnotationIdRef.current++}`;
+			const zIndex = nextAnnotationZIndexRef.current++; // Assign z-index based on creation order
+			const newRegion: AnnotationRegion = {
+				id,
+				startMs: Math.round(span.start),
+				endMs: Math.round(span.end),
+				type: "text",
+				content: t("annotations.defaultText", "Enter text..."),
+				position: { ...DEFAULT_ANNOTATION_POSITION },
+				size: { ...DEFAULT_ANNOTATION_SIZE },
+				style: { ...DEFAULT_ANNOTATION_STYLE },
+				zIndex,
+			};
+			setAnnotationRegions((prev) => [...prev, newRegion]);
+			setSelectedAnnotationId(id);
+			setSelectedZoomId(null);
+			setSelectedTrimId(null);
+		},
+		[t],
+	);
 
 	const handleAnnotationSpanChange = useCallback((id: string, span: Span) => {
 		setAnnotationRegions((prev) =>
@@ -1415,30 +1433,34 @@ export default function VideoEditor() {
 		});
 	}, []);
 
-	const handleAnnotationTypeChange = useCallback((id: string, type: AnnotationRegion["type"]) => {
-		setAnnotationRegions((prev) => {
-			const updated = prev.map((region) => {
-				if (region.id !== id) return region;
+	const handleAnnotationTypeChange = useCallback(
+		(id: string, type: AnnotationRegion["type"]) => {
+			setAnnotationRegions((prev) => {
+				const updated = prev.map((region) => {
+					if (region.id !== id) return region;
 
-				const updatedRegion = { ...region, type };
+					const updatedRegion = { ...region, type };
 
-				// Restore content from type-specific storage
-				if (type === "text") {
-					updatedRegion.content = region.textContent || "Enter text...";
-				} else if (type === "image") {
-					updatedRegion.content = region.imageContent || "";
-				} else if (type === "figure") {
-					updatedRegion.content = "";
-					if (!region.figureData) {
-						updatedRegion.figureData = { ...DEFAULT_FIGURE_DATA };
+					// Restore content from type-specific storage
+					if (type === "text") {
+						updatedRegion.content =
+							region.textContent || t("annotations.defaultText", "Enter text...");
+					} else if (type === "image") {
+						updatedRegion.content = region.imageContent || "";
+					} else if (type === "figure") {
+						updatedRegion.content = "";
+						if (!region.figureData) {
+							updatedRegion.figureData = { ...DEFAULT_FIGURE_DATA };
+						}
 					}
-				}
 
-				return updatedRegion;
+					return updatedRegion;
+				});
+				return updated;
 			});
-			return updated;
-		});
-	}, []);
+		},
+		[t],
+	);
 
 	const handleAnnotationStyleChange = useCallback(
 		(id: string, style: Partial<AnnotationRegion["style"]>) => {
@@ -1583,20 +1605,30 @@ export default function VideoEditor() {
 		}
 	}, [selectedSpeedId, speedRegions]);
 
-	const showExportSuccessToast = useCallback((filePath: string) => {
-		toast.success(`Exported successfully to ${filePath}`, {
-			action: {
-				label: "Show in Folder",
-				onClick: async () => {
-					try {
-						await backend.revealInFolder(filePath);
-					} catch (err) {
-						toast.error(`Error revealing in folder: ${String(err)}`);
-					}
+	const showExportSuccessToast = useCallback(
+		(filePath: string) => {
+			toast.success(
+				t("export.successTo", "Exported successfully to {{path}}", { path: filePath }),
+				{
+					action: {
+						label: t("export.showInFolder", "Show in Folder"),
+						onClick: async () => {
+							try {
+								await backend.revealInFolder(filePath);
+							} catch (err) {
+								toast.error(
+									t("export.revealError", "Error revealing in folder: {{error}}", {
+										error: String(err),
+									}),
+								);
+							}
+						},
+					},
 				},
-			},
-		});
-	}, []);
+			);
+		},
+		[t],
+	);
 
 	const restorePreviewAfterExport = useCallback(
 		async (restoreTime: number, resumePlayback: boolean) => {
@@ -1702,19 +1734,21 @@ export default function VideoEditor() {
 	const handleExport = useCallback(
 		async (settings: ExportSettings) => {
 			if (!videoPath) {
-				toast.error("No video loaded");
+				toast.error(t("errors.noVideoLoaded", "No video loaded"));
 				return;
 			}
 
 			const sourcePath = videoSourcePath;
 			if (!sourcePath) {
-				toast.error("Unable to determine source video path");
+				toast.error(
+					t("errors.sourceVideoPathUnavailable", "Unable to determine source video path"),
+				);
 				return;
 			}
 
 			const video = videoPlaybackRef.current?.video;
 			if (!video) {
-				toast.error("Video not ready");
+				toast.error(t("errors.videoNotReady", "Video not ready"));
 				return;
 			}
 
@@ -1800,17 +1834,25 @@ export default function VideoEditor() {
 							pendingExportSaveRef.current = { arrayBuffer, fileName };
 							setHasPendingExportSave(true);
 							setExportError(
-								"Save dialog canceled. Click Save Again to save without re-rendering.",
+								t(
+									"export.saveDialogCanceled",
+									"Save dialog canceled. Click Save Again to save without re-rendering.",
+								),
 							);
-							toast.info("Save canceled. You can save again without re-exporting.");
+							toast.info(
+								t(
+									"export.saveCanceledRetry",
+									"Save canceled. You can save again without re-exporting.",
+								),
+							);
 							keepExportDialogOpen = true;
 						} else {
 							showExportSuccessToast(savePath);
 							setExportedFilePath(savePath);
 						}
 					} else {
-						setExportError(result.error || "GIF export failed");
-						toast.error(result.error || "GIF export failed");
+						setExportError(result.error || t("export.gifFailed", "GIF export failed"));
+						toast.error(result.error || t("export.gifFailed", "GIF export failed"));
 					}
 				} else {
 					// MP4 Export
@@ -1944,24 +1986,35 @@ export default function VideoEditor() {
 							pendingExportSaveRef.current = { arrayBuffer, fileName };
 							setHasPendingExportSave(true);
 							setExportError(
-								"Save dialog canceled. Click Save Again to save without re-rendering.",
+								t(
+									"export.saveDialogCanceled",
+									"Save dialog canceled. Click Save Again to save without re-rendering.",
+								),
 							);
-							toast.info("Save canceled. You can save again without re-exporting.");
+							toast.info(
+								t(
+									"export.saveCanceledRetry",
+									"Save canceled. You can save again without re-exporting.",
+								),
+							);
 							keepExportDialogOpen = true;
 						} else {
 							showExportSuccessToast(savePath);
 							setExportedFilePath(savePath);
 						}
 					} else {
-						setExportError(result.error || "Export failed");
-						toast.error(result.error || "Export failed");
+						setExportError(result.error || t("export.failed", "Export failed"));
+						toast.error(result.error || t("export.failed", "Export failed"));
 					}
 				}
 			} catch (error) {
 				console.error("Export error:", error);
-				const errorMessage = error instanceof Error ? error.message : "Unknown error";
+				const errorMessage =
+					error instanceof Error ? error.message : t("errors.unknown", "Unknown error");
 				setExportError(errorMessage);
-				toast.error(`Export failed: ${errorMessage}`);
+				toast.error(
+					t("export.failedWithError", "Export failed: {{error}}", { error: errorMessage }),
+				);
 			} finally {
 				try {
 					await restorePreviewAfterExport(restoreTime, wasPlaying);
@@ -2005,24 +2058,30 @@ export default function VideoEditor() {
 			exportQuality,
 			showExportSuccessToast,
 			restorePreviewAfterExport,
+			t,
 		],
 	);
 
 	const handleOpenExportDialog = useCallback(() => {
 		if (!videoPath) {
-			toast.error("No video loaded");
+			toast.error(t("errors.noVideoLoaded", "No video loaded"));
 			return;
 		}
 
 		if (hasPendingExportSave) {
 			setShowExportDialog(true);
-			setExportError("Save dialog canceled. Click Save Again to save without re-rendering.");
+			setExportError(
+				t(
+					"export.saveDialogCanceled",
+					"Save dialog canceled. Click Save Again to save without re-rendering.",
+				),
+			);
 			return;
 		}
 
 		const video = videoPlaybackRef.current?.video;
 		if (!video) {
-			toast.error("Video not ready");
+			toast.error(t("errors.videoNotReady", "Video not ready"));
 			return;
 		}
 
@@ -2065,19 +2124,20 @@ export default function VideoEditor() {
 		gifLoop,
 		gifSizePreset,
 		handleExport,
+		t,
 	]);
 
 	const handleCancelExport = useCallback(() => {
 		if (exporterRef.current) {
 			exporterRef.current.cancel();
-			toast.info("Export canceled");
+			toast.info(t("export.canceled", "Export canceled"));
 			setShowExportDialog(false);
 			setIsExporting(false);
 			setExportProgress(null);
 			setExportError(null);
 			setExportedFilePath(undefined);
 		}
-	}, []);
+	}, [t]);
 
 	const handleExportDialogClose = useCallback(() => {
 		setShowExportDialog(false);
@@ -2096,8 +2156,13 @@ export default function VideoEditor() {
 		);
 
 		if (!savePath) {
-			setExportError("Save dialog canceled. Click Save Again to save without re-rendering.");
-			toast.info("Save canceled. You can try again.");
+			setExportError(
+				t(
+					"export.saveDialogCanceled",
+					"Save dialog canceled. Click Save Again to save without re-rendering.",
+				),
+			);
+			toast.info(t("export.saveCanceledTryAgain", "Save canceled. You can try again."));
 			return;
 		}
 
@@ -2107,15 +2172,19 @@ export default function VideoEditor() {
 		setExportedFilePath(savePath);
 		showExportSuccessToast(savePath);
 		setShowExportDialog(false);
-	}, [showExportSuccessToast]);
+	}, [showExportSuccessToast, t]);
 
 	const openRecordingsFolder = useCallback(async () => {
 		try {
 			await backend.openRecordingsFolder();
 		} catch (error) {
-			toast.error(`Failed to open recordings folder: ${String(error)}`);
+			toast.error(
+				t("recordings.openFailed", "Failed to open recordings folder: {{error}}", {
+					error: String(error),
+				}),
+			);
 		}
-	}, []);
+	}, [t]);
 
 	if (loading) {
 		return (
@@ -2125,9 +2194,12 @@ export default function VideoEditor() {
 						<EmptyMedia className="size-16 border-[#09cf67]/20 bg-[#09cf67]/10 text-[#6ee7b7]">
 							<LoaderCircle className="size-7 animate-spin" />
 						</EmptyMedia>
-						<EmptyTitle>Loading video</EmptyTitle>
+						<EmptyTitle>{t("loading.title", "Loading video")}</EmptyTitle>
 						<EmptyDescription>
-							Preparing your recording and loading it into memory for editing.
+							{t(
+								"loading.description",
+								"Preparing your recording and loading it into memory for editing.",
+							)}
 						</EmptyDescription>
 					</EmptyHeader>
 				</Empty>
@@ -2144,7 +2216,7 @@ export default function VideoEditor() {
 						onClick={handleLoadProject}
 						className="px-3 py-1.5 rounded-md bg-[#09cf67] text-white text-sm hover:bg-[#09cf67]/90"
 					>
-						Load Project File
+						{t("project.loadFile", "Load Project File")}
 					</button>
 				</div>
 			</div>
@@ -2160,9 +2232,12 @@ export default function VideoEditor() {
 							<EmptyMedia className="size-16 border-[#09cf67]/20 bg-[#09cf67]/10 text-[#6ee7b7]">
 								<LoaderCircle className="size-7 animate-spin" />
 							</EmptyMedia>
-							<EmptyTitle>Loading video</EmptyTitle>
+							<EmptyTitle>{t("loading.title", "Loading video")}</EmptyTitle>
 							<EmptyDescription>
-								Preparing your recording and loading it into memory for editing.
+								{t(
+									"loading.description",
+									"Preparing your recording and loading it into memory for editing.",
+								)}
 							</EmptyDescription>
 						</EmptyHeader>
 					</Empty>
@@ -2183,8 +2258,8 @@ export default function VideoEditor() {
 						type="button"
 						onClick={() => setShowShortcutsDialog(true)}
 						className="inline-flex h-7 w-7 items-center justify-center rounded-md text-white/60 transition hover:bg-white/8 hover:text-white cursor-pointer"
-						title="Keyboard shortcuts"
-						aria-label="Keyboard shortcuts"
+						title={t("shortcuts.title", "Keyboard shortcuts")}
+						aria-label={t("shortcuts.title", "Keyboard shortcuts")}
 					>
 						<HelpCircle className="h-4 w-4" />
 					</button>
@@ -2192,11 +2267,13 @@ export default function VideoEditor() {
 						type="button"
 						onClick={() => void openRecordingsFolder()}
 						className="inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-white/90 transition hover:bg-white/8 hover:text-white cursor-pointer"
-						title="Open recordings folder"
-						aria-label="Open recordings folder"
+						title={t("recordings.openFolder", "Open recordings folder")}
+						aria-label={t("recordings.openFolder", "Open recordings folder")}
 					>
 						<FolderOpen className="h-4 w-4" />
-						<span className="text-xs font-normal">Manage recordings</span>
+						<span className="text-xs font-normal">
+							{t("recordings.manage", "Manage recordings")}
+						</span>
 					</button>
 
 					<Popover>
@@ -2208,7 +2285,9 @@ export default function VideoEditor() {
 								className="h-7 rounded-r-none gap-1.5 bg-[#09cf67] text-white text-xs font-medium hover:bg-[#09cf67]/90 active:scale-[0.98] transition-all"
 							>
 								<Download className="w-3.5 h-3.5" />
-								Export {exportFormat === "gif" ? "GIF" : "Video"}
+								{exportFormat === "gif"
+									? t("export.exportGif", "Export GIF")
+									: t("export.exportVideo", "Export Video")}
 							</Button>
 							<PopoverTrigger asChild>
 								<Button
@@ -2265,7 +2344,7 @@ export default function VideoEditor() {
 													: "text-slate-400 hover:text-slate-200",
 											)}
 										>
-											Low
+											{t("export.quality.low", "Low")}
 										</button>
 										<button
 											onClick={() => setExportQuality("good")}
@@ -2276,7 +2355,7 @@ export default function VideoEditor() {
 													: "text-slate-400 hover:text-slate-200",
 											)}
 										>
-											Medium
+											{t("export.quality.medium", "Medium")}
 										</button>
 										<button
 											onClick={() => setExportQuality("source")}
@@ -2287,7 +2366,7 @@ export default function VideoEditor() {
 													: "text-slate-400 hover:text-slate-200",
 											)}
 										>
-											High
+											{t("export.quality.high", "High")}
 										</button>
 									</div>
 								)}
@@ -2324,8 +2403,10 @@ export default function VideoEditor() {
 														)}
 													>
 														{key === "original"
-															? "Orig"
-															: key.charAt(0).toUpperCase() + key.slice(1, 3)}
+															? t("export.gif.sizeOriginal", "Orig")
+															: key === "small"
+																? t("export.gif.sizeSmall", "Sm")
+																: t("export.gif.sizeMedium", "Md")}
 													</button>
 												))}
 											</div>
@@ -2335,7 +2416,9 @@ export default function VideoEditor() {
 												{gifOutputDimensions.width} × {gifOutputDimensions.height}px
 											</span>
 											<div className="flex items-center gap-2">
-												<span className="text-[10px] text-slate-400">Loop</span>
+												<span className="text-[10px] text-slate-400">
+													{t("export.gif.loop", "Loop")}
+												</span>
 												<Switch
 													checked={gifLoop}
 													onCheckedChange={setGifLoop}
@@ -2354,103 +2437,100 @@ export default function VideoEditor() {
 			<div className="relative flex min-h-0 flex-1 gap-4 p-5">
 				<div
 					className={cn(
-						"shrink-0 transition-[width] duration-300 ease-out",
+						"relative shrink-0 transition-[width] duration-300 ease-out",
 						isSettingsPanelCollapsed ? "w-[84px]" : "w-[360px]",
 					)}
 				>
+					<button
+						type="button"
+						onClick={() => setIsSettingsPanelCollapsed((current) => !current)}
+						className="absolute right-0 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 translate-x-1/2 items-center justify-center text-slate-400 transition-colors hover:text-white"
+						aria-label={
+							isSettingsPanelCollapsed
+								? t("settings.expand", "Expand settings panel")
+								: t("settings.collapse", "Collapse settings panel")
+						}
+						title={
+							isSettingsPanelCollapsed
+								? t("settings.expand", "Expand settings panel")
+								: t("settings.collapse", "Collapse settings panel")
+						}
+					>
+						{isSettingsPanelCollapsed ? (
+							<ChevronRight className="h-4 w-4" />
+						) : (
+							<ChevronLeft className="h-4 w-4" />
+						)}
+					</button>
 					{isSettingsPanelCollapsed ? (
-						<div className="flex h-full flex-col items-center rounded-2xl border border-white/5 bg-[#09090b] px-3 py-4 shadow-xl">
-							<button
-								type="button"
-								onClick={() => setIsSettingsPanelCollapsed(false)}
-								className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-slate-300 transition-all hover:border-white/20 hover:bg-white/[0.08] hover:text-white"
-								aria-label="Expand settings panel"
-								title="Expand settings panel"
-							>
-								<ChevronRight className="h-4 w-4" />
-							</button>
-							<div className="mt-6 flex flex-col items-center gap-3 text-slate-500">
-								<div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/5 bg-white/[0.02]">
-									<SlidersHorizontal className="h-4 w-4 text-[#09cf67]" />
-								</div>
+						<div className="flex h-full flex-col items-center px-3 pt-3 pb-4">
+							<div className="mt-1 flex flex-col items-center gap-2 text-slate-500">
+								<SlidersHorizontal className="h-4 w-4 text-[#09cf67]" />
 								<span className="text-[10px] font-medium uppercase tracking-[0.24em] text-slate-400">
-									Panel
+									{t("settings.panel", "Panel")}
 								</span>
 							</div>
 						</div>
 					) : (
-						<div className="flex h-full min-h-0 flex-col gap-2">
-							<div className="flex justify-end">
-								<button
-									type="button"
-									onClick={() => setIsSettingsPanelCollapsed(true)}
-									className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-slate-400 transition-all hover:border-white/20 hover:bg-white/[0.08] hover:text-white"
-									aria-label="Collapse settings panel"
-									title="Collapse settings panel"
-								>
-									<ChevronLeft className="h-4 w-4" />
-								</button>
-							</div>
-							<div className="min-h-0 flex-1">
-								<Profiler id="SettingsPanel" onRender={onRenderProfiler}>
-									<SettingsPanel
-										selected={wallpaper}
-										onWallpaperChange={setWallpaper}
-										audioMuted={audioMuted}
-										onAudioMutedChange={setAudioMuted}
-										audioVolume={audioVolume}
-										onAudioVolumeChange={setAudioVolume}
-										selectedZoomDepth={selectedZoomDepth}
-										onZoomDepthChange={handleZoomDepthChange}
-										selectedZoomId={selectedZoomId}
-										onZoomDelete={handleZoomDelete}
-										selectedTrimId={selectedTrimId}
-										onTrimDelete={handleTrimDelete}
-										shadowIntensity={shadowIntensity}
-										onShadowChange={setShadowIntensity}
-										backgroundBlur={backgroundBlur}
-										onBackgroundBlurChange={setBackgroundBlur}
-										zoomMotionBlur={zoomMotionBlur}
-										onZoomMotionBlurChange={setZoomMotionBlur}
-										connectZooms={connectZooms}
-										onConnectZoomsChange={setConnectZooms}
-										showCursor={showCursor}
-										onShowCursorChange={setShowCursor}
-										loopCursor={loopCursor}
-										onLoopCursorChange={setLoopCursor}
-										cursorSize={cursorSize}
-										onCursorSizeChange={setCursorSize}
-										cursorSmoothing={cursorSmoothing}
-										onCursorSmoothingChange={setCursorSmoothing}
-										cursorMotionBlur={cursorMotionBlur}
-										onCursorMotionBlurChange={setCursorMotionBlur}
-										cursorClickBounce={cursorClickBounce}
-										onCursorClickBounceChange={setCursorClickBounce}
-										borderRadius={borderRadius}
-										onBorderRadiusChange={setBorderRadius}
-										padding={padding}
-										onPaddingChange={setPadding}
-										cropRegion={cropRegion}
-										onCropChange={setCropRegion}
-										facecamVideoPath={facecamVideoPath}
-										facecamSettings={facecamSettings}
-										onFacecamSettingsChange={setFacecamSettings}
-										aspectRatio={aspectRatio}
-										videoElement={videoPlaybackRef.current?.video || null}
-										selectedAnnotationId={selectedAnnotationId}
-										annotationRegions={annotationRegions}
-										onAnnotationContentChange={handleAnnotationContentChange}
-										onAnnotationTypeChange={handleAnnotationTypeChange}
-										onAnnotationStyleChange={handleAnnotationStyleChange}
-										onAnnotationFigureDataChange={handleAnnotationFigureDataChange}
-										onAnnotationDelete={handleAnnotationDelete}
-										selectedSpeedId={selectedSpeedId}
-										selectedSpeedValue={selectedSpeedValue}
-										onSpeedChange={handleSpeedChange}
-										onSpeedDelete={handleSpeedDelete}
-									/>
-								</Profiler>
-							</div>
+						<div className="h-full min-h-0">
+							<Profiler id="SettingsPanel" onRender={onRenderProfiler}>
+								<SettingsPanel
+									selected={wallpaper}
+									onWallpaperChange={setWallpaper}
+									audioMuted={audioMuted}
+									onAudioMutedChange={setAudioMuted}
+									audioVolume={audioVolume}
+									onAudioVolumeChange={setAudioVolume}
+									selectedZoomDepth={selectedZoomDepth}
+									onZoomDepthChange={handleZoomDepthChange}
+									selectedZoomId={selectedZoomId}
+									onZoomDelete={handleZoomDelete}
+									selectedTrimId={selectedTrimId}
+									onTrimDelete={handleTrimDelete}
+									shadowIntensity={shadowIntensity}
+									onShadowChange={setShadowIntensity}
+									backgroundBlur={backgroundBlur}
+									onBackgroundBlurChange={setBackgroundBlur}
+									zoomMotionBlur={zoomMotionBlur}
+									onZoomMotionBlurChange={setZoomMotionBlur}
+									connectZooms={connectZooms}
+									onConnectZoomsChange={setConnectZooms}
+									showCursor={showCursor}
+									onShowCursorChange={setShowCursor}
+									loopCursor={loopCursor}
+									onLoopCursorChange={setLoopCursor}
+									cursorSize={cursorSize}
+									onCursorSizeChange={setCursorSize}
+									cursorSmoothing={cursorSmoothing}
+									onCursorSmoothingChange={setCursorSmoothing}
+									cursorMotionBlur={cursorMotionBlur}
+									onCursorMotionBlurChange={setCursorMotionBlur}
+									cursorClickBounce={cursorClickBounce}
+									onCursorClickBounceChange={setCursorClickBounce}
+									borderRadius={borderRadius}
+									onBorderRadiusChange={setBorderRadius}
+									padding={padding}
+									onPaddingChange={setPadding}
+									cropRegion={cropRegion}
+									onCropChange={setCropRegion}
+									facecamVideoPath={facecamVideoPath}
+									facecamSettings={facecamSettings}
+									onFacecamSettingsChange={setFacecamSettings}
+									aspectRatio={aspectRatio}
+									videoElement={videoPlaybackRef.current?.video || null}
+									selectedAnnotationId={selectedAnnotationId}
+									annotationRegions={annotationRegions}
+									onAnnotationContentChange={handleAnnotationContentChange}
+									onAnnotationTypeChange={handleAnnotationTypeChange}
+									onAnnotationStyleChange={handleAnnotationStyleChange}
+									onAnnotationFigureDataChange={handleAnnotationFigureDataChange}
+									onAnnotationDelete={handleAnnotationDelete}
+									selectedSpeedId={selectedSpeedId}
+									selectedSpeedValue={selectedSpeedValue}
+									onSpeedChange={handleSpeedChange}
+									onSpeedDelete={handleSpeedDelete}
+								/>
+							</Profiler>
 						</div>
 					)}
 				</div>

@@ -1,1 +1,49 @@
-{}
+{
+  "common": {
+    "cancel": "取消"
+  },
+  "font": {
+    "enterImportUrl": "请输入 Google Fonts 的导入 URL",
+    "validGoogleUrl": "请输入有效的 Google Fonts URL",
+    "enterName": "请输入字体名称",
+    "extractFailed": "无法从 URL 中提取字体族名称",
+    "added": "字体“{{name}}”已添加成功",
+    "loadFailed": "字体加载失败",
+    "addFailed": "添加字体失败",
+    "timeout": "字体加载时间过长，请检查 URL 后重试。",
+    "verifyUrl": "字体无法加载，请确认 Google Fonts URL 是否正确。",
+    "addGoogle": "添加 Google 字体",
+    "description": "从 Google Fonts 添加自定义字体，用于标注文案。",
+    "importUrlLabel": "Google Fonts 导入 URL",
+    "importUrlHelp": "在 Google Fonts 中选择字体 -> 点击“Get font” -> 复制 @import URL",
+    "displayNameLabel": "显示名称",
+    "displayNamePlaceholder": "我的自定义字体",
+    "displayNameHelp": "字体选择器中会显示这个名称",
+    "adding": "添加中...",
+    "addButton": "添加字体"
+  },
+  "export": {
+    "videoFormat": "视频",
+    "tryAgain": "请再试一次",
+    "compilingGifProgress": "正在合成 GIF... {{progress}}%",
+    "compilingGifLong": "正在合成 GIF，这可能需要一点时间",
+    "mayTakeMoment": "这可能需要一点时间...",
+    "failed": "导出失败",
+    "compilingGif": "正在合成 GIF",
+    "exporting": "正在导出{{format}}",
+    "revealError": "在文件夹中显示失败：{{message}}",
+    "complete": "导出完成",
+    "ready": "你的{{format}}已准备好",
+    "showInFolder": "在文件夹中显示",
+    "saveAgain": "重新保存",
+    "compiling": "合成中",
+    "renderingFrames": "正在渲染帧",
+    "processing": "处理中...",
+    "status": "状态",
+    "format": "格式",
+    "compilingEllipsis": "合成中...",
+    "frames": "帧数",
+    "cancelExport": "取消导出",
+    "savedSuccessfully": "{{format}}已保存成功！"
+  }
+}

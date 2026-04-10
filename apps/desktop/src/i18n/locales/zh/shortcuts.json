@@ -1,1 +1,61 @@
-{}
+{
+  "title": "键盘快捷键",
+  "customize": "自定义",
+  "actions": {
+    "addZoom": "添加缩放",
+    "addTrim": "添加裁剪",
+    "addSpeed": "添加变速",
+    "addAnnotation": "添加标注",
+    "addKeyframe": "添加关键帧",
+    "deleteSelected": "删除当前选中",
+    "playPause": "播放 / 暂停"
+  },
+  "timeline": {
+    "panDefault": "Shift + Ctrl + 滚动",
+    "zoomDefault": "Ctrl + 滚动",
+    "pan": "平移时间线",
+    "zoom": "缩放时间线",
+    "cycleAnnotations": "切换标注"
+  },
+  "file": {
+    "openProject": "打开项目",
+    "saveProject": "保存项目",
+    "saveProjectAs": "项目另存为"
+  },
+  "edit": {
+    "undo": "撤销",
+    "redo": "重做"
+  },
+  "navigation": {
+    "cycleForward": "向前切换重叠标注",
+    "cycleBackward": "向后切换重叠标注",
+    "deleteAlt": "删除当前选中（备用）"
+  },
+  "sections": {
+    "file": "文件",
+    "edit": "编辑",
+    "editor": "编辑器",
+    "navigation": "导航"
+  },
+  "platform": {
+    "mac": "当前显示 macOS 快捷键",
+    "other": "当前显示 Windows / Linux 快捷键"
+  },
+  "config": {
+    "reserved": "该快捷键已被“{{label}}”占用，无法重新分配。",
+    "saved": "键盘快捷键已保存",
+    "resetInfo": "已重置为默认快捷键，点击保存后生效",
+    "configurable": "可配置",
+    "pressEscToCancel": "按 Esc 取消",
+    "clickToChange": "点击修改",
+    "pressAKey": "按下新的按键...",
+    "alreadyUsedBy": "已被 {{label}} 使用",
+    "swap": "交换",
+    "cancel": "取消",
+    "fixed": "固定",
+    "instructions": "点击某个快捷键后按下新的组合键，按",
+    "instructionsSuffix": "取消。",
+    "reset": "恢复默认",
+    "save": "保存"
+  }
+}

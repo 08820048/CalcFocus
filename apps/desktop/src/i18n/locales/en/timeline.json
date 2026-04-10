@@ -1,1 +1,81 @@
-{}
+{
+	"hints": {
+		"panDefault": "Shift + Ctrl + Scroll",
+		"zoomDefault": "Ctrl + Scroll",
+		"sideScroll": "Side Scroll",
+		"pan": "Pan",
+		"zoom": "Zoom"
+	},
+	"aspect": {
+		"invalid": "Custom aspect ratio must be positive numbers.",
+		"custom": "Custom",
+		"customWidth": "Custom aspect width",
+		"customHeight": "Custom aspect height",
+		"set": "Set"
+	},
+	"zoom": {
+		"cannotPlace": "Cannot place zoom here",
+		"cannotPlaceDescription": "Zoom already exists at this location or not enough space available.",
+		"suggestionUnavailable": "Zoom suggestion handler unavailable",
+		"noCursorTelemetry": "No cursor telemetry available",
+		"noCursorTelemetryDescription": "Record a screencast first to generate cursor-based suggestions.",
+		"noUsableCursorTelemetry": "No usable cursor telemetry",
+		"noUsableCursorTelemetryDescription": "The recording does not include enough cursor movement data.",
+		"noInteractionMoments": "No clear interaction moments found",
+		"noInteractionMomentsDescription": "Try a recording with pauses or clicks around important actions.",
+		"noSlots": "No auto-zoom slots available",
+		"noSlotsDescription": "Detected dwell points overlap existing zoom regions.",
+		"suggestionsAdded": "Added {{count}} interaction-based zoom suggestion{{plural}}"
+	},
+	"trim": {
+		"cannotPlace": "Cannot place trim here",
+		"cannotPlaceDescription": "Trim already exists at this location or not enough space available."
+	},
+	"speed": {
+		"cannotPlace": "Cannot place speed here",
+		"cannotPlaceDescription": "Speed region already exists at this location or not enough space available."
+	},
+	"items": {
+		"zoom": "Zoom {{index}}",
+		"trim": "Trim {{index}}",
+		"emptyText": "Empty text",
+		"image": "Image",
+		"annotation": "Annotation",
+		"speed": "Speed {{index}}"
+	},
+	"empty": {
+		"title": "No Video Loaded",
+		"description": "Drag and drop a video to start editing"
+	},
+	"toolbar": {
+		"addZoom": "Add Zoom ({{shortcut}})",
+		"suggestZooms": "Suggest Zooms from Cursor",
+		"addTrim": "Add Trim ({{shortcut}})",
+		"addAnnotation": "Add Annotation ({{shortcut}})",
+		"addSpeed": "Add Speed ({{shortcut}})"
+	},
+	"rows": {
+		"zoomHint": "Press {{shortcut}} to add zoom",
+		"trimHint": "Press {{shortcut}} to add trim",
+		"annotationHint": "Press {{shortcut}} to add annotation",
+		"speedHint": "Press {{shortcut}} to add speed"
+	},
+	"trimTutorial": {
+		"trigger": "How trimming works",
+		"title": "How Trimming Works",
+		"description": "Understanding how to cut out unwanted parts of your video.",
+		"explanation": "The Trim tool works by defining the segments you want to remove. Any part of the timeline that is covered by a red trim segment will be cut out when you export.",
+		"visualExample": "Visual Example",
+		"removed": "REMOVED",
+		"kept": "Kept",
+		"part1": "Part 1",
+		"part2": "Part 2",
+		"part3": "Part 3",
+		"finalVideo": "Final Video",
+		"step1Title": "1. Add Trim",
+		"step1Prefix": "Press",
+		"step1Suffix": "or click the scissors icon to mark a section for removal.",
+		"step2Title": "2. Adjust",
+		"step2Description": "Drag the edges of the red region to cover exactly what you want to cut out."
+	}
+}

@@ -29,9 +29,10 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useScopedT } from "@/contexts/I18nContext";
 import { useShortcuts } from "@/contexts/ShortcutsContext";
 import type { WaveformData } from "@/lib/audio/types";
-import { matchesShortcut } from "@/lib/shortcuts";
+import { formatBinding, matchesShortcut } from "@/lib/shortcuts";
 import { cn } from "@/lib/utils";
 import {
 	ASPECT_RATIOS,
@@ -497,8 +498,19 @@ function Timeline({
 	waveformLoading?: boolean;
 	audioMuted?: boolean;
 }) {
+	const t = useScopedT("timeline");
+	const { shortcuts: keyShortcuts, isMac } = useShortcuts();
 	const { setTimelineRef, style, sidebarWidth, range, pixelsToValue } = useTimelineContext();
 	const localTimelineRef = useRef<HTMLDivElement | null>(null);
+	const shortcutLabels = useMemo(
+		() => ({
+			addZoom: formatBinding(keyShortcuts.addZoom, isMac),
+			addTrim: formatBinding(keyShortcuts.addTrim, isMac),
+			addAnnotation: formatBinding(keyShortcuts.addAnnotation, isMac),
+			addSpeed: formatBinding(keyShortcuts.addSpeed, isMac),
+		}),
+		[keyShortcuts, isMac],
+	);
 
 	const setRefs = useCallback(
 		(node: HTMLDivElement | null) => {
@@ -565,7 +577,13 @@ function Timeline({
 				keyframes={keyframes}
 			/>
 
-			<Row id={ZOOM_ROW_ID} isEmpty={zoomItems.length === 0} hint="Press Z to add zoom">
+			<Row
+				id={ZOOM_ROW_ID}
+				isEmpty={zoomItems.length === 0}
+				hint={t("rows.zoomHint", "Press {{shortcut}} to add zoom", {
+					shortcut: shortcutLabels.addZoom,
+				})}
+			>
 				{zoomItems.map((item) => (
 					<Item
 						id={item.id}
@@ -582,7 +600,13 @@ function Timeline({
 				))}
 			</Row>
 
-			<Row id={TRIM_ROW_ID} isEmpty={trimItems.length === 0} hint="Press T to add trim">
+			<Row
+				id={TRIM_ROW_ID}
+				isEmpty={trimItems.length === 0}
+				hint={t("rows.trimHint", "Press {{shortcut}} to add trim", {
+					shortcut: shortcutLabels.addTrim,
+				})}
+			>
 				{trimItems.map((item) => (
 					<Item
 						id={item.id}
@@ -601,7 +625,9 @@ function Timeline({
 			<Row
 				id={ANNOTATION_ROW_ID}
 				isEmpty={annotationItems.length === 0}
-				hint="Press A to add annotation"
+				hint={t("rows.annotationHint", "Press {{shortcut}} to add annotation", {
+					shortcut: shortcutLabels.addAnnotation,
+				})}
 			>
 				{annotationItems.map((item) => (
 					<Item
@@ -618,7 +644,13 @@ function Timeline({
 				))}
 			</Row>
 
-			<Row id={SPEED_ROW_ID} isEmpty={speedItems.length === 0} hint="Press S to add speed">
+			<Row
+				id={SPEED_ROW_ID}
+				isEmpty={speedItems.length === 0}
+				hint={t("rows.speedHint", "Press {{shortcut}} to add speed", {
+					shortcut: shortcutLabels.addSpeed,
+				})}
+			>
 				{speedItems.map((item) => (
 					<Item
 						id={item.id}
@@ -681,6 +713,7 @@ function TimelineEditorInner({
 	audioMuted = false,
 }: TimelineEditorProps) {
 	console.log("render <TimelineEditor>");
+	const t = useScopedT("timeline");
 	const currentTime = useTimeValue(timeStore);
 	const totalMs = useMemo(() => Math.max(0, Math.round(videoDuration * 1000)), [videoDuration]);
 	const currentTimeMs = useMemo(() => Math.round(currentTime * 1000), [currentTime]);
@@ -699,11 +732,20 @@ function TimelineEditorInner({
 	const [customAspectWidth, setCustomAspectWidth] = useState("16");
 	const [customAspectHeight, setCustomAspectHeight] = useState("9");
 	const [scrollLabels, setScrollLabels] = useState({
-		pan: "Shift + Ctrl + Scroll",
-		zoom: "Ctrl + Scroll",
+		pan: t("hints.panDefault", "Shift + Ctrl + Scroll"),
+		zoom: t("hints.zoomDefault", "Ctrl + Scroll"),
 	});
 	const timelineContainerRef = useRef<HTMLDivElement>(null);
 	const { shortcuts: keyShortcuts, isMac } = useShortcuts();
+	const actionShortcutLabels = useMemo(
+		() => ({
+			addZoom: formatBinding(keyShortcuts.addZoom, isMac),
+			addTrim: formatBinding(keyShortcuts.addTrim, isMac),
+			addAnnotation: formatBinding(keyShortcuts.addAnnotation, isMac),
+			addSpeed: formatBinding(keyShortcuts.addSpeed, isMac),
+		}),
+		[keyShortcuts, isMac],
+	);
 
 	useEffect(() => {
 		if (aspectRatio === "native") {
@@ -720,11 +762,11 @@ function TimelineEditorInner({
 		const width = Number.parseInt(customAspectWidth, 10);
 		const height = Number.parseInt(customAspectHeight, 10);
 		if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
-			toast.error("Custom aspect ratio must be positive numbers.");
+			toast.error(t("aspect.invalid", "Custom aspect ratio must be positive numbers."));
 			return;
 		}
 		onAspectRatioChange(`${width}:${height}` as AspectRatio);
-	}, [customAspectHeight, customAspectWidth, onAspectRatioChange]);
+	}, [customAspectHeight, customAspectWidth, onAspectRatioChange, t]);
 
 	const handleCustomAspectRatioKeyDown = useCallback(
 		(event: ReactKeyboardEvent<HTMLInputElement>) => {
@@ -920,15 +962,18 @@ function TimelineEditorInner({
 			(region) => startPos >= region.startMs && startPos < region.endMs,
 		);
 		if (isOverlapping || gapToNext <= 0) {
-			toast.error("Cannot place zoom here", {
-				description: "Zoom already exists at this location or not enough space available.",
+			toast.error(t("zoom.cannotPlace", "Cannot place zoom here"), {
+				description: t(
+					"zoom.cannotPlaceDescription",
+					"Zoom already exists at this location or not enough space available.",
+				),
 			});
 			return;
 		}
 
 		const actualDuration = Math.min(defaultRegionDurationMs, gapToNext);
 		onZoomAdded({ start: startPos, end: startPos + actualDuration });
-	}, [videoDuration, totalMs, currentTimeMs, zoomRegions, onZoomAdded, defaultRegionDurationMs]);
+	}, [videoDuration, totalMs, currentTimeMs, zoomRegions, onZoomAdded, defaultRegionDurationMs, t]);
 
 	const handleSuggestZooms = useCallback(() => {
 		if (!videoDuration || videoDuration === 0 || totalMs === 0) {
@@ -936,13 +981,16 @@ function TimelineEditorInner({
 		}
 
 		if (!onZoomSuggested) {
-			toast.error("Zoom suggestion handler unavailable");
+			toast.error(t("zoom.suggestionUnavailable", "Zoom suggestion handler unavailable"));
 			return;
 		}
 
 		if (cursorTelemetry.length < 2) {
-			toast.info("No cursor telemetry available", {
-				description: "Record a screencast first to generate cursor-based suggestions.",
+			toast.info(t("zoom.noCursorTelemetry", "No cursor telemetry available"), {
+				description: t(
+					"zoom.noCursorTelemetryDescription",
+					"Record a screencast first to generate cursor-based suggestions.",
+				),
 			});
 			return;
 		}
@@ -959,8 +1007,11 @@ function TimelineEditorInner({
 		const normalizedSamples = normalizeCursorTelemetry(cursorTelemetry, totalMs);
 
 		if (normalizedSamples.length < 2) {
-			toast.info("No usable cursor telemetry", {
-				description: "The recording does not include enough cursor movement data.",
+			toast.info(t("zoom.noUsableCursorTelemetry", "No usable cursor telemetry"), {
+				description: t(
+					"zoom.noUsableCursorTelemetryDescription",
+					"The recording does not include enough cursor movement data.",
+				),
 			});
 			return;
 		}
@@ -968,8 +1019,11 @@ function TimelineEditorInner({
 		const dwellCandidates = detectInteractionCandidates(normalizedSamples);
 
 		if (dwellCandidates.length === 0) {
-			toast.info("No clear interaction moments found", {
-				description: "Try a recording with pauses or clicks around important actions.",
+			toast.info(t("zoom.noInteractionMoments", "No clear interaction moments found"), {
+				description: t(
+					"zoom.noInteractionMomentsDescription",
+					"Try a recording with pauses or clicks around important actions.",
+				),
 			});
 			return;
 		}
@@ -1006,14 +1060,20 @@ function TimelineEditorInner({
 		});
 
 		if (addedCount === 0) {
-			toast.info("No auto-zoom slots available", {
-				description: "Detected dwell points overlap existing zoom regions.",
+			toast.info(t("zoom.noSlots", "No auto-zoom slots available"), {
+				description: t(
+					"zoom.noSlotsDescription",
+					"Detected dwell points overlap existing zoom regions.",
+				),
 			});
 			return;
 		}
 
 		toast.success(
-			`Added ${addedCount} interaction-based zoom suggestion${addedCount === 1 ? "" : "s"}`,
+			t("zoom.suggestionsAdded", "Added {{count}} interaction-based zoom suggestion{{plural}}", {
+				count: addedCount,
+				plural: addedCount === 1 ? "" : "s",
+			}),
 		);
 	}, [
 		videoDuration,
@@ -1022,6 +1082,7 @@ function TimelineEditorInner({
 		zoomRegions,
 		onZoomSuggested,
 		cursorTelemetry,
+		t,
 	]);
 
 	const handleAddTrim = useCallback(() => {
@@ -1046,15 +1107,18 @@ function TimelineEditorInner({
 			(region) => startPos >= region.startMs && startPos < region.endMs,
 		);
 		if (isOverlapping || gapToNext <= 0) {
-			toast.error("Cannot place trim here", {
-				description: "Trim already exists at this location or not enough space available.",
+			toast.error(t("trim.cannotPlace", "Cannot place trim here"), {
+				description: t(
+					"trim.cannotPlaceDescription",
+					"Trim already exists at this location or not enough space available.",
+				),
 			});
 			return;
 		}
 
 		const actualDuration = Math.min(defaultRegionDurationMs, gapToNext);
 		onTrimAdded({ start: startPos, end: startPos + actualDuration });
-	}, [videoDuration, totalMs, currentTimeMs, trimRegions, onTrimAdded, defaultRegionDurationMs]);
+	}, [videoDuration, totalMs, currentTimeMs, trimRegions, onTrimAdded, defaultRegionDurationMs, t]);
 
 	const handleAddSpeed = useCallback(() => {
 		if (!videoDuration || videoDuration === 0 || totalMs === 0 || !onSpeedAdded) {
@@ -1078,15 +1142,26 @@ function TimelineEditorInner({
 			(region) => startPos >= region.startMs && startPos < region.endMs,
 		);
 		if (isOverlapping || gapToNext <= 0) {
-			toast.error("Cannot place speed here", {
-				description: "Speed region already exists at this location or not enough space available.",
+			toast.error(t("speed.cannotPlace", "Cannot place speed here"), {
+				description: t(
+					"speed.cannotPlaceDescription",
+					"Speed region already exists at this location or not enough space available.",
+				),
 			});
 			return;
 		}
 
 		const actualDuration = Math.min(defaultRegionDurationMs, gapToNext);
 		onSpeedAdded({ start: startPos, end: startPos + actualDuration });
-	}, [videoDuration, totalMs, currentTimeMs, speedRegions, onSpeedAdded, defaultRegionDurationMs]);
+	}, [
+		videoDuration,
+		totalMs,
+		currentTimeMs,
+		speedRegions,
+		onSpeedAdded,
+		defaultRegionDurationMs,
+		t,
+	]);
 
 	const handleAddAnnotation = useCallback(() => {
 		if (!videoDuration || videoDuration === 0 || totalMs === 0 || !onAnnotationAdded) {
@@ -1209,7 +1284,7 @@ function TimelineEditorInner({
 			id: region.id,
 			rowId: ZOOM_ROW_ID,
 			span: { start: region.startMs, end: region.endMs },
-			label: `Zoom ${index + 1}`,
+			label: t("items.zoom", "Zoom {{index}}", { index: index + 1 }),
 			zoomDepth: region.depth,
 			variant: "zoom",
 		}));
@@ -1218,7 +1293,7 @@ function TimelineEditorInner({
 			id: region.id,
 			rowId: TRIM_ROW_ID,
 			span: { start: region.startMs, end: region.endMs },
-			label: `Trim ${index + 1}`,
+			label: t("items.trim", "Trim {{index}}", { index: index + 1 }),
 			variant: "trim",
 		}));
 
@@ -1227,12 +1302,12 @@ function TimelineEditorInner({
 
 			if (region.type === "text") {
 				// Show text preview
-				const preview = region.content.trim() || "Empty text";
+				const preview = region.content.trim() || t("items.emptyText", "Empty text");
 				label = preview.length > 20 ? `${preview.substring(0, 20)}...` : preview;
 			} else if (region.type === "image") {
-				label = "Image";
+				label = t("items.image", "Image");
 			} else {
-				label = "Annotation";
+				label = t("items.annotation", "Annotation");
 			}
 
 			return {
@@ -1248,13 +1323,13 @@ function TimelineEditorInner({
 			id: region.id,
 			rowId: SPEED_ROW_ID,
 			span: { start: region.startMs, end: region.endMs },
-			label: `Speed ${index + 1}`,
+			label: t("items.speed", "Speed {{index}}", { index: index + 1 }),
 			speedValue: region.speed,
 			variant: "speed",
 		}));
 
 		return [...zooms, ...trims, ...annotations, ...speeds];
-	}, [zoomRegions, trimRegions, annotationRegions, speedRegions]);
+	}, [zoomRegions, trimRegions, annotationRegions, speedRegions, t]);
 
 	// Flat list of all non-annotation region spans for neighbour-clamping during drag/resize
 	const allRegionSpans = useMemo(() => {
@@ -1350,8 +1425,12 @@ function TimelineEditorInner({
 					<Plus className="w-6 h-6 text-slate-600" />
 				</div>
 				<div className="text-center">
-					<p className="text-sm font-medium text-slate-300">No Video Loaded</p>
-					<p className="text-xs text-slate-500 mt-1">Drag and drop a video to start editing</p>
+					<p className="text-sm font-medium text-slate-300">
+						{t("empty.title", "No Video Loaded")}
+					</p>
+					<p className="text-xs text-slate-500 mt-1">
+						{t("empty.description", "Drag and drop a video to start editing")}
+					</p>
 				</div>
 			</div>
 		);
@@ -1366,7 +1445,9 @@ function TimelineEditorInner({
 						variant="ghost"
 						size="icon"
 						className="h-7 w-7 text-slate-400 hover:text-[#09cf67] hover:bg-[#09cf67]/10 transition-all"
-						title="Add Zoom (Z)"
+						title={t("toolbar.addZoom", "Add Zoom ({{shortcut}})", {
+							shortcut: actionShortcutLabels.addZoom,
+						})}
 					>
 						<ZoomIn className="w-4 h-4" />
 					</Button>
@@ -1375,7 +1456,7 @@ function TimelineEditorInner({
 						variant="ghost"
 						size="icon"
 						className="h-7 w-7 text-slate-400 hover:text-[#09cf67] hover:bg-[#09cf67]/10 transition-all"
-						title="Suggest Zooms from Cursor"
+						title={t("toolbar.suggestZooms", "Suggest Zooms from Cursor")}
 					>
 						<WandSparkles className="w-4 h-4" />
 					</Button>
@@ -1384,7 +1465,9 @@ function TimelineEditorInner({
 						variant="ghost"
 						size="icon"
 						className="h-7 w-7 text-slate-400 hover:text-[#ef4444] hover:bg-[#ef4444]/10 transition-all"
-						title="Add Trim (T)"
+						title={t("toolbar.addTrim", "Add Trim ({{shortcut}})", {
+							shortcut: actionShortcutLabels.addTrim,
+						})}
 					>
 						<Scissors className="w-4 h-4" />
 					</Button>
@@ -1393,7 +1476,9 @@ function TimelineEditorInner({
 						variant="ghost"
 						size="icon"
 						className="h-7 w-7 text-slate-400 hover:text-[#B4A046] hover:bg-[#B4A046]/10 transition-all"
-						title="Add Annotation (A)"
+						title={t("toolbar.addAnnotation", "Add Annotation ({{shortcut}})", {
+							shortcut: actionShortcutLabels.addAnnotation,
+						})}
 					>
 						<MessageSquare className="w-4 h-4" />
 					</Button>
@@ -1402,7 +1487,9 @@ function TimelineEditorInner({
 						variant="ghost"
 						size="icon"
 						className="h-7 w-7 text-slate-400 hover:text-[#d97706] hover:bg-[#d97706]/10 transition-all"
-						title="Add Speed (S)"
+						title={t("toolbar.addSpeed", "Add Speed ({{shortcut}})", {
+							shortcut: actionShortcutLabels.addSpeed,
+						})}
 					>
 						<Gauge className="w-4 h-4" />
 					</Button>
@@ -1432,7 +1519,7 @@ function TimelineEditorInner({
 							))}
 							<div className="mx-1 my-1 h-px bg-white/10" />
 							<div className="px-2 py-1.5 flex items-center gap-2 text-slate-300">
-								<span className="text-sm">Custom</span>
+								<span className="text-sm">{t("aspect.custom", "Custom")}</span>
 								<input
 									type="text"
 									inputMode="numeric"
@@ -1440,7 +1527,7 @@ function TimelineEditorInner({
 									onChange={(event) => setCustomAspectWidth(event.target.value.replace(/\D/g, ""))}
 									onKeyDown={handleCustomAspectRatioKeyDown}
 									className="w-12 h-7 rounded border border-white/15 bg-black/20 px-1.5 text-sm text-slate-100 focus:outline-none focus:ring-1 focus:ring-[#09cf67]"
-									aria-label="Custom aspect width"
+									aria-label={t("aspect.customWidth", "Custom aspect width")}
 								/>
 								<span className="text-slate-500">:</span>
 								<input
@@ -1450,7 +1537,7 @@ function TimelineEditorInner({
 									onChange={(event) => setCustomAspectHeight(event.target.value.replace(/\D/g, ""))}
 									onKeyDown={handleCustomAspectRatioKeyDown}
 									className="w-12 h-7 rounded border border-white/15 bg-black/20 px-1.5 text-sm text-slate-100 focus:outline-none focus:ring-1 focus:ring-[#09cf67]"
-									aria-label="Custom aspect height"
+									aria-label={t("aspect.customHeight", "Custom aspect height")}
 								/>
 								<Button
 									variant="ghost"
@@ -1458,7 +1545,7 @@ function TimelineEditorInner({
 									onClick={applyCustomAspectRatio}
 									className="h-7 px-2 text-xs text-slate-300 hover:text-white hover:bg-white/10"
 								>
-									Set
+									{t("aspect.set", "Set")}
 								</Button>
 								{isCustomAspectRatio(aspectRatio) && (
 									<Check className="w-3 h-3 text-[#09cf67] ml-auto" />
@@ -1473,21 +1560,21 @@ function TimelineEditorInner({
 				<div className="flex items-center gap-4 text-[10px] text-slate-500 font-medium">
 					<span className="flex items-center gap-1.5">
 						<kbd className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-[#09cf67] font-sans">
-							Side Scroll
+							{t("hints.sideScroll", "Side Scroll")}
 						</kbd>
-						<span>Pan</span>
+						<span>{t("hints.pan", "Pan")}</span>
 					</span>
 					<span className="flex items-center gap-1.5">
 						<kbd className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-[#09cf67] font-sans">
 							{scrollLabels.pan}
 						</kbd>
-						<span>Pan</span>
+						<span>{t("hints.pan", "Pan")}</span>
 					</span>
 					<span className="flex items-center gap-1.5">
 						<kbd className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-[#09cf67] font-sans">
 							{scrollLabels.zoom}
 						</kbd>
-						<span>Zoom</span>
+						<span>{t("hints.zoom", "Zoom")}</span>
 					</span>
 				</div>
 			</div>

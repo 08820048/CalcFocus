@@ -10,6 +10,7 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@/components/ui/dialog";
+import { useScopedT } from "@/contexts/I18nContext";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -25,6 +26,7 @@ interface AddCustomFontDialogProps {
 }
 
 export function AddCustomFontDialog({ onFontAdded }: AddCustomFontDialogProps) {
+	const t = useScopedT("dialogs");
 	const [open, setOpen] = useState(false);
 	const [importUrl, setImportUrl] = useState("");
 	const [fontName, setFontName] = useState("");
@@ -45,17 +47,17 @@ export function AddCustomFontDialog({ onFontAdded }: AddCustomFontDialogProps) {
 	const handleAdd = async () => {
 		// Validate inputs
 		if (!importUrl.trim()) {
-			toast.error("Please enter a Google Fonts import URL");
+			toast.error(t("font.enterImportUrl", "Please enter a Google Fonts import URL"));
 			return;
 		}
 
 		if (!isValidGoogleFontsUrl(importUrl)) {
-			toast.error("Please enter a valid Google Fonts URL");
+			toast.error(t("font.validGoogleUrl", "Please enter a valid Google Fonts URL"));
 			return;
 		}
 
 		if (!fontName.trim()) {
-			toast.error("Please enter a font name");
+			toast.error(t("font.enterName", "Please enter a font name"));
 			return;
 		}
 
@@ -65,7 +67,7 @@ export function AddCustomFontDialog({ onFontAdded }: AddCustomFontDialogProps) {
 			// Extract font family from URL
 			const fontFamily = parseFontFamilyFromImport(importUrl);
 			if (!fontFamily) {
-				toast.error("Could not extract font family from URL");
+				toast.error(t("font.extractFailed", "Could not extract font family from URL"));
 				setLoading(false);
 				return;
 			}
@@ -86,7 +88,9 @@ export function AddCustomFontDialog({ onFontAdded }: AddCustomFontDialogProps) {
 				onFontAdded(newFont);
 			}
 
-			toast.success(`Font "${fontName}" added successfully`);
+			toast.success(
+				t('font.added', 'Font "{{name}}" added successfully', { name: fontName }),
+			);
 
 			// Reset and close
 			setImportUrl("");
@@ -94,11 +98,17 @@ export function AddCustomFontDialog({ onFontAdded }: AddCustomFontDialogProps) {
 			setOpen(false);
 		} catch (error) {
 			console.error("Failed to add custom font:", error);
-			const errorMessage = error instanceof Error ? error.message : "Failed to load font";
-			toast.error("Failed to add font", {
+			const errorMessage = error instanceof Error ? error.message : t("font.loadFailed", "Failed to load font");
+			toast.error(t("font.addFailed", "Failed to add font"), {
 				description: errorMessage.includes("timeout")
-					? "Font took too long to load. Please check the URL and try again."
-					: "The font could not be loaded. Please verify the Google Fonts URL is correct.",
+					? t(
+							"font.timeout",
+							"Font took too long to load. Please check the URL and try again.",
+						)
+					: t(
+							"font.verifyUrl",
+							"The font could not be loaded. Please verify the Google Fonts URL is correct.",
+						),
 			});
 		} finally {
 			setLoading(false);
@@ -114,21 +124,24 @@ export function AddCustomFontDialog({ onFontAdded }: AddCustomFontDialogProps) {
 					className="w-full bg-white/5 border-white/10 text-slate-200 hover:bg-white/10 h-9 text-xs"
 				>
 					<Plus className="w-3 h-3 mr-1" />
-					Add Google Font
+					{t("font.addGoogle", "Add Google Font")}
 				</Button>
 			</DialogTrigger>
 			<DialogContent className="bg-[#1a1a1c] border-white/10 text-slate-200">
 				<DialogHeader>
-					<DialogTitle>Add Google Font</DialogTitle>
+					<DialogTitle>{t("font.addGoogle", "Add Google Font")}</DialogTitle>
 					<DialogDescription className="text-slate-400">
-						Add a custom font from Google Fonts to use in your annotations.
+						{t(
+							"font.description",
+							"Add a custom font from Google Fonts to use in your annotations.",
+						)}
 					</DialogDescription>
 				</DialogHeader>
 
 				<div className="space-y-4 mt-4">
 					<div className="space-y-2">
 						<Label htmlFor="import-url" className="text-slate-200">
-							Google Fonts Import URL
+							{t("font.importUrlLabel", "Google Fonts Import URL")}
 						</Label>
 						<Input
 							id="import-url"
@@ -138,23 +151,29 @@ export function AddCustomFontDialog({ onFontAdded }: AddCustomFontDialogProps) {
 							className="bg-white/5 border-white/10 text-slate-200"
 						/>
 						<p className="text-xs text-slate-400">
-							Get this from Google Fonts: Select a font → Click "Get font" → Copy the @import URL
+							{t(
+								"font.importUrlHelp",
+								'Get this from Google Fonts: Select a font -> Click "Get font" -> Copy the @import URL',
+							)}
 						</p>
 					</div>
 
 					<div className="space-y-2">
 						<Label htmlFor="font-name" className="text-slate-200">
-							Display Name
+							{t("font.displayNameLabel", "Display Name")}
 						</Label>
 						<Input
 							id="font-name"
-							placeholder="My Custom Font"
+							placeholder={t("font.displayNamePlaceholder", "My Custom Font")}
 							value={fontName}
 							onChange={(e) => setFontName(e.target.value)}
 							className="bg-white/5 border-white/10 text-slate-200"
 						/>
 						<p className="text-xs text-slate-400">
-							This is how the font will appear in the font selector
+							{t(
+								"font.displayNameHelp",
+								"This is how the font will appear in the font selector",
+							)}
 						</p>
 					</div>
 
@@ -164,14 +183,16 @@ export function AddCustomFontDialog({ onFontAdded }: AddCustomFontDialogProps) {
 							onClick={() => setOpen(false)}
 							className="bg-white/5 border-white/10 text-slate-200 hover:bg-white/10"
 						>
-							Cancel
+							{t("common.cancel", "Cancel")}
 						</Button>
 						<Button
 							onClick={handleAdd}
 							disabled={loading}
 							className="bg-[#09cf67] hover:bg-[#08b85c] text-white"
 						>
-							{loading ? "Adding..." : "Add Font"}
+							{loading
+								? t("font.adding", "Adding...")
+								: t("font.addButton", "Add Font")}
 						</Button>
 					</div>
 				</div>

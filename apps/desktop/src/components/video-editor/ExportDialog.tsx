@@ -2,6 +2,7 @@ import { Download, Loader2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { useScopedT } from "@/contexts/I18nContext";
 import { revealInFolder } from "@/lib/backend";
 import type { ExportProgress } from "@/lib/exporter";
 
@@ -31,6 +32,7 @@ export function ExportDialog({
 	exportedFilePath, // Add this line
 }: ExportDialogProps) {
 	console.log("render <ExportDialog>");
+	const t = useScopedT("dialogs");
 	const [showSuccess, setShowSuccess] = useState(false);
 
 	// Reset showSuccess when a new export starts or dialog reopens
@@ -60,7 +62,7 @@ export function ExportDialog({
 
 	if (!isOpen) return null;
 
-	const formatLabel = exportFormat === "gif" ? "GIF" : "Video";
+	const formatLabel = exportFormat === "gif" ? "GIF" : t("export.videoFormat", "Video");
 
 	// Determine if we're in the compiling phase (frames done but still exporting)
 	const isCompiling =
@@ -70,21 +72,23 @@ export function ExportDialog({
 
 	// Get status message based on phase
 	const getStatusMessage = () => {
-		if (error) return "Please try again";
+		if (error) return t("export.tryAgain", "Please try again");
 		if (isCompiling || isFinalizing) {
 			if (renderProgress !== undefined && renderProgress > 0) {
-				return `Compiling GIF... ${renderProgress}%`;
+				return t("export.compilingGifProgress", "Compiling GIF... {{progress}}%", {
+					progress: renderProgress,
+				});
 			}
-			return "Compiling GIF... This may take a while";
+			return t("export.compilingGifLong", "Compiling GIF... This may take a while");
 		}
-		return "This may take a moment...";
+		return t("export.mayTakeMoment", "This may take a moment...");
 	};
 
 	// Get title based on phase
 	const getTitle = () => {
-		if (error) return "Export Failed";
-		if (isCompiling || isFinalizing) return "Compiling GIF";
-		return `Exporting ${formatLabel}`;
+		if (error) return t("export.failed", "Export Failed");
+		if (isCompiling || isFinalizing) return t("export.compilingGif", "Compiling GIF");
+		return t("export.exporting", "Exporting {{format}}", { format: formatLabel });
 	};
 
 	const handleClickShowInFolder = async () => {
@@ -94,7 +98,9 @@ export function ExportDialog({
 			} catch (err) {
 				const errorMessage = String(err);
 				console.error("Error calling revealInFolder:", errorMessage);
-				toast.error(`Error revealing in folder: ${errorMessage}`);
+				toast.error(t("export.revealError", "Error revealing in folder: {{message}}", {
+					message: errorMessage,
+				}));
 			}
 		}
 	};
@@ -114,9 +120,13 @@ export function ExportDialog({
 									<Download className="w-6 h-6 text-[#09cf67]" />
 								</div>
 								<div className="flex flex-col gap-2">
-									<span className="text-xl font-bold text-slate-200 block">Export Complete</span>
+									<span className="text-xl font-bold text-slate-200 block">
+										{t("export.complete", "Export Complete")}
+									</span>
 									<span className="text-sm text-slate-400">
-										Your {formatLabel.toLowerCase()} is ready
+										{t("export.ready", "Your {{format}} is ready", {
+											format: formatLabel.toLowerCase(),
+										})}
 									</span>
 									{exportedFilePath && (
 										<Button
@@ -124,7 +134,7 @@ export function ExportDialog({
 											onClick={handleClickShowInFolder}
 											className="mt-2 w-fit px-3 py-1 text-sm rounded-md bg-white/10 hover:bg-white/20 text-slate-200"
 										>
-											Show in Folder
+											{t("export.showInFolder", "Show in Folder")}
 										</Button>
 									)}
 									{exportedFilePath && (
@@ -177,7 +187,7 @@ export function ExportDialog({
 								onClick={onRetrySave}
 								className="w-full mt-3 bg-[#09cf67] text-white hover:bg-[#1D4ED8]"
 							>
-								Save Again
+								{t("export.saveAgain", "Save Again")}
 							</Button>
 						)}
 					</div>
@@ -187,7 +197,11 @@ export function ExportDialog({
 					<div className="space-y-6">
 						<div className="space-y-2">
 							<div className="flex justify-between text-xs font-medium text-slate-400 uppercase tracking-wider">
-								<span>{isCompiling || isFinalizing ? "Compiling" : "Rendering Frames"}</span>
+								<span>
+									{isCompiling || isFinalizing
+										? t("export.compiling", "Compiling")
+										: t("export.renderingFrames", "Rendering Frames")}
+								</span>
 								<span className="font-mono text-slate-200">
 									{isCompiling || isFinalizing ? (
 										renderProgress !== undefined && renderProgress > 0 ? (
@@ -195,7 +209,7 @@ export function ExportDialog({
 										) : (
 											<span className="flex items-center gap-2">
 												<Loader2 className="w-3 h-3 animate-spin" />
-												Processing...
+												{t("export.processing", "Processing...")}
 											</span>
 										)
 									) : (
@@ -239,15 +253,19 @@ export function ExportDialog({
 						<div className="grid grid-cols-2 gap-4">
 							<div className="bg-white/5 rounded-xl p-3 border border-white/5">
 								<div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">
-									{isCompiling || isFinalizing ? "Status" : "Format"}
+									{isCompiling || isFinalizing
+										? t("export.status", "Status")
+										: t("export.format", "Format")}
 								</div>
 								<div className="text-slate-200 font-medium text-sm">
-									{isCompiling || isFinalizing ? "Compiling..." : formatLabel}
+									{isCompiling || isFinalizing
+										? t("export.compilingEllipsis", "Compiling...")
+										: formatLabel}
 								</div>
 							</div>
 							<div className="bg-white/5 rounded-xl p-3 border border-white/5">
 								<div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">
-									Frames
+									{t("export.frames", "Frames")}
 								</div>
 								<div className="text-slate-200 font-medium text-sm">
 									{progress.currentFrame} / {progress.totalFrames}
@@ -262,7 +280,7 @@ export function ExportDialog({
 									variant="destructive"
 									className="w-full py-6 bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 hover:border-red-500/30 transition-all rounded-xl"
 								>
-									Cancel Export
+									{t("export.cancelExport", "Cancel Export")}
 								</Button>
 							</div>
 						)}
@@ -271,7 +289,11 @@ export function ExportDialog({
 
 				{showSuccess && (
 					<div className="text-center py-4 animate-in zoom-in-95">
-						<p className="text-lg text-slate-200 font-medium">{formatLabel} saved successfully!</p>
+						<p className="text-lg text-slate-200 font-medium">
+							{t("export.savedSuccessfully", "{{format}} saved successfully!", {
+								format: formatLabel,
+							})}
+						</p>
 					</div>
 				)}
 			</div>

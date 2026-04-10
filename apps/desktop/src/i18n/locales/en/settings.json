@@ -1,1 +1,150 @@
-{}
+{
+  "tabs": {
+    "appearance": {
+      "label": "Appearance",
+      "description": "Frame styling, crop, and composition."
+    },
+    "cursor": {
+      "label": "Cursor",
+      "description": "Cursor visibility and motion effects."
+    },
+    "camera": {
+      "label": "Camera",
+      "description": "Facecam overlay settings."
+    },
+    "background": {
+      "label": "Background",
+      "description": "Wallpaper, colors, and gradients."
+    },
+    "audio": {
+      "label": "Audio",
+      "description": "Master preview and MP4 export audio."
+    }
+  },
+  "appearance": {
+    "shadow": "Shadow",
+    "roundness": "Roundness",
+    "padding": "Padding",
+    "backgroundBlur": "Background Blur",
+    "cropVideo": "Crop Video"
+  },
+  "cursor": {
+    "showCursor": "Show Cursor",
+    "loopCursor": "Loop Cursor",
+    "size": "Size",
+    "smoothing": "Smoothing",
+    "off": "Off",
+    "motionBlur": "Motion Blur",
+    "clickBounce": "Click Bounce"
+  },
+  "camera": {
+    "facecam": "Facecam",
+    "availableDescription": "Show a Loom-style facecam overlay.",
+    "unavailableDescription": "Record with facecam enabled to customize.",
+    "circle": "Circle",
+    "square": "Square",
+    "facecamSize": "Facecam Size",
+    "squareRoundness": "Square Roundness",
+    "borderWidth": "Border Width",
+    "borderColor": "Border Color",
+    "margin": "Margin",
+    "position": "Position",
+    "positions": {
+      "topLeft": "Top Left",
+      "topRight": "Top Right",
+      "bottomLeft": "Bottom Left",
+      "bottomRight": "Bottom Right"
+    },
+    "dragHint": "Drag the bubble in the preview to reposition."
+  },
+  "background": {
+    "image": "Image",
+    "color": "Color",
+    "gradient": "Gradient",
+    "uploadCustom": "Upload Custom",
+    "customWallpaper": "Custom wallpaper {{index}}",
+    "gradientItem": "Gradient {{index}}",
+    "invalidFileType": "Invalid file type",
+    "invalidFileDescription": "Please upload a JPG or JPEG image file.",
+    "uploadedSuccessfully": "Custom image uploaded successfully!",
+    "uploadFailed": "Failed to upload image",
+    "uploadFailedDescription": "There was an error reading the file."
+  },
+  "audio": {
+    "muteAudio": "Mute Audio",
+    "muteDescription": "Silence preview playback and MP4 exports.",
+    "masterVolume": "Master Volume",
+    "note": "These controls affect editor playback immediately and apply to MP4 exports."
+  },
+  "zoom": {
+    "title": "Zoom Settings",
+    "motionBlur": "Motion Blur",
+    "connect": "Connect Zooms",
+    "delete": "Delete Zoom"
+  },
+  "trim": {
+    "delete": "Delete Trim Region"
+  },
+  "speed": {
+    "title": "Speed Settings",
+    "delete": "Delete Speed Region"
+  },
+  "crop": {
+    "title": "Crop Video",
+    "description": "Drag on each side to adjust the crop area",
+    "done": "Done"
+  },
+  "annotation": {
+    "title": "Annotation Settings",
+    "active": "Active",
+    "types": {
+      "text": "Text",
+      "image": "Image",
+      "arrow": "Arrow"
+    },
+    "textContent": "Text Content",
+    "enterText": "Enter your text...",
+    "fontStyle": "Font Style",
+    "selectStyle": "Select style",
+    "customFonts": "Custom Fonts",
+    "size": "Size",
+    "toggleBold": "Toggle bold",
+    "toggleItalic": "Toggle italic",
+    "toggleUnderline": "Toggle underline",
+    "alignLeft": "Align left",
+    "alignCenter": "Align center",
+    "alignRight": "Align right",
+    "textColor": "Text Color",
+    "background": "Background",
+    "none": "None",
+    "color": "Color",
+    "clearBackground": "Clear Background",
+    "uploadImage": "Upload Image",
+    "supportedFormats": "Supported formats: JPG, PNG, GIF, WebP",
+    "arrowDirection": "Arrow Direction",
+    "strokeWidth": "Stroke Width",
+    "arrowColor": "Arrow Color",
+    "delete": "Delete Annotation",
+    "shortcutsTips": "Shortcuts & Tips",
+    "tip1": "Move playhead to overlapping annotation section and select an item.",
+    "tip2Prefix": "Use",
+    "tip2Suffix": "cycle through overlapping items.",
+    "tip3Prefix": "Use",
+    "tip3Suffix": "to cycle backwards.",
+    "invalidFileType": "Invalid file type",
+    "invalidFileDescription": "Please upload a JPG, PNG, GIF, or WebP image file.",
+    "imageUploaded": "Image uploaded successfully!",
+    "uploadFailed": "Failed to upload image",
+    "uploadFailedDescription": "There was an error reading the file.",
+    "fonts": {
+      "classic": "Classic",
+      "editor": "Editor",
+      "strong": "Strong",
+      "typewriter": "Typewriter",
+      "deco": "Deco",
+      "simple": "Simple",
+      "modern": "Modern",
+      "clean": "Clean"
+    }
+  }
+}
