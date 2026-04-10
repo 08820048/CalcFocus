@@ -1,0 +1,41 @@
+{
+	"appTitle": "FluxLocus 截图编辑器",
+	"preview": {
+		"alt": "截图"
+	},
+	"empty": {
+		"title": "还没有加载截图"
+	},
+	"header": {
+		"title": "截图设置",
+		"description": "自定义背景、留白和视觉效果"
+	},
+	"background": {
+		"label": "背景",
+		"image": "图片",
+		"gradient": "渐变",
+		"color": "颜色",
+		"none": "无",
+		"wallpaperOption": "壁纸 {{index}}",
+		"gradientOption": "渐变 {{index}}",
+		"transparentDescription": "不会添加任何背景。请导出为 PNG 以保留透明区域。"
+	},
+	"controls": {
+		"padding": "留白",
+		"borderRadius": "圆角",
+		"shadow": "阴影"
+	},
+	"actions": {
+		"savePng": "保存 PNG",
+		"saving": "正在保存...",
+		"copy": "复制",
+		"backToCapture": "返回截图"
+	},
+	"toasts": {
+		"renderFailed": "渲染图片失败",
+		"saved": "截图已保存！",
+		"saveFailed": "保存截图失败",
+		"copied": "已复制到剪贴板！",
+		"copyFailed": "复制到剪贴板失败"
+	}
+}

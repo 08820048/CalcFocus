@@ -1,0 +1,41 @@
+{
+	"appTitle": "FluxLocus Screenshot Editor",
+	"preview": {
+		"alt": "Screenshot"
+	},
+	"empty": {
+		"title": "No screenshot loaded"
+	},
+	"header": {
+		"title": "Screenshot Settings",
+		"description": "Customize background, padding & effects"
+	},
+	"background": {
+		"label": "Background",
+		"image": "Image",
+		"gradient": "Gradient",
+		"color": "Color",
+		"none": "None",
+		"wallpaperOption": "Wallpaper {{index}}",
+		"gradientOption": "Gradient {{index}}",
+		"transparentDescription": "No background will be applied. Export as PNG to preserve transparency."
+	},
+	"controls": {
+		"padding": "Padding",
+		"borderRadius": "Border Radius",
+		"shadow": "Shadow"
+	},
+	"actions": {
+		"savePng": "Save PNG",
+		"saving": "Saving...",
+		"copy": "Copy",
+		"backToCapture": "Back to Capture"
+	},
+	"toasts": {
+		"renderFailed": "Failed to render image",
+		"saved": "Screenshot saved!",
+		"saveFailed": "Failed to save screenshot",
+		"copied": "Copied to clipboard!",
+		"copyFailed": "Failed to copy to clipboard"
+	}
+}

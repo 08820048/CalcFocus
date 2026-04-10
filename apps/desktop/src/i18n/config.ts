@@ -6,6 +6,7 @@ export const I18N_NAMESPACES = [
 	"common",
 	"launch",
 	"editor",
+	"image",
 	"timeline",
 	"settings",
 	"dialogs",

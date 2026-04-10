@@ -1,22 +1,23 @@
 import {
 	createContext,
+	type ReactNode,
 	useCallback,
 	useContext,
 	useEffect,
 	useMemo,
 	useState,
-	type ReactNode,
 } from "react";
 import {
+	type AppLocale,
 	DEFAULT_LOCALE,
 	I18N_NAMESPACES,
-	SUPPORTED_LOCALES,
-	type AppLocale,
 	type I18nNamespace,
+	SUPPORTED_LOCALES,
 } from "@/i18n/config";
 import enCommon from "@/i18n/locales/en/common.json";
 import enDialogs from "@/i18n/locales/en/dialogs.json";
 import enEditor from "@/i18n/locales/en/editor.json";
+import enImage from "@/i18n/locales/en/image.json";
 import enLaunch from "@/i18n/locales/en/launch.json";
 import enSettings from "@/i18n/locales/en/settings.json";
 import enShortcuts from "@/i18n/locales/en/shortcuts.json";
@@ -24,6 +25,7 @@ import enTimeline from "@/i18n/locales/en/timeline.json";
 import zhCommon from "@/i18n/locales/zh/common.json";
 import zhDialogs from "@/i18n/locales/zh/dialogs.json";
 import zhEditor from "@/i18n/locales/zh/editor.json";
+import zhImage from "@/i18n/locales/zh/image.json";
 import zhLaunch from "@/i18n/locales/zh/launch.json";
 import zhSettings from "@/i18n/locales/zh/settings.json";
 import zhShortcuts from "@/i18n/locales/zh/shortcuts.json";
@@ -38,6 +40,7 @@ const messages: Record<AppLocale, LocaleBundle> = {
 		common: enCommon,
 		launch: enLaunch,
 		editor: enEditor,
+		image: enImage,
 		timeline: enTimeline,
 		settings: enSettings,
 		dialogs: enDialogs,
@@ -47,6 +50,7 @@ const messages: Record<AppLocale, LocaleBundle> = {
 		common: zhCommon,
 		launch: zhLaunch,
 		editor: zhEditor,
+		image: zhImage,
 		timeline: zhTimeline,
 		settings: zhSettings,
 		dialogs: zhDialogs,

@@ -40,7 +40,12 @@ export default function App() {
 	}, []);
 
 	useEffect(() => {
-		document.title = windowType === "editor" ? t("app.editorTitle", `${appName} Editor`) : appName;
+		document.title =
+			windowType === "editor"
+				? t("app.editorTitle", `${appName} Editor`)
+				: windowType === "image-editor"
+					? t("image.appTitle", `${appName} Screenshot Editor`)
+					: appName;
 	}, [appName, t, windowType]);
 
 	let content: JSX.Element;

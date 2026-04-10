@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Toaster } from "@/components/ui/sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useScopedT } from "@/contexts/I18nContext";
 import { getAssetPath } from "@/lib/assetPath";
 import * as backend from "@/lib/backend";
 import { copyCanvasImageToClipboard } from "@/lib/clipboard";
@@ -60,6 +61,7 @@ type BackgroundType = "wallpaper" | "gradient" | "color" | "transparent";
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function ImageEditor() {
+	const t = useScopedT("image");
 	// Image state
 	const [imageSrc, setImageSrc] = useState<string | null>(null);
 	const [imageNaturalWidth, setImageNaturalWidth] = useState(0);
@@ -303,7 +305,7 @@ export default function ImageEditor() {
 				canvas?.toBlob(resolve, "image/png"),
 			);
 			if (!blob) {
-				toast.error("Failed to render image");
+				toast.error(t("toasts.renderFailed", "Failed to render image"));
 				return;
 			}
 			const arr = new Uint8Array(await blob.arrayBuffer());
@@ -312,11 +314,11 @@ export default function ImageEditor() {
 				getSuggestedExportFileName("screenshot", "png"),
 			);
 			if (saved) {
-				toast.success("Screenshot saved!", { description: saved });
+				toast.success(t("toasts.saved", "Screenshot saved!"), { description: saved });
 			}
 		} catch (err) {
 			console.error("Save failed:", err);
-			toast.error("Failed to save screenshot");
+			toast.error(t("toasts.saveFailed", "Failed to save screenshot"));
 		} finally {
 			setExporting(false);
 		}
@@ -326,7 +328,7 @@ export default function ImageEditor() {
 		try {
 			const canvas = await renderToCanvas();
 			if (!canvas) {
-				toast.error("Failed to render image");
+				toast.error(t("toasts.renderFailed", "Failed to render image"));
 				return;
 			}
 
@@ -342,10 +344,10 @@ export default function ImageEditor() {
 
 				await navigator.clipboard.write([new ClipboardItem({ [blob.type || "image/png"]: blob })]);
 			}
-			toast.success("Copied to clipboard!");
+			toast.success(t("toasts.copied", "Copied to clipboard!"));
 		} catch (err) {
 			console.error("Copy failed:", err);
-			toast.error("Failed to copy to clipboard");
+			toast.error(t("toasts.copyFailed", "Failed to copy to clipboard"));
 		}
 	};
 
@@ -401,7 +403,7 @@ export default function ImageEditor() {
 							src={imageSrc}
 							crossOrigin="anonymous"
 							onLoad={handleImageLoad}
-							alt="Screenshot"
+							alt={t("preview.alt", "Screenshot")}
 							className="block max-w-full max-h-[70vh] object-contain"
 							style={{
 								borderRadius: `${borderRadius}px`,
@@ -412,14 +414,14 @@ export default function ImageEditor() {
 				) : (
 					<div className="flex flex-col items-center gap-4 text-white/40">
 						<Palette size={48} strokeWidth={1} />
-						<p className="text-sm">No screenshot loaded</p>
+						<p className="text-sm">{t("empty.title", "No screenshot loaded")}</p>
 						<Button
 							variant="outline"
 							size="sm"
 							onClick={handleBackToCapture}
 							className="gap-2 border-white/15 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
 						>
-							<ArrowLeft size={14} /> Back to Capture
+							<ArrowLeft size={14} /> {t("actions.backToCapture", "Back to Capture")}
 						</Button>
 					</div>
 				)}
@@ -431,17 +433,17 @@ export default function ImageEditor() {
 					{/* Header */}
 					<div className="pt-6">
 						<h2 className="text-sm font-semibold text-white/90 tracking-tight">
-							Screenshot Settings
+							{t("header.title", "Screenshot Settings")}
 						</h2>
 						<p className="text-[11px] text-white/40 mt-0.5">
-							Customize background, padding & effects
+							{t("header.description", "Customize background, padding & effects")}
 						</p>
 					</div>
 
 					{/* ── Background ─────────────────────────────────────────────── */}
 					<div>
 						<div className="text-[10px] font-medium tracking-[0.18em] uppercase text-white/50 mb-2">
-							Background
+							{t("background.label", "Background")}
 						</div>
 						<Tabs
 							value={backgroundType}
@@ -452,25 +454,25 @@ export default function ImageEditor() {
 									value="wallpaper"
 									className="text-[10px] data-[state=active]:bg-[#2563EB] data-[state=active]:text-white rounded-md py-0.5"
 								>
-									Image
+									{t("background.image", "Image")}
 								</TabsTrigger>
 								<TabsTrigger
 									value="gradient"
 									className="text-[10px] data-[state=active]:bg-[#2563EB] data-[state=active]:text-white rounded-md py-0.5"
 								>
-									Gradient
+									{t("background.gradient", "Gradient")}
 								</TabsTrigger>
 								<TabsTrigger
 									value="color"
 									className="text-[10px] data-[state=active]:bg-[#2563EB] data-[state=active]:text-white rounded-md py-0.5"
 								>
-									Color
+									{t("background.color", "Color")}
 								</TabsTrigger>
 								<TabsTrigger
 									value="transparent"
 									className="text-[10px] data-[state=active]:bg-[#2563EB] data-[state=active]:text-white rounded-md py-0.5"
 								>
-									None
+									{t("background.none", "None")}
 								</TabsTrigger>
 							</TabsList>
 
@@ -483,6 +485,9 @@ export default function ImageEditor() {
 											<button
 												key={path}
 												onClick={() => handleWallpaperSelect(path)}
+												aria-label={t("background.wallpaperOption", "Wallpaper {{index}}", {
+													index: idx + 1,
+												})}
 												className={cn(
 													"relative aspect-video rounded-lg overflow-hidden border-2 transition-all",
 													isSelected
@@ -505,7 +510,7 @@ export default function ImageEditor() {
 							{/* Gradient grid */}
 							<TabsContent value="gradient" className="mt-0">
 								<div className="grid grid-cols-4 gap-1.5 max-h-[200px] overflow-y-auto custom-scrollbar pr-1">
-									{GRADIENTS.map((g) => {
+									{GRADIENTS.map((g, idx) => {
 										const isSelected = gradient === g && backgroundType === "gradient";
 										return (
 											<button
@@ -514,6 +519,9 @@ export default function ImageEditor() {
 													setGradient(g);
 													setBackgroundType("gradient");
 												}}
+												aria-label={t("background.gradientOption", "Gradient {{index}}", {
+													index: idx + 1,
+												})}
 												className={cn(
 													"aspect-video rounded-lg border-2 transition-all",
 													isSelected
@@ -542,7 +550,10 @@ export default function ImageEditor() {
 							{/* Transparent info */}
 							<TabsContent value="transparent" className="mt-0">
 								<p className="text-[11px] text-white/40">
-									No background will be applied. Export as PNG to preserve transparency.
+									{t(
+										"background.transparentDescription",
+										"No background will be applied. Export as PNG to preserve transparency.",
+									)}
 								</p>
 							</TabsContent>
 						</Tabs>
@@ -552,7 +563,7 @@ export default function ImageEditor() {
 					<div>
 						<div className="flex items-center justify-between mb-2">
 							<span className="text-[10px] font-medium tracking-[0.18em] uppercase text-white/50">
-								Padding
+								{t("controls.padding", "Padding")}
 							</span>
 							<span className="text-[10px] text-white/40 font-mono">{padding}px</span>
 						</div>
@@ -570,7 +581,7 @@ export default function ImageEditor() {
 					<div>
 						<div className="flex items-center justify-between mb-2">
 							<span className="text-[10px] font-medium tracking-[0.18em] uppercase text-white/50">
-								Border Radius
+								{t("controls.borderRadius", "Border Radius")}
 							</span>
 							<span className="text-[10px] text-white/40 font-mono">{borderRadius}px</span>
 						</div>
@@ -588,7 +599,7 @@ export default function ImageEditor() {
 					<div>
 						<div className="flex items-center justify-between mb-2">
 							<span className="text-[10px] font-medium tracking-[0.18em] uppercase text-white/50">
-								Shadow
+								{t("controls.shadow", "Shadow")}
 							</span>
 							<span className="text-[10px] text-white/40 font-mono">
 								{(shadowIntensity * 100).toFixed(0)}%
@@ -614,7 +625,7 @@ export default function ImageEditor() {
 							className="gap-1.5 bg-[#2563EB] text-white hover:bg-[#2563EB]/80 text-xs h-9"
 						>
 							<Download size={14} />
-							{exporting ? "Saving..." : "Save PNG"}
+							{exporting ? t("actions.saving", "Saving...") : t("actions.savePng", "Save PNG")}
 						</Button>
 						<Button
 							onClick={handleCopyToClipboard}
@@ -623,7 +634,7 @@ export default function ImageEditor() {
 							className="gap-1.5 border-white/15 bg-white/5 text-white/80 hover:bg-white/10 text-xs h-9"
 						>
 							<ClipboardCopy size={14} />
-							Copy
+							{t("actions.copy", "Copy")}
 						</Button>
 					</div>
 					<Button
@@ -632,7 +643,7 @@ export default function ImageEditor() {
 						className="w-full gap-2 text-white/50 hover:text-white/80 hover:bg-white/5 text-xs h-8"
 					>
 						<ArrowLeft size={14} />
-						Back to Capture
+						{t("actions.backToCapture", "Back to Capture")}
 					</Button>
 				</div>
 			</div>
