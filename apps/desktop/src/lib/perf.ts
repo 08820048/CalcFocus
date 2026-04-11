@@ -241,6 +241,4 @@ Object.assign(globalThis, {
 	},
 });
 
-_print.warn(
-	"[perf] Instrumentation loaded. Use __PERF_START() to begin, __PERF_DUMP() to view stats. If console is silent, read __PERF_LAST.",
-);
+// Keep instrumentation available without logging on every editor load.

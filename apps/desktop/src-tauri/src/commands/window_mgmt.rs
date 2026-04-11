@@ -112,6 +112,7 @@ pub async fn close_source_selector(app: AppHandle) -> Result<(), String> {
 #[tauri::command]
 pub async fn hud_overlay_show(app: AppHandle) -> Result<(), String> {
     if let Some(hud) = app.get_webview_window("hud-overlay") {
+        let _ = hud.unminimize();
         let _ = hud.show();
         let _ = hud.set_focus();
     }
@@ -123,6 +124,15 @@ pub async fn hud_overlay_show(app: AppHandle) -> Result<(), String> {
 pub async fn hud_overlay_hide(app: AppHandle) -> Result<(), String> {
     if let Some(hud) = app.get_webview_window("hud-overlay") {
         let _ = hud.hide();
+    }
+    crate::tray::update_tray_menu(&app);
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn hud_overlay_minimize(app: AppHandle) -> Result<(), String> {
+    if let Some(hud) = app.get_webview_window("hud-overlay") {
+        let _ = hud.minimize();
     }
     crate::tray::update_tray_menu(&app);
     Ok(())

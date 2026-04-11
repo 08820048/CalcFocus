@@ -312,6 +312,10 @@ export function hudOverlayHide(): Promise<void> {
 	return invoke("hud_overlay_hide");
 }
 
+export function hudOverlayMinimize(): Promise<void> {
+	return invoke("hud_overlay_minimize");
+}
+
 export function hudOverlayClose(): Promise<void> {
 	return invoke("hud_overlay_close");
 }

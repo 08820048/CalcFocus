@@ -35,6 +35,8 @@ const FACECAM_TARGET_HEIGHT = 720;
 const FACECAM_TARGET_FRAME_RATE = 30;
 const FACECAM_BITRATE = 8_000_000;
 const MAC_NATIVE_CAPTURE_START_FAILURE = "Failed to start native ScreenCaptureKit recording";
+const COUNTDOWN_DELAY_STORAGE_KEY = "fluxlocus:recording-countdown-delay";
+const DEFAULT_COUNTDOWN_DELAY = 0;
 
 type FacecamCaptureResult = {
 	path: string;
@@ -84,6 +86,8 @@ type DesktopCaptureMediaDevices = MediaDevices & {
 
 type UseScreenRecorderReturn = {
 	recording: boolean;
+	countdownActive: boolean;
+	countdownRemaining: number;
 	toggleRecording: () => void;
 	preparePermissions: (options?: { startup?: boolean }) => Promise<boolean>;
 	isMacOS: boolean;
@@ -97,7 +101,28 @@ type UseScreenRecorderReturn = {
 	setCameraEnabled: (enabled: boolean) => void;
 	cameraDeviceId: string | undefined;
 	setCameraDeviceId: (deviceId: string | undefined) => void;
+	countdownDelay: number;
+	setCountdownDelay: (delay: number) => void;
 };
+
+function getInitialCountdownDelay() {
+	if (typeof window === "undefined") {
+		return DEFAULT_COUNTDOWN_DELAY;
+	}
+
+	let storedDelay: string | null = null;
+	try {
+		storedDelay = window.localStorage.getItem(COUNTDOWN_DELAY_STORAGE_KEY);
+	} catch {
+		return DEFAULT_COUNTDOWN_DELAY;
+	}
+	if (!storedDelay) {
+		return DEFAULT_COUNTDOWN_DELAY;
+	}
+
+	const parsedDelay = Number.parseInt(storedDelay, 10);
+	return Number.isFinite(parsedDelay) && parsedDelay >= 0 ? parsedDelay : DEFAULT_COUNTDOWN_DELAY;
+}
 
 function getSelectedSourceName(source: unknown) {
 	if (!source || typeof source !== "object") {
@@ -124,12 +149,15 @@ function getSelectedSourceName(source: unknown) {
 export function useScreenRecorder(): UseScreenRecorderReturn {
 	const [recording, setRecording] = useState(false);
 	const [starting, setStarting] = useState(false);
+	const [countdownActive, setCountdownActive] = useState(false);
+	const [countdownRemaining, setCountdownRemaining] = useState(0);
 	const [isMacOS, setIsMacOS] = useState(false);
 	const [microphoneEnabled, setMicrophoneEnabled] = useState(false);
 	const [microphoneDeviceId, setMicrophoneDeviceId] = useState<string | undefined>(undefined);
 	const [systemAudioEnabled, setSystemAudioEnabled] = useState(false);
 	const [cameraEnabled, setCameraEnabled] = useState(false);
 	const [cameraDeviceId, setCameraDeviceId] = useState<string | undefined>(undefined);
+	const [countdownDelay, setCountdownDelayState] = useState(getInitialCountdownDelay);
 	const mediaRecorder = useRef<MediaRecorder | null>(null);
 	const stream = useRef<MediaStream | null>(null);
 	const screenStream = useRef<MediaStream | null>(null);
@@ -156,6 +184,64 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 	const facecamWriteError = useRef<Error | null>(null);
 	const recordingHasData = useRef(false);
 	const facecamHasData = useRef(false);
+	const countdownTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+	const clearCountdownTimer = useCallback(() => {
+		if (countdownTimer.current) {
+			clearTimeout(countdownTimer.current);
+			countdownTimer.current = null;
+		}
+	}, []);
+
+	const setCountdownDelay = useCallback((delay: number) => {
+		const nextDelay = Number.isFinite(delay)
+			? Math.max(0, Math.floor(delay))
+			: DEFAULT_COUNTDOWN_DELAY;
+		setCountdownDelayState(nextDelay);
+		try {
+			window.localStorage.setItem(COUNTDOWN_DELAY_STORAGE_KEY, String(nextDelay));
+		} catch {
+			// Persistence is best-effort; recording should still work if storage is unavailable.
+		}
+	}, []);
+
+	const waitForCountdown = useCallback(
+		(delay: number) =>
+			new Promise<void>((resolve) => {
+				let remaining = Math.max(0, Math.floor(delay));
+				if (remaining <= 0) {
+					resolve();
+					return;
+				}
+
+				clearCountdownTimer();
+				setCountdownActive(true);
+				setCountdownRemaining(remaining);
+
+				const tick = () => {
+					remaining -= 1;
+					if (remaining <= 0) {
+						countdownTimer.current = null;
+						setCountdownRemaining(0);
+						setCountdownActive(false);
+						resolve();
+						return;
+					}
+
+					setCountdownRemaining(remaining);
+					countdownTimer.current = setTimeout(tick, 1000);
+				};
+
+				countdownTimer.current = setTimeout(tick, 1000);
+			}),
+		[clearCountdownTimer],
+	);
+
+	useEffect(() => {
+		return () => {
+			clearCountdownTimer();
+		};
+	}, [clearCountdownTimer]);
 
 	const resetStagedFileState = useCallback(
 		(
@@ -828,7 +914,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 			let systemAudioIncluded = false;
 
 			if (wantsAudioCapture) {
-				const videoConstraints = {
+				const videoConstraints: ChromeDesktopVideoConstraints = {
 					mandatory: {
 						chromeMediaSource: CHROME_MEDIA_SOURCE,
 						chromeMediaSourceId: selectedSource.id,
@@ -1114,15 +1200,27 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 	};
 
 	const toggleRecording = () => {
-		if (starting) {
+		if (starting || countdownActive) {
 			return;
 		}
 
-		recording ? stopRecording() : void startRecording();
+		if (recording) {
+			stopRecording();
+			return;
+		}
+
+		void (async () => {
+			if (countdownDelay > 0) {
+				await waitForCountdown(countdownDelay);
+			}
+			await startRecording();
+		})();
 	};
 
 	return {
 		recording,
+		countdownActive,
+		countdownRemaining,
 		toggleRecording,
 		preparePermissions,
 		isMacOS,
@@ -1136,5 +1234,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		setCameraEnabled,
 		cameraDeviceId,
 		setCameraDeviceId,
+		countdownDelay,
+		setCountdownDelay,
 	};
 }

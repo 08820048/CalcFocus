@@ -1,75 +1,85 @@
 {
-  "language": {
-    "label": "Language",
-    "english": "EN",
-    "chinese": "中文"
-  },
-  "back": "Back",
-  "choice": {
-    "screenshot": "Screenshot",
-    "recordVideo": "Record Video"
-  },
-  "source": {
-    "default": "Main Display"
-  },
-  "screenshot": {
-    "captureEntireScreen": "Capture Entire Screen",
-    "captureWindow": "Capture Window",
-    "captureArea": "Capture Area",
-    "take": "Take Screenshot",
-    "capturing": "Capturing...",
-    "permissionAlert": "FluxLocus needs Screen Recording permission to show live screen and window previews. System Settings has been opened. After enabling it, quit and reopen FluxLocus."
-  },
-  "recording": {
-    "record": "Record",
-    "enableSystemAudio": "Enable system audio",
-    "disableSystemAudio": "Disable system audio",
-    "enableFacecam": "Enable facecam",
-    "disableFacecam": "Disable facecam"
-  },
-  "microphone": {
-    "label": "Microphone",
-    "settings": "Microphone settings",
-    "enable": "Enable microphone",
-    "grantAccess": "Grant Microphone Access",
-    "openSystemSettings": "Open System Settings",
-    "unlocking": "Unlocking microphones...",
-    "loading": "Loading microphones...",
-    "select": "Select microphone",
-    "default": "Default Microphone",
-    "systemDefault": "System Default Microphone",
-    "helper": {
-      "denied": "Microphone access was denied. Open System Settings to grant permission.",
-      "notDetermined": "Microphone permission is required. Click 'Grant Access' below.",
-      "requesting": "Requesting microphone access to show all inputs...",
-      "permissionDenied": "Microphone access was denied. Using the system default microphone.",
-      "fallback": "Using the system default microphone in this window.",
-      "loading": "Loading microphone devices...",
-      "ready": "Choose which microphone to record."
-    }
-  },
-  "camera": {
-    "label": "Facecam",
-    "unlocking": "Unlocking cameras...",
-    "loading": "Loading cameras...",
-    "select": "Select camera",
-    "helper": {
-      "denied": "Camera access was denied. Open System Settings to grant permission.",
-      "requesting": "Requesting camera access to show all cameras...",
-      "permissionDenied": "Camera access was denied. Using the default camera when available.",
-      "fallback": "Camera device listing is unavailable in this window.",
-      "loading": "Loading camera devices...",
-      "ready": "Choose which facecam to preview and record."
-    }
-  },
-  "sourceSelector": {
-    "title": "Choose what to share",
-    "screens": "Screens",
-    "windows": "Windows",
-    "noScreens": "No screens available",
-    "noWindows": "No windows available",
-    "finding": "Finding sources...",
-    "cancel": "Cancel",
-    "share": "Share Source"
-  }
+	"language": {
+		"label": "Language",
+		"english": "EN",
+		"chinese": "中文"
+	},
+	"back": "Back",
+	"choice": {
+		"screenshot": "Screenshot",
+		"recordVideo": "Record Video"
+	},
+	"source": {
+		"default": "Main Display"
+	},
+	"screenshot": {
+		"captureEntireScreen": "Capture Entire Screen",
+		"captureWindow": "Capture Window",
+		"captureArea": "Capture Area",
+		"take": "Take Screenshot",
+		"capturing": "Capturing...",
+		"permissionAlert": "FluxLocus needs Screen Recording permission to show live screen and window previews. System Settings has been opened. After enabling it, quit and reopen FluxLocus."
+	},
+	"recording": {
+		"record": "Record",
+		"enableSystemAudio": "Enable system audio",
+		"disableSystemAudio": "Disable system audio",
+		"enableFacecam": "Enable facecam",
+		"disableFacecam": "Disable facecam",
+		"countdownDelay": "Countdown delay",
+		"noDelay": "No delay",
+		"minimize": "Minimize",
+		"close": "Close"
+	},
+	"microphone": {
+		"label": "Microphone",
+		"settings": "Microphone settings",
+		"enable": "Enable microphone",
+		"grantAccess": "Grant Microphone Access",
+		"openSystemSettings": "Open System Settings",
+		"unlocking": "Unlocking microphones...",
+		"loading": "Loading microphones...",
+		"select": "Select microphone",
+		"default": "Default Microphone",
+		"systemDefault": "System Default Microphone",
+		"helper": {
+			"denied": "Microphone access was denied. Open System Settings to grant permission.",
+			"notDetermined": "Microphone permission is required. Click 'Grant Access' below.",
+			"requesting": "Requesting microphone access to show all inputs...",
+			"permissionDenied": "Microphone access was denied. Using the system default microphone.",
+			"fallback": "Using the system default microphone in this window.",
+			"loading": "Loading microphone devices...",
+			"ready": "Choose which microphone to record."
+		}
+	},
+	"camera": {
+		"label": "Facecam",
+		"grantAccess": "Grant Camera Access",
+		"openSystemSettings": "Open System Settings",
+		"openDeviceMenu": "Click the camera icon to choose a device.",
+		"turnOff": "Turn off facecam",
+		"selectToEnable": "Select a camera to enable facecam.",
+		"noDevices": "No cameras found",
+		"unlocking": "Unlocking cameras...",
+		"loading": "Loading cameras...",
+		"select": "Select camera",
+		"helper": {
+			"denied": "Camera access was denied. Open System Settings to grant permission.",
+			"requesting": "Requesting camera access to show all cameras...",
+			"permissionDenied": "Camera access was denied. Using the default camera when available.",
+			"fallback": "Camera device listing is unavailable in this window.",
+			"loading": "Loading camera devices...",
+			"ready": "Choose which facecam to preview and record."
+		}
+	},
+	"sourceSelector": {
+		"title": "Choose what to share",
+		"screens": "Screens",
+		"windows": "Windows",
+		"noScreens": "No screens available",
+		"noWindows": "No windows available",
+		"finding": "Finding sources...",
+		"cancel": "Cancel",
+		"share": "Share Source"
+	}
 }

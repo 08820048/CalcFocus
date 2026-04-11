@@ -63,6 +63,7 @@ pub fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         .on_menu_event(|app, event| match event.id().as_ref() {
             "open" => {
                 if let Some(window) = app.get_webview_window("hud-overlay") {
+                    let _ = window.unminimize();
                     let _ = window.show();
                     let _ = window.set_focus();
                 } else if let Some(window) =

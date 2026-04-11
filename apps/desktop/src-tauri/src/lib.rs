@@ -143,6 +143,7 @@ pub fn run() {
             commands::window_mgmt::close_source_selector,
             commands::window_mgmt::hud_overlay_show,
             commands::window_mgmt::hud_overlay_hide,
+            commands::window_mgmt::hud_overlay_minimize,
             commands::window_mgmt::hud_overlay_close,
             commands::window_mgmt::start_hud_overlay_drag,
             commands::window_mgmt::set_has_unsaved_changes,
