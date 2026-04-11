@@ -1,5 +1,5 @@
-import { useRow } from "dnd-timeline";
 import type { RowDefinition } from "dnd-timeline";
+import { useRow } from "dnd-timeline";
 
 interface RowProps extends RowDefinition {
 	children: React.ReactNode;
@@ -13,10 +13,7 @@ export default function Row({ id, children, label, hint, isEmpty, labelColor = "
 	const { setNodeRef, rowWrapperStyle, rowStyle } = useRow({ id });
 
 	return (
-		<div
-			className="border-b border-[#18181b] bg-[#18181b] relative"
-			style={{ ...rowWrapperStyle, minHeight: 48, marginBottom: 4 }}
-		>
+		<div className="relative" style={{ ...rowWrapperStyle, minHeight: 48, marginBottom: 4 }}>
 			{label && (
 				<div
 					className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[9px] font-semibold uppercase tracking-widest z-20 pointer-events-none select-none"

@@ -49,14 +49,10 @@
 	},
 	"toolbar": {
 		"addZoom": "Add Zoom ({{shortcut}})",
-		"addZoomShortcut": "Zoom {{shortcut}}",
 		"suggestZooms": "Suggest Zooms from Cursor",
 		"addTrim": "Add Trim ({{shortcut}})",
-		"addTrimShortcut": "Trim {{shortcut}}",
 		"addAnnotation": "Add Annotation ({{shortcut}})",
-		"addAnnotationShortcut": "Annotation {{shortcut}}",
-		"addSpeed": "Add Speed ({{shortcut}})",
-		"addSpeedShortcut": "Speed {{shortcut}}"
+		"addSpeed": "Add Speed ({{shortcut}})"
 	},
 	"rows": {
 		"zoomHint": "Press {{shortcut}} to add zoom",
