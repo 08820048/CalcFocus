@@ -416,8 +416,8 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 						await backend.openScreenRecordingPreferences();
 						alert(
 							options.startup
-								? "FluxLocus needs Screen Recording permission before you start. System Settings has been opened. After enabling it, quit and reopen FluxLocus."
-								: "Screen Recording permission is still missing. System Settings has been opened again. Enable it, then quit and reopen FluxLocus before recording.",
+								? "CalcFocus needs Screen Recording permission before you start. System Settings has been opened. After enabling it, quit and reopen CalcFocus."
+								: "Screen Recording permission is still missing. System Settings has been opened again. Enable it, then quit and reopen CalcFocus before recording.",
 						);
 						return false;
 					}
@@ -432,8 +432,8 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 					await backend.openAccessibilityPreferences();
 					alert(
 						options.startup
-							? "FluxLocus also needs Accessibility permission for cursor tracking. System Settings has been opened. After enabling it, quit and reopen FluxLocus."
-							: "Accessibility permission is still missing. System Settings has been opened again. Enable it, then quit and reopen FluxLocus before recording.",
+							? "CalcFocus also needs Accessibility permission for cursor tracking. System Settings has been opened. After enabling it, quit and reopen CalcFocus."
+							: "Accessibility permission is still missing. System Settings has been opened again. Enable it, then quit and reopen CalcFocus before recording.",
 					);
 					return false;
 				}

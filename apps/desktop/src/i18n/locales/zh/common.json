@@ -1,7 +1,7 @@
 {
-  "app": {
-    "name": "FluxLocus",
-    "editorTitle": "FluxLocus 编辑器",
-    "subtitle": "屏幕录制与编辑"
-  }
+	"app": {
+		"name": "CalcFocus",
+		"editorTitle": "CalcFocus 编辑器",
+		"subtitle": "屏幕录制与编辑"
+	}
 }

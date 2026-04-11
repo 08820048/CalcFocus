@@ -3,8 +3,8 @@
 <plist version="1.0">
   <dict>
     <key>NSMicrophoneUsageDescription</key>
-    <string>FluxLocus needs microphone access to record audio during screen recordings.</string>
+    <string>CalcFocus needs microphone access to record audio during screen recordings.</string>
     <key>NSCameraUsageDescription</key>
-    <string>FluxLocus needs camera access to record facecam video during screen recordings.</string>
+    <string>CalcFocus needs camera access to record facecam video during screen recordings.</string>
   </dict>
 </plist>

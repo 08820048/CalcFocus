@@ -49,10 +49,14 @@
 	},
 	"toolbar": {
 		"addZoom": "添加缩放（{{shortcut}}）",
+		"addZoomShortcut": "缩放 {{shortcut}}",
 		"suggestZooms": "根据光标生成缩放建议",
 		"addTrim": "添加裁剪（{{shortcut}}）",
+		"addTrimShortcut": "裁剪 {{shortcut}}",
 		"addAnnotation": "添加标注（{{shortcut}}）",
-		"addSpeed": "添加变速（{{shortcut}}）"
+		"addAnnotationShortcut": "标注 {{shortcut}}",
+		"addSpeed": "添加变速（{{shortcut}}）",
+		"addSpeedShortcut": "变速 {{shortcut}}"
 	},
 	"rows": {
 		"zoomHint": "按 {{shortcut}} 添加缩放",

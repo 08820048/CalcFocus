@@ -148,7 +148,7 @@ export function buildVideoEditorNavbarTitle(options: {
 			: null;
 	const sourceName = normalizeSourceName(options.sourceName) ?? null;
 	const primaryTitle =
-		projectTitle ?? videoTitle ?? sourceName ?? options.fallbackTitle ?? "FluxLocus";
+		projectTitle ?? videoTitle ?? sourceName ?? options.fallbackTitle ?? "CalcFocus";
 
 	if (
 		!sourceName ||

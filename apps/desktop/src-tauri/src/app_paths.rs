@@ -2,8 +2,8 @@ use std::path::PathBuf;
 
 use tauri::{AppHandle, Manager};
 
-const PROD_APP_DIR_NAME: &str = "FluxLocus";
-const DEV_APP_DIR_NAME: &str = "FluxLocus Dev";
+const PROD_APP_DIR_NAME: &str = "CalcFocus";
+const DEV_APP_DIR_NAME: &str = "CalcFocus Dev";
 
 pub fn app_dir_name() -> &'static str {
     if cfg!(debug_assertions) {

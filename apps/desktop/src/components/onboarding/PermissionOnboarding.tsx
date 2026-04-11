@@ -6,12 +6,16 @@
  * a brief resize so the user gets a clear, focused permission-granting experience.
  */
 
-import { getCurrentWindow, primaryMonitor } from "@tauri-apps/api/window";
 import { LogicalSize, PhysicalPosition } from "@tauri-apps/api/dpi";
+import { getCurrentWindow, primaryMonitor } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { MdCheck, MdClose, MdMic, MdScreenShare, MdVideocam } from "react-icons/md";
 import { HiShieldCheck } from "react-icons/hi2";
-import type { PermissionState, PermissionStatus, UsePermissionsResult } from "../../hooks/usePermissions";
+import { MdCheck, MdClose, MdMic, MdScreenShare, MdVideocam } from "react-icons/md";
+import type {
+	PermissionState,
+	PermissionStatus,
+	UsePermissionsResult,
+} from "../../hooks/usePermissions";
 
 const ONBOARDING_COMPLETE_KEY = "fluxlocus-onboarding-v1";
 const ONBOARDING_WINDOW_WIDTH = 480;
@@ -124,9 +128,7 @@ export function PermissionOnboarding({ permissionsHook, onComplete }: Permission
 				const logicalH = monitor.size.height / scale;
 				const x = (logicalW - HUD_WIDTH) / 2;
 				const y = logicalH - HUD_HEIGHT - 5;
-				await win.setPosition(
-					new PhysicalPosition(Math.round(x * scale), Math.round(y * scale)),
-				);
+				await win.setPosition(new PhysicalPosition(Math.round(x * scale), Math.round(y * scale)));
 			}
 		} catch {
 			await win.center();
@@ -202,9 +204,7 @@ export function PermissionOnboarding({ permissionsHook, onComplete }: Permission
 							<HiShieldCheck size={28} className="text-blue-400" />
 						</div>
 						<div>
-							<h2 className="text-base font-semibold text-white">
-								Welcome to FluxLocus
-							</h2>
+							<h2 className="text-base font-semibold text-white">Welcome to CalcFocus</h2>
 							<p className="mt-1.5 text-xs text-white/55 leading-relaxed max-w-[320px]">
 								We need a few permissions to capture your screen, microphone, and camera.
 								{isMacOS
@@ -260,8 +260,7 @@ export function PermissionOnboarding({ permissionsHook, onComplete }: Permission
 						<div>
 							<h2 className="text-base font-semibold text-white">You're All Set!</h2>
 							<p className="mt-1.5 text-xs text-white/55 leading-relaxed max-w-[320px]">
-								FluxLocus is ready to go. You can change permissions
-								anytime in System Settings.
+								CalcFocus is ready to go. You can change permissions anytime in System Settings.
 							</p>
 						</div>
 						<PermissionSummary permissions={permissions} />
@@ -309,9 +308,7 @@ export function PermissionOnboarding({ permissionsHook, onComplete }: Permission
 				<div className="flex items-center gap-2 text-xs">
 					{statusIcon(status)}
 					<span
-						className={
-							isGranted ? "text-emerald-400" : isDenied ? "text-red-400" : "text-white/50"
-						}
+						className={isGranted ? "text-emerald-400" : isDenied ? "text-red-400" : "text-white/50"}
 					>
 						{statusLabel(status)}
 					</span>
@@ -363,8 +360,7 @@ export function PermissionOnboarding({ permissionsHook, onComplete }: Permission
 			<div
 				className="flex flex-col items-center gap-5 w-full max-w-[440px] px-6 py-6 rounded-[22px]"
 				style={{
-					background:
-						"linear-gradient(135deg, rgba(28,28,36,0.97) 0%, rgba(18,18,26,0.96) 100%)",
+					background: "linear-gradient(135deg, rgba(28,28,36,0.97) 0%, rgba(18,18,26,0.96) 100%)",
 					backdropFilter: "blur(16px) saturate(140%)",
 					WebkitBackdropFilter: "blur(16px) saturate(140%)",
 					border: "1px solid rgba(80,80,120,0.25)",

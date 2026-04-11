@@ -18,7 +18,7 @@
 		"captureArea": "Capture Area",
 		"take": "Take Screenshot",
 		"capturing": "Capturing...",
-		"permissionAlert": "FluxLocus needs Screen Recording permission to show live screen and window previews. System Settings has been opened. After enabling it, quit and reopen FluxLocus."
+		"permissionAlert": "CalcFocus needs Screen Recording permission to show live screen and window previews. System Settings has been opened. After enabling it, quit and reopen CalcFocus."
 	},
 	"recording": {
 		"record": "Record",

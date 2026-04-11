@@ -12,7 +12,7 @@ import { loadAllCustomFonts } from "./lib/customFonts";
 
 export default function App() {
 	const [windowType, setWindowType] = useState("");
-	const [appName, setAppName] = useState("FluxLocus");
+	const [appName, setAppName] = useState("CalcFocus");
 	const { t } = useI18n();
 
 	useEffect(() => {
@@ -35,7 +35,7 @@ export default function App() {
 		getName()
 			.then(setAppName)
 			.catch(() => {
-				setAppName("FluxLocus");
+				setAppName("CalcFocus");
 			});
 	}, []);
 

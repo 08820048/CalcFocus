@@ -97,7 +97,7 @@ pub async fn save_project_file(
         app.dialog()
             .file()
             .set_file_name(&file_name)
-            .add_filter("FluxLocus Project", &["fluxlocus"])
+            .add_filter("CalcFocus Project", &["fluxlocus"])
             .save_file(move |path| {
                 let _ = tx.send(path);
             });
@@ -132,7 +132,7 @@ pub async fn load_project_file(
 
     app.dialog()
         .file()
-        .add_filter("FluxLocus Project", &["fluxlocus"])
+        .add_filter("CalcFocus Project", &["fluxlocus"])
         .pick_file(move |path| {
             let _ = tx.send(path);
         });

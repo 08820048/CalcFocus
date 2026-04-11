@@ -514,7 +514,7 @@ export function LaunchWindow() {
 					alert(
 						t(
 							"screenshot.permissionAlert",
-							"FluxLocus needs Screen Recording permission to show live screen and window previews. System Settings has been opened. After enabling it, quit and reopen FluxLocus.",
+							"CalcFocus needs Screen Recording permission to show live screen and window previews. System Settings has been opened. After enabling it, quit and reopen CalcFocus.",
 						),
 					);
 					return;

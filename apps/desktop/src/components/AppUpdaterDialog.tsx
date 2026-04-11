@@ -106,7 +106,7 @@ export function AppUpdaterDialog({ enableAutoCheck = true }: AppUpdaterDialogPro
 								Checking for updates
 							</DialogTitle>
 							<DialogDescription className="text-slate-400">
-								Looking for the latest FluxLocus release.
+								Looking for the latest CalcFocus release.
 							</DialogDescription>
 						</DialogHeader>
 						<p className="rounded-lg border border-[#2563EB]/20 bg-[#2563EB]/10 px-4 py-3 text-sm text-slate-200">
@@ -120,7 +120,7 @@ export function AppUpdaterDialog({ enableAutoCheck = true }: AppUpdaterDialogPro
 						<DialogHeader>
 							<DialogTitle className="flex items-center gap-2 text-base">
 								<CheckCircle2 className="h-5 w-5 text-emerald-400" />
-								FluxLocus is up to date
+								CalcFocus is up to date
 							</DialogTitle>
 							<DialogDescription className="text-slate-400">
 								You already have the latest available version installed.
@@ -142,7 +142,7 @@ export function AppUpdaterDialog({ enableAutoCheck = true }: AppUpdaterDialogPro
 								Update available{version ? `: v${version}` : ""}
 							</DialogTitle>
 							<DialogDescription className="text-slate-400">
-								A newer version of FluxLocus is ready to install.
+								A newer version of CalcFocus is ready to install.
 							</DialogDescription>
 						</DialogHeader>
 						{releaseNotes ? (
@@ -176,7 +176,7 @@ export function AppUpdaterDialog({ enableAutoCheck = true }: AppUpdaterDialogPro
 						<DialogHeader>
 							<DialogTitle className="flex items-center gap-2 text-base">
 								<RefreshCw className="h-5 w-5 animate-spin text-[#2563EB]" />
-								Updating FluxLocus
+								Updating CalcFocus
 							</DialogTitle>
 							<DialogDescription className="text-slate-400">
 								Downloading and installing{version ? ` v${version}` : " the latest release"}.
@@ -197,7 +197,7 @@ export function AppUpdaterDialog({ enableAutoCheck = true }: AppUpdaterDialogPro
 								Update ready to restart
 							</DialogTitle>
 							<DialogDescription className="text-slate-400">
-								FluxLocus needs to restart to finish applying the update.
+								CalcFocus needs to restart to finish applying the update.
 							</DialogDescription>
 						</DialogHeader>
 						<DialogFooter>
@@ -224,7 +224,7 @@ export function AppUpdaterDialog({ enableAutoCheck = true }: AppUpdaterDialogPro
 								Update failed
 							</DialogTitle>
 							<DialogDescription className="text-slate-400">
-								FluxLocus could not complete the update.
+								CalcFocus could not complete the update.
 							</DialogDescription>
 						</DialogHeader>
 						<p className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">

@@ -1,5 +1,5 @@
 /**
- * Performance instrumentation for FluxLocus.
+ * Performance instrumentation for CalcFocus.
  *
  * Uses OpenTelemetry API + a console-based span exporter so traces are
  * visible in the browser dev-tools console.  A React `<Profiler>` helper

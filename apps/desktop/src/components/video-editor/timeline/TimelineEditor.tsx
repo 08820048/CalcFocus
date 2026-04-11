@@ -1,15 +1,6 @@
 import type { Range, Span } from "dnd-timeline";
 import { useTimelineContext } from "dnd-timeline";
-import {
-	Check,
-	ChevronDown,
-	Gauge,
-	MessageSquare,
-	Plus,
-	Scissors,
-	WandSparkles,
-	ZoomIn,
-} from "lucide-react";
+import { Check, ChevronDown, Plus, WandSparkles } from "lucide-react";
 import {
 	memo,
 	type KeyboardEvent as ReactKeyboardEvent,
@@ -1443,13 +1434,15 @@ function TimelineEditorInner({
 					<Button
 						onClick={handleAddZoom}
 						variant="ghost"
-						size="icon"
-						className="h-7 w-7 text-slate-400 hover:text-[#09cf67] hover:bg-[#09cf67]/10 transition-all"
+						size="sm"
+						className="h-7 px-1.5 rounded-none bg-transparent text-[11px] font-semibold text-[#09cf67] hover:bg-transparent hover:text-[#8cf0ba] transition-colors"
 						title={t("toolbar.addZoom", "Add Zoom ({{shortcut}})", {
 							shortcut: actionShortcutLabels.addZoom,
 						})}
 					>
-						<ZoomIn className="w-4 h-4" />
+						{t("toolbar.addZoomShortcut", "Zoom {{shortcut}}", {
+							shortcut: actionShortcutLabels.addZoom,
+						})}
 					</Button>
 					<Button
 						onClick={handleSuggestZooms}
@@ -1463,35 +1456,41 @@ function TimelineEditorInner({
 					<Button
 						onClick={handleAddTrim}
 						variant="ghost"
-						size="icon"
-						className="h-7 w-7 text-slate-400 hover:text-[#ef4444] hover:bg-[#ef4444]/10 transition-all"
+						size="sm"
+						className="h-7 px-1.5 rounded-none bg-transparent text-[11px] font-semibold text-[#ef4444] hover:bg-transparent hover:text-[#fca5a5] transition-colors"
 						title={t("toolbar.addTrim", "Add Trim ({{shortcut}})", {
 							shortcut: actionShortcutLabels.addTrim,
 						})}
 					>
-						<Scissors className="w-4 h-4" />
+						{t("toolbar.addTrimShortcut", "Trim {{shortcut}}", {
+							shortcut: actionShortcutLabels.addTrim,
+						})}
 					</Button>
 					<Button
 						onClick={handleAddAnnotation}
 						variant="ghost"
-						size="icon"
-						className="h-7 w-7 text-slate-400 hover:text-[#B4A046] hover:bg-[#B4A046]/10 transition-all"
+						size="sm"
+						className="h-7 px-1.5 rounded-none bg-transparent text-[11px] font-semibold text-[#B4A046] hover:bg-transparent hover:text-[#e7d978] transition-colors"
 						title={t("toolbar.addAnnotation", "Add Annotation ({{shortcut}})", {
 							shortcut: actionShortcutLabels.addAnnotation,
 						})}
 					>
-						<MessageSquare className="w-4 h-4" />
+						{t("toolbar.addAnnotationShortcut", "Annotation {{shortcut}}", {
+							shortcut: actionShortcutLabels.addAnnotation,
+						})}
 					</Button>
 					<Button
 						onClick={handleAddSpeed}
 						variant="ghost"
-						size="icon"
-						className="h-7 w-7 text-slate-400 hover:text-[#d97706] hover:bg-[#d97706]/10 transition-all"
+						size="sm"
+						className="h-7 px-1.5 rounded-none bg-transparent text-[11px] font-semibold text-[#d97706] hover:bg-transparent hover:text-[#fbbf24] transition-colors"
 						title={t("toolbar.addSpeed", "Add Speed ({{shortcut}})", {
 							shortcut: actionShortcutLabels.addSpeed,
 						})}
 					>
-						<Gauge className="w-4 h-4" />
+						{t("toolbar.addSpeedShortcut", "Speed {{shortcut}}", {
+							shortcut: actionShortcutLabels.addSpeed,
+						})}
 					</Button>
 				</div>
 				<div className="flex items-center gap-2">
