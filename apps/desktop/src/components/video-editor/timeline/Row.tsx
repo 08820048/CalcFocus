@@ -13,7 +13,10 @@ export default function Row({ id, children, label, hint, isEmpty, labelColor = "
 	const { setNodeRef, rowWrapperStyle, rowStyle } = useRow({ id });
 
 	return (
-		<div className="relative" style={{ ...rowWrapperStyle, minHeight: 48, marginBottom: 4 }}>
+		<div
+			className="relative border-y border-dashed border-white/[0.08]"
+			style={{ ...rowWrapperStyle, minHeight: 48, marginBottom: 4 }}
+		>
 			{label && (
 				<div
 					className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[9px] font-semibold uppercase tracking-widest z-20 pointer-events-none select-none"

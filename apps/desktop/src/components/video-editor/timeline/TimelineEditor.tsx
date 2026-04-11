@@ -567,7 +567,6 @@ function Timeline({
 			className="select-none bg-[#09090b] min-h-[140px] relative cursor-pointer group"
 			onClick={handleTimelineClick}
 		>
-			<div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff03_1px,transparent_1px)] bg-[length:20px_100%] pointer-events-none" />
 			<TimelineAxis videoDurationMs={videoDurationMs} currentTimeMs={currentTimeMs} />
 			<PlaybackCursor
 				currentTimeMs={currentTimeMs}
