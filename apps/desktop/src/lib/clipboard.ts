@@ -8,7 +8,7 @@ export async function copyCanvasImageToClipboard(canvas: HTMLCanvasElement): Pro
 	}
 
 	const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-	const image = await Image.new(imageData.data, canvas.width, canvas.height);
+	const image = await Image.new(Uint8Array.from(imageData.data), canvas.width, canvas.height);
 
 	try {
 		await writeImage(image);

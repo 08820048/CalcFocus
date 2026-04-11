@@ -216,21 +216,30 @@ function normalizeEntry(
 
 	const adjustedTimeMs = rawTime * (context.scaleTimeToMs ? 1000 : 1) - context.timeOffsetMs;
 	const safeDurationMs = context.durationMs ?? Number.MAX_SAFE_INTEGER;
+	const interactionType = normalizeInteractionType(
+		entry.interactionType ??
+			entry.interaction_type ??
+			entry.clickType ??
+			entry.click_type ??
+			entry.type,
+		defaultInteractionType,
+	);
+	const cursorType = normalizeCursorType(entry.cursorType ?? entry.cursor_type ?? entry.cursor);
 
-	return {
+	const normalizedPoint: CursorTelemetryPoint = {
 		timeMs: Math.max(0, Math.min(adjustedTimeMs, safeDurationMs)),
 		cx,
 		cy,
-		interactionType: normalizeInteractionType(
-			entry.interactionType ??
-				entry.interaction_type ??
-				entry.clickType ??
-				entry.click_type ??
-				entry.type,
-			defaultInteractionType,
-		),
-		cursorType: normalizeCursorType(entry.cursorType ?? entry.cursor_type ?? entry.cursor),
-	} satisfies CursorTelemetryPoint;
+	};
+
+	if (interactionType) {
+		normalizedPoint.interactionType = interactionType;
+	}
+	if (cursorType) {
+		normalizedPoint.cursorType = cursorType;
+	}
+
+	return normalizedPoint;
 }
 
 function getMaxObservedCoordinate(entries: unknown[], axis: "x" | "y" | "cx" | "cy") {

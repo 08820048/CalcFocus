@@ -186,7 +186,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 	const finalizingPausedDurationMs = useRef(0);
 	const nativeScreenRecording = useRef(false);
 	const wgcRecording = useRef(false);
-	const linuxCursorTelemetryCaptureActive = useRef(false);
+	const cursorTelemetryCaptureActive = useRef(false);
 	const startInFlight = useRef(false);
 	const hasPromptedForReselect = useRef(false);
 	const selectedSourceName = useRef<string | undefined>(undefined);
@@ -383,17 +383,31 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		[resetStagedFileState],
 	);
 
-	const stopLinuxCursorTelemetryCapture = useCallback(async (videoPath?: string | null) => {
-		if (!linuxCursorTelemetryCaptureActive.current) {
+	const startCursorTelemetryCapture = useCallback(async (platform: string) => {
+		if (cursorTelemetryCaptureActive.current) {
 			return;
 		}
 
-		linuxCursorTelemetryCaptureActive.current = false;
+		try {
+			await backend.startCursorTelemetryCapture();
+			cursorTelemetryCaptureActive.current = true;
+		} catch (error) {
+			cursorTelemetryCaptureActive.current = false;
+			console.warn(`${platform} cursor telemetry capture is unavailable:`, error);
+		}
+	}, []);
+
+	const stopCursorTelemetryCapture = useCallback(async (videoPath?: string | null) => {
+		if (!cursorTelemetryCaptureActive.current) {
+			return;
+		}
+
+		cursorTelemetryCaptureActive.current = false;
 
 		try {
 			await backend.stopCursorTelemetryCapture(videoPath ?? null);
 		} catch (error) {
-			console.warn("Failed to persist Linux cursor telemetry:", error);
+			console.warn("Failed to persist cursor telemetry:", error);
 		}
 	}, []);
 
@@ -739,6 +753,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 
 				if (!stoppedPath) {
 					console.error("Failed to stop native screen recording");
+					await stopCursorTelemetryCapture(null);
 					await facecamResultPromise.catch(() => null);
 					finalizingPausedDurationMs.current = 0;
 					await backend.switchToEditor();
@@ -757,6 +772,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 				}
 
 				const facecamResult = await facecamResultPromise.catch(() => null);
+				await stopCursorTelemetryCapture(finalPath);
 				const recordingSession = buildRecordingSession(finalPath, facecamResult);
 				await backend.setCurrentVideoPath(finalPath).catch(() => null);
 				await backend.setCurrentRecordingSession(recordingSession);
@@ -793,6 +809,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		getPausedDurationForFinalize,
 		resetRecordingRuntimeControls,
 		stopFacecamCapture,
+		stopCursorTelemetryCapture,
 	]);
 
 	useEffect(() => {
@@ -831,7 +848,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 				setRecording(false);
 				nativeScreenRecording.current = false;
 				resetRecordingRuntimeControls();
-				void stopLinuxCursorTelemetryCapture(null);
+				void stopCursorTelemetryCapture(null);
 				cleanupCapturedMedia();
 				void backend.setRecordingState(false);
 			})
@@ -866,7 +883,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 			}
 
 			resetRecordingRuntimeControls();
-			void stopLinuxCursorTelemetryCapture(null);
+			void stopCursorTelemetryCapture(null);
 			cleanupCapturedMedia();
 			if (recordingFilePath.current) {
 				void backend.deleteRecordingFile(recordingFilePath.current).catch(() => null);
@@ -892,7 +909,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		cleanupCapturedMedia,
 		resetRecordingRuntimeControls,
 		resetStagedFileState,
-		stopLinuxCursorTelemetryCapture,
+		stopCursorTelemetryCapture,
 		stopRecording,
 	]);
 
@@ -944,6 +961,10 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 			}
 
 			if (useNativeMacScreenCapture || useWgcCapture) {
+				if (useNativeMacScreenCapture) {
+					await startCursorTelemetryCapture(platform);
+				}
+
 				let micLabel: string | undefined;
 				if (useWgcCapture && microphoneEnabled) {
 					try {
@@ -994,17 +1015,11 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 			}
 
 			if (platform === "linux") {
-				try {
-					await backend.startCursorTelemetryCapture();
-					linuxCursorTelemetryCaptureActive.current = true;
-				} catch (error) {
-					linuxCursorTelemetryCaptureActive.current = false;
-					console.warn("Linux cursor telemetry capture is unavailable:", error);
-				}
+				await startCursorTelemetryCapture(platform);
 			}
 
 			const wantsAudioCapture = microphoneEnabled || systemAudioEnabled;
-			const shouldHideSourceCursor = linuxCursorTelemetryCaptureActive.current;
+			const shouldHideSourceCursor = cursorTelemetryCaptureActive.current;
 
 			try {
 				await backend.hideCursor();
@@ -1222,13 +1237,13 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 					);
 					if (!storedPath) {
 						console.error("Failed to store video");
-						await stopLinuxCursorTelemetryCapture(null);
+						await stopCursorTelemetryCapture(null);
 						finalizingPausedDurationMs.current = 0;
 						return;
 					}
 
 					await backend.setCurrentVideoPath(storedPath).catch(() => null);
-					await stopLinuxCursorTelemetryCapture(storedPath);
+					await stopCursorTelemetryCapture(storedPath);
 					const facecamResult = pendingFacecamResult.current
 						? await pendingFacecamResult.current
 						: null;
@@ -1249,7 +1264,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 					);
 				} catch (error) {
 					console.error("Error saving recording:", error);
-					await stopLinuxCursorTelemetryCapture(null);
+					await stopCursorTelemetryCapture(null);
 					if (recordingFilePath.current) {
 						await backend.deleteRecordingFile(recordingFilePath.current).catch(() => null);
 					}
@@ -1282,7 +1297,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 			setRecording(false);
 			resetRecordingRuntimeControls();
 			const facecamResultPromise = stopFacecamCapture();
-			await stopLinuxCursorTelemetryCapture(recordingFilePath.current);
+			await stopCursorTelemetryCapture(recordingFilePath.current);
 			cleanupCapturedMedia();
 			if (recordingFilePath.current) {
 				await backend.deleteRecordingFile(recordingFilePath.current).catch(() => null);

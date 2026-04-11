@@ -5,7 +5,61 @@ use std::sync::{
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
-use crate::state::{AppState, CursorTelemetryCapture, CursorTelemetryPoint};
+use crate::state::{AppState, CursorTelemetryCapture, CursorTelemetryPoint, SelectedSource};
+
+#[cfg(target_os = "macos")]
+use std::ffi::c_void;
+
+#[cfg(target_os = "macos")]
+type CGDirectDisplayID = u32;
+
+#[cfg(target_os = "macos")]
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct CGPoint {
+    x: f64,
+    y: f64,
+}
+
+#[cfg(target_os = "macos")]
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct CGSize {
+    width: f64,
+    height: f64,
+}
+
+#[cfg(target_os = "macos")]
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct CGRect {
+    origin: CGPoint,
+    size: CGSize,
+}
+
+#[cfg(target_os = "macos")]
+#[derive(Clone, Copy)]
+struct CursorCaptureBounds {
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+}
+
+#[cfg(target_os = "macos")]
+#[link(name = "CoreGraphics", kind = "framework")]
+unsafe extern "C" {
+    fn CGMainDisplayID() -> CGDirectDisplayID;
+    fn CGDisplayBounds(display: CGDirectDisplayID) -> CGRect;
+    fn CGEventCreate(source: *mut c_void) -> *mut c_void;
+    fn CGEventGetLocation(event: *mut c_void) -> CGPoint;
+}
+
+#[cfg(target_os = "macos")]
+#[link(name = "CoreFoundation", kind = "framework")]
+unsafe extern "C" {
+    fn CFRelease(cf: *const c_void);
+}
 
 fn telemetry_path_for_video(video_path: &str) -> String {
     format!(
@@ -86,6 +140,123 @@ fn spawn_linux_cursor_sampler(
     }))
 }
 
+#[cfg(target_os = "macos")]
+fn parse_macos_display_id_segment(value: &str) -> Option<CGDirectDisplayID> {
+    let segment = value.trim();
+    if segment.is_empty() {
+        return None;
+    }
+
+    segment.parse::<CGDirectDisplayID>().ok()
+}
+
+#[cfg(target_os = "macos")]
+fn parse_macos_display_id(value: &str) -> Option<CGDirectDisplayID> {
+    let value = value.trim();
+    if let Some(rest) = value.strip_prefix("screen:") {
+        return rest
+            .split(':')
+            .next()
+            .and_then(parse_macos_display_id_segment);
+    }
+
+    parse_macos_display_id_segment(value)
+}
+
+#[cfg(target_os = "macos")]
+fn parse_macos_source_display_id(value: &str) -> Option<CGDirectDisplayID> {
+    let rest = value.trim().strip_prefix("screen:")?;
+    rest.split(':')
+        .next()
+        .and_then(parse_macos_display_id_segment)
+}
+
+#[cfg(target_os = "macos")]
+fn selected_display_id(source: Option<&SelectedSource>) -> CGDirectDisplayID {
+    source
+        .and_then(|source| {
+            source
+                .display_id
+                .as_deref()
+                .and_then(parse_macos_display_id)
+                .or_else(|| parse_macos_source_display_id(&source.id))
+        })
+        .unwrap_or_else(|| unsafe { CGMainDisplayID() })
+}
+
+#[cfg(target_os = "macos")]
+fn display_capture_bounds(display_id: CGDirectDisplayID) -> CursorCaptureBounds {
+    let rect = unsafe { CGDisplayBounds(display_id) };
+    if rect.size.width > 0.0 && rect.size.height > 0.0 {
+        return CursorCaptureBounds {
+            x: rect.origin.x,
+            y: rect.origin.y,
+            width: rect.size.width,
+            height: rect.size.height,
+        };
+    }
+
+    let fallback = unsafe { CGDisplayBounds(CGMainDisplayID()) };
+    CursorCaptureBounds {
+        x: fallback.origin.x,
+        y: fallback.origin.y,
+        width: fallback.size.width.max(1.0),
+        height: fallback.size.height.max(1.0),
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn current_cursor_location() -> Option<CGPoint> {
+    let event = unsafe { CGEventCreate(std::ptr::null_mut()) };
+    if event.is_null() {
+        return None;
+    }
+
+    let location = unsafe { CGEventGetLocation(event) };
+    unsafe { CFRelease(event.cast_const()) };
+    Some(location)
+}
+
+#[cfg(target_os = "macos")]
+fn clamp_unit(value: f64) -> f64 {
+    value.clamp(0.0, 1.0)
+}
+
+#[cfg(target_os = "macos")]
+fn spawn_macos_cursor_sampler(
+    stop: Arc<AtomicBool>,
+    samples: Arc<Mutex<Vec<CursorTelemetryPoint>>>,
+    source: Option<SelectedSource>,
+) -> Result<JoinHandle<()>, String> {
+    let bounds = display_capture_bounds(selected_display_id(source.as_ref()));
+
+    Ok(std::thread::spawn(move || {
+        let started_at = Instant::now();
+
+        loop {
+            if stop.load(Ordering::Relaxed) {
+                break;
+            }
+
+            if let Some(location) = current_cursor_location() {
+                let point = CursorTelemetryPoint {
+                    x: clamp_unit((location.x - bounds.x) / bounds.width),
+                    y: clamp_unit((location.y - bounds.y) / bounds.height),
+                    timestamp: started_at.elapsed().as_secs_f64() * 1000.0,
+                    cursor_type: Some("arrow".to_string()),
+                    click_type: None,
+                };
+
+                if let Ok(mut guard) = samples.lock() {
+                    guard.push(point);
+                }
+            }
+
+            std::thread::sleep(Duration::from_millis(33));
+        }
+    }))
+}
+
 async fn write_cursor_telemetry_sidecar(
     video_path: &str,
     samples: &[CursorTelemetryPoint],
@@ -120,23 +291,26 @@ pub fn start_cursor_telemetry_capture(
     }
 
     app_state.cursor_telemetry.clear();
+    let selected_source = app_state.selected_source.clone();
 
     let stop = Arc::new(AtomicBool::new(false));
     let samples = Arc::new(Mutex::new(Vec::new()));
 
     #[cfg(target_os = "linux")]
     let handle = spawn_linux_cursor_sampler(stop.clone(), samples.clone())?;
+    #[cfg(target_os = "macos")]
+    let handle = spawn_macos_cursor_sampler(stop.clone(), samples.clone(), selected_source)?;
 
     app_state.cursor_telemetry_capture = Some(CursorTelemetryCapture {
         stop,
         samples,
         handle: {
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "macos"))]
             {
                 Some(handle)
             }
 
-            #[cfg(not(target_os = "linux"))]
+            #[cfg(not(any(target_os = "linux", target_os = "macos")))]
             {
                 None
             }
@@ -302,6 +476,20 @@ mod tests {
         assert_eq!(payload["clicks"], serde_json::json!([]));
     }
 
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_parse_macos_display_id_accepts_plain_or_screen_id() {
+        assert_eq!(parse_macos_display_id("42"), Some(42));
+        assert_eq!(parse_macos_display_id("screen:42:0"), Some(42));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_parse_macos_source_display_id_ignores_window_id() {
+        assert_eq!(parse_macos_source_display_id("screen:42:0"), Some(42));
+        assert_eq!(parse_macos_source_display_id("window:123:0"), None);
+    }
+
     #[tokio::test]
     async fn test_get_cursor_telemetry_missing_file_returns_fallback() {
         let result = get_cursor_telemetry("/nonexistent/path/video.mov".to_string());
@@ -367,11 +555,8 @@ mod tests {
             click_type: None,
         }];
 
-        let result = write_cursor_telemetry_sidecar(
-            video_path.to_string_lossy().as_ref(),
-            &samples,
-        )
-        .await;
+        let result =
+            write_cursor_telemetry_sidecar(video_path.to_string_lossy().as_ref(), &samples).await;
         assert!(result.is_ok());
 
         let written = tokio::fs::read_to_string(&telemetry_path).await.unwrap();

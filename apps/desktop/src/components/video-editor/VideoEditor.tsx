@@ -2540,7 +2540,7 @@ export default function VideoEditor() {
 					<PanelGroup direction="vertical" className="gap-3">
 						{/* Top section: video preview and controls */}
 						<Panel defaultSize={70} minSize={40}>
-							<div className="w-full h-full flex flex-col items-center justify-center bg-black/40 rounded-2xl border border-white/5 shadow-2xl overflow-hidden">
+							<div className="w-full h-full flex flex-col items-center justify-center bg-[#09090b] rounded-2xl border border-white/5 shadow-2xl overflow-hidden">
 								{/* Video preview */}
 								<div
 									className="w-full flex justify-center items-center"

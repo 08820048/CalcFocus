@@ -35,7 +35,7 @@ describe("copyCanvasImageToClipboard", () => {
 		await copyCanvasImageToClipboard(canvas);
 
 		expect(getImageData).toHaveBeenCalledWith(0, 0, 2, 1);
-		expect(Image.new).toHaveBeenCalledWith(pixels, 2, 1);
+		expect(Image.new).toHaveBeenCalledWith(Uint8Array.from(pixels), 2, 1);
 		expect(writeImage).toHaveBeenCalledWith(image);
 		expect(close).toHaveBeenCalledTimes(1);
 	});
