@@ -130,6 +130,18 @@ pub async fn hud_overlay_hide(app: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub async fn hud_overlay_set_capture_protection(
+    app: AppHandle,
+    enabled: bool,
+) -> Result<bool, String> {
+    if let Some(hud) = app.get_webview_window("hud-overlay") {
+        hud.set_content_protected(enabled)
+            .map_err(|error| error.to_string())?;
+    }
+    Ok(enabled)
+}
+
+#[tauri::command]
 pub async fn hud_overlay_minimize(app: AppHandle) -> Result<(), String> {
     if let Some(hud) = app.get_webview_window("hud-overlay") {
         let _ = hud.minimize();

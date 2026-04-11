@@ -8,8 +8,7 @@ use crate::state::AppState;
 pub async fn select_screen_area() -> Result<Option<serde_json::Value>, String> {
     #[cfg(target_os = "macos")]
     {
-        let sidecar_path =
-            crate::native::sidecar::get_sidecar_path("openscreen-area-selector")?;
+        let sidecar_path = crate::native::sidecar::get_sidecar_path("openscreen-area-selector")?;
         let output = tokio::process::Command::new(&sidecar_path)
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
@@ -148,6 +147,52 @@ pub async fn stop_native_screen_recording(
     crate::tray::update_tray_menu(&app);
 
     Ok(output_path)
+}
+
+#[tauri::command]
+pub async fn pause_native_screen_recording(app: AppHandle) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        crate::native::macos_capture::pause_capture(&app).await?;
+        return Ok(());
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = app;
+        Err("Native recording pause is only supported on macOS".to_string())
+    }
+}
+
+#[tauri::command]
+pub async fn resume_native_screen_recording(app: AppHandle) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        crate::native::macos_capture::resume_capture(&app).await?;
+        return Ok(());
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = app;
+        Err("Native recording resume is only supported on macOS".to_string())
+    }
+}
+
+#[tauri::command]
+pub async fn set_native_microphone_muted(app: AppHandle, muted: bool) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        crate::native::macos_capture::set_microphone_muted(&app, muted).await?;
+        return Ok(());
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = app;
+        let _ = muted;
+        Err("Native microphone mute is only supported on macOS".to_string())
+    }
 }
 
 #[cfg(test)]

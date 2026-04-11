@@ -77,6 +77,11 @@ final class ScreenCaptureRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
 	private var firstPrimaryAudioSampleTime: CMTime?
 	private var firstMicrophoneSampleTime: CMTime?
 	private var isRecording = false
+	private var isPaused = false
+	private var pauseStartedHostTime: CMTime?
+	private var pendingResumeAdjustment = false
+	private var accumulatedPausedDuration: CMTime = .zero
+	private var isMicrophoneMuted = false
 	private var sessionStarted = false
 	private var frameCount = 0
 	private var outputURL: URL?
@@ -298,6 +303,11 @@ final class ScreenCaptureRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
 		assetWriter.startSession(atSourceTime: .zero)
 		sessionStarted = true
 		isRecording = true
+		isPaused = false
+		pauseStartedHostTime = nil
+		pendingResumeAdjustment = false
+		accumulatedPausedDuration = .zero
+		isMicrophoneMuted = false
 		frameCount = 0
 		firstSampleTime = .zero
 		lastVideoFrameEndTime = .zero
@@ -314,8 +324,26 @@ final class ScreenCaptureRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
 		return try await finishCapture()
 	}
 
+	func pauseCapture() {
+		guard isRecording, !isPaused else { return }
+		isPaused = true
+		pauseStartedHostTime = CMClockGetTime(CMClockGetHostTimeClock())
+		pendingResumeAdjustment = false
+	}
+
+	func resumeCapture() {
+		guard isRecording, isPaused else { return }
+		isPaused = false
+		pendingResumeAdjustment = true
+	}
+
+	func setMicrophoneMuted(_ muted: Bool) {
+		isMicrophoneMuted = muted
+	}
+
 	func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of outputType: SCStreamOutputType) {
 		guard sessionStarted, sampleBuffer.isValid, isRecording else { return }
+		if isPaused { return }
 
 		if outputType == .screen {
 			guard let attachments = CMSampleBufferGetSampleAttachmentsArray(sampleBuffer, createIfNecessary: false) as? [[SCStreamFrameInfo: Any]],
@@ -328,11 +356,7 @@ final class ScreenCaptureRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
 
 			guard let videoInput = videoInput, videoInput.isReadyForMoreMediaData else { return }
 
-			if firstSampleTime == .zero {
-				firstSampleTime = sampleBuffer.presentationTimeStamp
-			}
-
-			let presentationTime = sampleBuffer.presentationTimeStamp - firstSampleTime
+			guard let presentationTime = adjustedVideoPresentationTime(for: sampleBuffer) else { return }
 			let timing = CMSampleTimingInfo(duration: sampleBuffer.duration, presentationTimeStamp: presentationTime, decodeTimeStamp: sampleBuffer.decodeTimeStamp)
 			if let retimedSampleBuffer = try? CMSampleBuffer(copying: sampleBuffer, withNewTiming: [timing]) {
 				videoInput.append(retimedSampleBuffer)
@@ -349,6 +373,7 @@ final class ScreenCaptureRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
 		}
 
 		if outputType.rawValue == microphoneOutputTypeRawValue {
+			if isMicrophoneMuted { return }
 			if writesMicrophoneToSeparateTrack, let microphoneOnlyInput {
 				appendAudioSampleBuffer(sampleBuffer, to: microphoneOnlyInput, firstSampleTime: &firstMicrophoneSampleTime)
 			} else if primaryAudioSource == .microphone, let audioInput {
@@ -404,6 +429,11 @@ final class ScreenCaptureRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
 		lastVideoFrameEndTime = .zero
 		firstPrimaryAudioSampleTime = nil
 		firstMicrophoneSampleTime = nil
+		isPaused = false
+		pauseStartedHostTime = nil
+		pendingResumeAdjustment = false
+		accumulatedPausedDuration = .zero
+		isMicrophoneMuted = false
 		frameCount = 0
 		capturesSystemAudio = false
 		capturesMicrophone = false
@@ -412,15 +442,48 @@ final class ScreenCaptureRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
 		return path
 	}
 
+	private func adjustedVideoPresentationTime(for sampleBuffer: CMSampleBuffer) -> CMTime? {
+		let sampleTime = sampleBuffer.presentationTimeStamp
+		applyPendingResumeAdjustment(sampleTime: sampleTime)
+
+		if firstSampleTime == .zero {
+			firstSampleTime = sampleTime
+		}
+
+		return clampedNonNegative(sampleTime - firstSampleTime - accumulatedPausedDuration)
+	}
+
+	private func adjustedAudioPresentationTime(for sampleBuffer: CMSampleBuffer, firstSampleTime: inout CMTime?) -> CMTime? {
+		let sampleTime = sampleBuffer.presentationTimeStamp
+		applyPendingResumeAdjustment(sampleTime: sampleTime)
+
+		if firstSampleTime == nil {
+			firstSampleTime = sampleTime
+		}
+
+		guard let firstSampleTime else { return nil }
+		return clampedNonNegative(sampleTime - firstSampleTime - accumulatedPausedDuration)
+	}
+
+	private func applyPendingResumeAdjustment(sampleTime: CMTime) {
+		guard pendingResumeAdjustment, let pauseStartedHostTime else { return }
+
+		let pauseGap = sampleTime - pauseStartedHostTime
+		if CMTimeCompare(pauseGap, .zero) > 0 {
+			accumulatedPausedDuration = accumulatedPausedDuration + pauseGap
+		}
+		self.pauseStartedHostTime = nil
+		pendingResumeAdjustment = false
+	}
+
+	private func clampedNonNegative(_ time: CMTime) -> CMTime {
+		CMTimeCompare(time, .zero) < 0 ? .zero : time
+	}
+
 	private func appendAudioSampleBuffer(_ sampleBuffer: CMSampleBuffer, to input: AVAssetWriterInput, firstSampleTime: inout CMTime?) {
 		guard input.isReadyForMoreMediaData else { return }
 
-		if firstSampleTime == nil {
-			firstSampleTime = sampleBuffer.presentationTimeStamp
-		}
-
-		guard let firstSampleTime else { return }
-		let presentationTime = sampleBuffer.presentationTimeStamp - firstSampleTime
+		guard let presentationTime = adjustedAudioPresentationTime(for: sampleBuffer, firstSampleTime: &firstSampleTime) else { return }
 		let timing = CMSampleTimingInfo(duration: sampleBuffer.duration, presentationTimeStamp: presentationTime, decodeTimeStamp: sampleBuffer.decodeTimeStamp)
 		if let retimedSampleBuffer = try? CMSampleBuffer(copying: sampleBuffer, withNewTiming: [timing]) {
 			input.append(retimedSampleBuffer)
@@ -530,6 +593,24 @@ final class RecorderService {
 		}
 	}
 
+	func pause() {
+		queue.async {
+			self.recorder.pauseCapture()
+		}
+	}
+
+	func resume() {
+		queue.async {
+			self.recorder.resumeCapture()
+		}
+	}
+
+	func setMicrophoneMuted(_ muted: Bool) {
+		queue.async {
+			self.recorder.setMicrophoneMuted(muted)
+		}
+	}
+
 	func waitUntilFinished() {
 		completionGroup.wait()
 	}
@@ -569,6 +650,26 @@ service.start(configJSON: configJSON)
 
 DispatchQueue.global(qos: .utility).async {
 	while let input = readLine(strippingNewline: true)?.lowercased() {
+		if input == "pause" {
+			service.pause()
+			continue
+		}
+
+		if input == "resume" {
+			service.resume()
+			continue
+		}
+
+		if input == "mute-microphone" {
+			service.setMicrophoneMuted(true)
+			continue
+		}
+
+		if input == "unmute-microphone" {
+			service.setMicrophoneMuted(false)
+			continue
+		}
+
 		if input == "stop" {
 			service.stop()
 			break

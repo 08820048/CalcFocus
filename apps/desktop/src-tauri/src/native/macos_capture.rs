@@ -185,6 +185,44 @@ pub async fn stop_capture(_app: &AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+#[cfg(target_os = "macos")]
+pub async fn pause_capture(_app: &AppHandle) -> Result<(), String> {
+    let mut guard = get_capture_process().lock().await;
+    if let Some(ref mut process) = *guard {
+        process.write_stdin("pause\n").await?;
+        return Ok(());
+    }
+
+    Err("No recording in progress".to_string())
+}
+
+#[cfg(target_os = "macos")]
+pub async fn resume_capture(_app: &AppHandle) -> Result<(), String> {
+    let mut guard = get_capture_process().lock().await;
+    if let Some(ref mut process) = *guard {
+        process.write_stdin("resume\n").await?;
+        return Ok(());
+    }
+
+    Err("No recording in progress".to_string())
+}
+
+#[cfg(target_os = "macos")]
+pub async fn set_microphone_muted(_app: &AppHandle, muted: bool) -> Result<(), String> {
+    let mut guard = get_capture_process().lock().await;
+    if let Some(ref mut process) = *guard {
+        let command = if muted {
+            "mute-microphone\n"
+        } else {
+            "unmute-microphone\n"
+        };
+        process.write_stdin(command).await?;
+        return Ok(());
+    }
+
+    Err("No recording in progress".to_string())
+}
+
 #[cfg(not(target_os = "macos"))]
 pub async fn start_capture(
     _app: &AppHandle,

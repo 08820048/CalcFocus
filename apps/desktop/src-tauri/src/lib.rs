@@ -109,6 +109,9 @@ pub fn run() {
             commands::recording::set_recording_state,
             commands::recording::start_native_screen_recording,
             commands::recording::stop_native_screen_recording,
+            commands::recording::pause_native_screen_recording,
+            commands::recording::resume_native_screen_recording,
+            commands::recording::set_native_microphone_muted,
             commands::recording::select_screen_area,
             // Cursor
             commands::cursor::get_cursor_telemetry,
@@ -143,6 +146,7 @@ pub fn run() {
             commands::window_mgmt::close_source_selector,
             commands::window_mgmt::hud_overlay_show,
             commands::window_mgmt::hud_overlay_hide,
+            commands::window_mgmt::hud_overlay_set_capture_protection,
             commands::window_mgmt::hud_overlay_minimize,
             commands::window_mgmt::hud_overlay_close,
             commands::window_mgmt::start_hud_overlay_drag,

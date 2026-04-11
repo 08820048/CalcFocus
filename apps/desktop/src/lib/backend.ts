@@ -157,6 +157,18 @@ export function stopNativeScreenRecording(): Promise<string> {
 	return invoke("stop_native_screen_recording");
 }
 
+export function pauseNativeScreenRecording(): Promise<void> {
+	return invoke("pause_native_screen_recording");
+}
+
+export function resumeNativeScreenRecording(): Promise<void> {
+	return invoke("resume_native_screen_recording");
+}
+
+export function setNativeMicrophoneMuted(muted: boolean): Promise<void> {
+	return invoke("set_native_microphone_muted", { muted });
+}
+
 export function startCursorTelemetryCapture(): Promise<void> {
 	return invoke("start_cursor_telemetry_capture");
 }
@@ -165,7 +177,13 @@ export function stopCursorTelemetryCapture(videoPath?: string | null): Promise<v
 	return invoke("stop_cursor_telemetry_capture", { videoPath });
 }
 
-export function selectScreenArea(): Promise<{ x: number; y: number; width: number; height: number; displayId: number } | null> {
+export function selectScreenArea(): Promise<{
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+	displayId: number;
+} | null> {
 	return invoke("select_screen_area");
 }
 
@@ -310,6 +328,10 @@ export function hudOverlayShow(): Promise<void> {
 
 export function hudOverlayHide(): Promise<void> {
 	return invoke("hud_overlay_hide");
+}
+
+export function hudOverlaySetCaptureProtection(enabled: boolean): Promise<boolean> {
+	return invoke("hud_overlay_set_capture_protection", { enabled });
 }
 
 export function hudOverlayMinimize(): Promise<void> {

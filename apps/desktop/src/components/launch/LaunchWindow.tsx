@@ -7,15 +7,20 @@ import {
 	Camera,
 	CheckCircle2,
 	ChevronLeft,
+	EyeOff,
+	FolderOpen,
 	Minus,
 	Monitor,
+	MoreVertical,
+	Pause,
+	Play,
+	Square,
 	Timer,
 	Video,
 	X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BsRecordCircle } from "react-icons/bs";
-import { FaRegStopCircle } from "react-icons/fa";
 import {
 	MdMic,
 	MdMicOff,
@@ -48,10 +53,23 @@ const COUNTDOWN_OPTIONS = [0, 5, 10, 15] as const;
 const HUD_WIDTH = 780;
 const HUD_HEIGHT = 155;
 const HUD_EXPANDED_HEIGHT = 420;
+const HIDE_HUD_FROM_RECORDING_STORAGE_KEY = "fluxlocus:hide-hud-from-recording";
 
 type View = "onboarding" | "choice" | "screenshot" | "recording";
 type ScreenshotMode = "screen" | "window" | "area";
 type HudToolbarLayout = "normal" | "expanded";
+
+function getInitialHideHudFromRecording() {
+	if (typeof window === "undefined") {
+		return false;
+	}
+
+	try {
+		return window.localStorage.getItem(HIDE_HUD_FROM_RECORDING_STORAGE_KEY) === "true";
+	} catch {
+		return false;
+	}
+}
 
 function LanguageToggle({ className }: { className?: string }) {
 	const { locale, setLocale } = useI18n();
@@ -230,10 +248,18 @@ export function LaunchWindow() {
 
 	const {
 		recording,
+		paused,
+		canPauseRecording,
+		microphoneMuted,
+		canToggleMicrophoneDuringRecording,
 		countdownActive,
 		countdownRemaining,
 		toggleRecording,
+		pauseRecording,
+		resumeRecording,
+		setRecordingMicrophoneMuted,
 		preparePermissions,
+		microphoneEnabled,
 		setMicrophoneEnabled,
 		microphoneDeviceId,
 		setMicrophoneDeviceId,
@@ -249,12 +275,30 @@ export function LaunchWindow() {
 
 	const [recordingStart, setRecordingStart] = useState<number | null>(null);
 	const [elapsed, setElapsed] = useState(0);
+	const [pausedAt, setPausedAt] = useState<number | null>(null);
+	const [pausedTotal, setPausedTotal] = useState(0);
 	const showCameraPreview = cameraEnabled && !recording && view === "recording";
 	const [cameraPopoverOpen, setCameraPopoverOpen] = useState(false);
 	const [countdownPopoverOpen, setCountdownPopoverOpen] = useState(false);
+	const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+	const [hideHudFromRecording, setHideHudFromRecording] = useState(getInitialHideHudFromRecording);
 
 	const setMicEnabledRef = useRef(setMicrophoneEnabled);
 	setMicEnabledRef.current = setMicrophoneEnabled;
+
+	useEffect(() => {
+		try {
+			window.localStorage.setItem(
+				HIDE_HUD_FROM_RECORDING_STORAGE_KEY,
+				String(hideHudFromRecording),
+			);
+		} catch {
+			// Preference persistence is best-effort.
+		}
+		void backend.hudOverlaySetCaptureProtection(hideHudFromRecording).catch((error) => {
+			console.error("Failed to update HUD capture protection:", error);
+		});
+	}, [hideHudFromRecording]);
 
 	const providedMachine = useMemo(
 		() =>
@@ -311,8 +355,11 @@ export function LaunchWindow() {
 			micSend({ type: "RECORDING_START" });
 			setCameraPopoverOpen(false);
 			setCountdownPopoverOpen(false);
+			setMoreMenuOpen(false);
 		} else if (!recording && prevRecording.current) {
 			micSend({ type: "RECORDING_STOP" });
+			setPausedAt(null);
+			setPausedTotal(0);
 			// When recording stops, return to choice view
 			setView("choice");
 			setScreenshotMode(null);
@@ -321,7 +368,8 @@ export function LaunchWindow() {
 	}, [recording, micSend]);
 
 	const expandHudForPopover =
-		view !== "onboarding" && (isPopoverOpen || cameraPopoverOpen || countdownPopoverOpen);
+		view !== "onboarding" &&
+		(isPopoverOpen || cameraPopoverOpen || countdownPopoverOpen || moreMenuOpen);
 	const hudToolbarLayout: HudToolbarLayout = expandHudForPopover ? "expanded" : "normal";
 	useEffect(() => {
 		if (view === "onboarding") {
@@ -395,20 +443,30 @@ export function LaunchWindow() {
 		let timer: NodeJS.Timeout | null = null;
 		if (recording) {
 			if (!recordingStart) setRecordingStart(Date.now());
-			timer = setInterval(() => {
-				if (recordingStart) {
-					setElapsed(Math.floor((Date.now() - recordingStart) / 1000));
+			if (paused) {
+				if (!pausedAt) setPausedAt(Date.now());
+			} else {
+				if (pausedAt) {
+					setPausedTotal((prev) => prev + (Date.now() - pausedAt));
+					setPausedAt(null);
 				}
-			}, 1000);
+				timer = setInterval(() => {
+					if (recordingStart) {
+						setElapsed(Math.floor((Date.now() - recordingStart - pausedTotal) / 1000));
+					}
+				}, 1000);
+			}
 		} else {
 			setRecordingStart(null);
 			setElapsed(0);
+			setPausedAt(null);
+			setPausedTotal(0);
 			if (timer) clearInterval(timer);
 		}
 		return () => {
 			if (timer) clearInterval(timer);
 		};
-	}, [recording, recordingStart]);
+	}, [recording, recordingStart, paused, pausedAt, pausedTotal]);
 
 	const formatTime = (seconds: number) => {
 		const m = Math.floor(seconds / 60)
@@ -474,6 +532,7 @@ export function LaunchWindow() {
 	);
 
 	const openVideoFile = useCallback(async () => {
+		setMoreMenuOpen(false);
 		const path = await backend.openVideoFilePicker();
 		if (!path) return;
 		await backend.setCurrentVideoPath(path);
@@ -608,6 +667,7 @@ export function LaunchWindow() {
 		expandHudBeforeOpeningMenu(() => {
 			setCameraPopoverOpen(false);
 			setCountdownPopoverOpen(false);
+			setMoreMenuOpen(false);
 			micSend({ type: "CLICK" });
 		});
 	};
@@ -622,6 +682,7 @@ export function LaunchWindow() {
 		expandHudBeforeOpeningMenu(() => {
 			if (isPopoverOpen) micSend({ type: "CLOSE_POPOVER" });
 			setCountdownPopoverOpen(false);
+			setMoreMenuOpen(false);
 			setCameraPopoverOpen(true);
 		});
 	};
@@ -636,18 +697,50 @@ export function LaunchWindow() {
 		expandHudBeforeOpeningMenu(() => {
 			if (isPopoverOpen) micSend({ type: "CLOSE_POPOVER" });
 			setCameraPopoverOpen(false);
+			setMoreMenuOpen(false);
 			setCountdownPopoverOpen(true);
 		});
+	};
+
+	const toggleMoreMenu = () => {
+		if (recording) return;
+		if (moreMenuOpen) {
+			setMoreMenuOpen(false);
+			return;
+		}
+
+		expandHudBeforeOpeningMenu(() => {
+			if (isPopoverOpen) micSend({ type: "CLOSE_POPOVER" });
+			setCameraPopoverOpen(false);
+			setCountdownPopoverOpen(false);
+			setMoreMenuOpen(true);
+		});
+	};
+
+	const openRecordingsFolderFromMenu = () => {
+		setMoreMenuOpen(false);
+		void backend.openRecordingsFolder();
+	};
+
+	const toggleHideHudFromRecordingFromMenu = () => {
+		setHideHudFromRecording((current) => !current);
 	};
 
 	const handleToolbarMinimize = () => {
 		micSend({ type: "CLOSE_POPOVER" });
 		setCameraPopoverOpen(false);
 		setCountdownPopoverOpen(false);
+		setMoreMenuOpen(false);
 		void backend.hudOverlayMinimize();
 	};
 
-	const toolbarDeviceMenu = (isPopoverOpen || cameraPopoverOpen || countdownPopoverOpen) && (
+	const canToggleActiveMicrophone =
+		recording && microphoneEnabled && canToggleMicrophoneDuringRecording;
+
+	const toolbarDeviceMenu = (isPopoverOpen ||
+		cameraPopoverOpen ||
+		countdownPopoverOpen ||
+		moreMenuOpen) && (
 		<div
 			className={`w-[280px] rounded-2xl border border-white/15 bg-[rgba(18,18,26,0.96)] p-3 text-slate-100 shadow-xl backdrop-blur-xl ${styles.tauriNoDrag}`}
 		>
@@ -822,6 +915,36 @@ export function LaunchWindow() {
 					</div>
 				</>
 			)}
+
+			{moreMenuOpen && (
+				<>
+					<div className="px-2 pb-2 pt-1 text-[10px] font-medium uppercase tracking-[0.18em] text-white/50">
+						{t("recording.more", "More")}
+					</div>
+					<div className="flex flex-col gap-1">
+						<DeviceRow
+							icon={<FolderOpen size={15} />}
+							label={t("recording.openRecordingsFolder", "Open recordings folder")}
+							selected={false}
+							onSelect={openRecordingsFolderFromMenu}
+						/>
+						<DeviceRow
+							icon={<Video size={15} />}
+							label={t("recording.openVideoFile", "Open video file")}
+							selected={false}
+							onSelect={() => {
+								void openVideoFile();
+							}}
+						/>
+						<DeviceRow
+							icon={<EyeOff size={15} />}
+							label={t("recording.hideHudFromRecording", "Hide HUD from recording")}
+							selected={hideHudFromRecording}
+							onSelect={toggleHideHudFromRecordingFromMenu}
+						/>
+					</div>
+				</>
+			)}
 		</div>
 	);
 
@@ -847,6 +970,23 @@ export function LaunchWindow() {
 			</Button>
 		</div>
 	);
+
+	const toolbarMoreButton = !recording && (
+		<Button
+			variant="link"
+			size="icon"
+			onClick={toggleMoreMenu}
+			title={t("recording.more", "More")}
+			className={`text-white/55 hover:bg-transparent hover:text-white/85 ${styles.tauriNoDrag}`}
+		>
+			<MoreVertical size={16} />
+		</Button>
+	);
+
+	const handleStartRecordingFromToolbar = () => {
+		setMoreMenuOpen(false);
+		toggleRecording();
+	};
 
 	// ─── Screenshot capture ───────────────────────────────────────────────────
 
@@ -988,6 +1128,8 @@ export function LaunchWindow() {
 					</div>
 				)}
 
+				{toolbarDeviceMenu}
+
 				{/* ================================================================
             VIEW 1 — Choice Dialog
             [drag]  [ Screenshot ]  [ Record Video ]
@@ -1001,6 +1143,7 @@ export function LaunchWindow() {
 
 						<button
 							onClick={() => {
+								setMoreMenuOpen(false);
 								setView("screenshot");
 								setScreenshotMode(null);
 							}}
@@ -1013,7 +1156,10 @@ export function LaunchWindow() {
 						</button>
 
 						<button
-							onClick={() => setView("recording")}
+							onClick={() => {
+								setMoreMenuOpen(false);
+								setView("recording");
+							}}
 							className={`flex items-center gap-2.5 px-5 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.08] hover:border-white/[0.15] transition-all cursor-pointer ${styles.tauriNoDrag}`}
 						>
 							<Video size={16} className="text-white/70" />
@@ -1024,6 +1170,8 @@ export function LaunchWindow() {
 
 						<div className={dividerClass} />
 						<LanguageToggle />
+						<div className={dividerClass} />
+						{toolbarMoreButton}
 						<div className={dividerClass} />
 						{toolbarWindowActions}
 					</div>
@@ -1045,6 +1193,7 @@ export function LaunchWindow() {
 							variant="link"
 							size="icon"
 							onClick={() => {
+								setMoreMenuOpen(false);
 								setView("choice");
 								setScreenshotMode(null);
 							}}
@@ -1127,6 +1276,8 @@ export function LaunchWindow() {
 						<div className="ml-auto" />
 						<LanguageToggle />
 						<div className={dividerClass} />
+						{toolbarMoreButton}
+						<div className={dividerClass} />
 						{toolbarWindowActions}
 					</div>
 				)}
@@ -1137,162 +1288,235 @@ export function LaunchWindow() {
            ================================================================ */}
 				{(view === "recording" || recording) && (
 					<>
-						{toolbarDeviceMenu}
 						<div
 							className={`w-full mx-auto flex items-center gap-1.5 px-3 py-2 ${styles.tauriDrag} ${styles.hudBar}`}
 							style={barStyle}
 						>
 							{dragHandle}
 
-							{/* Back button — return to choice (only when not recording) */}
-							{!recording && (
+							{recording ? (
+								<>
+									<div className={`flex items-center gap-2 ${styles.tauriNoDrag}`}>
+										<div
+											className={cn(
+												"h-2 w-2 rounded-full",
+												paused ? "bg-amber-400" : "bg-red-400 animate-pulse",
+											)}
+										/>
+										<span
+											className={cn(
+												"text-[11px] font-semibold tracking-[0.12em] uppercase",
+												paused ? "text-amber-300" : "text-red-300",
+											)}
+										>
+											{paused
+												? t("recording.paused", "Paused")
+												: t("recording.recordingInProgress", "Recording")}
+										</span>
+										<span
+											className={cn(
+												"min-w-[54px] text-center font-mono text-xs font-semibold tabular-nums",
+												paused ? "text-amber-200" : "text-white/90",
+											)}
+										>
+											{formatTime(elapsed)}
+										</span>
+									</div>
+
+									<div className={dividerClass} />
+
+									<div className={`flex items-center gap-1 ${styles.tauriNoDrag}`}>
+										<Button
+											variant="link"
+											size="icon"
+											onClick={() => setRecordingMicrophoneMuted(!microphoneMuted)}
+											disabled={!canToggleActiveMicrophone}
+											title={
+												canToggleActiveMicrophone
+													? microphoneMuted
+														? t("recording.enableMicrophone", "Enable microphone")
+														: t("recording.disableMicrophone", "Disable microphone")
+													: t(
+															"recording.microphoneUnavailableDuringRecording",
+															"Microphone cannot be changed during this recording.",
+														)
+											}
+											className={`text-white/80 hover:bg-transparent disabled:opacity-35 ${styles.tauriNoDrag}`}
+										>
+											{microphoneEnabled && !microphoneMuted ? (
+												<MdMic size={18} className="text-[#09cf67]" />
+											) : (
+												<MdMicOff size={18} className="text-white/35" />
+											)}
+										</Button>
+
+										<Button
+											variant="link"
+											size="icon"
+											onClick={paused ? resumeRecording : pauseRecording}
+											disabled={!canPauseRecording}
+											title={
+												paused ? t("recording.resume", "Resume") : t("recording.pause", "Pause")
+											}
+											className={cn(
+												`text-white/80 hover:bg-transparent disabled:opacity-35 ${styles.tauriNoDrag}`,
+												paused && "text-[#09cf67]",
+											)}
+										>
+											{paused ? (
+												<Play size={18} fill="currentColor" strokeWidth={0} />
+											) : (
+												<Pause size={18} />
+											)}
+										</Button>
+
+										<Button
+											variant="link"
+											size="icon"
+											onClick={() => toggleRecording()}
+											title={t("recording.stop", "Stop")}
+											className={`text-red-400 hover:bg-transparent hover:text-red-300 ${styles.tauriNoDrag}`}
+										>
+											<Square size={16} fill="currentColor" strokeWidth={0} />
+										</Button>
+									</div>
+
+									<div className="ml-auto" />
+									{toolbarWindowActions}
+								</>
+							) : (
 								<>
 									<Button
 										variant="link"
 										size="icon"
-										onClick={() => setView("choice")}
+										onClick={() => {
+											setMoreMenuOpen(false);
+											setView("choice");
+										}}
 										title={t("back", "Back")}
 										className={`text-white/60 hover:text-white hover:bg-transparent ${styles.tauriNoDrag}`}
 									>
 										<ChevronLeft size={16} />
 									</Button>
 									<div className={dividerClass} />
+
+									<Button
+										variant="link"
+										size="sm"
+										className={`gap-1 text-white/80 bg-transparent hover:bg-transparent px-0 text-xs ${styles.tauriNoDrag}`}
+										onClick={() => openSourceSelector()}
+										title={selectedSource}
+									>
+										<MdMonitor size={14} className="text-white/80" />
+										<ContentClamp truncateLength={6}>{selectedSource}</ContentClamp>
+									</Button>
+
+									<div className={dividerClass} />
+
+									<div className={`flex items-center gap-1 ${styles.tauriNoDrag}`}>
+										<Button
+											variant="link"
+											size="icon"
+											onClick={() => setSystemAudioEnabled(!systemAudioEnabled)}
+											title={
+												systemAudioEnabled
+													? t("recording.disableSystemAudio", "Disable system audio")
+													: t("recording.enableSystemAudio", "Enable system audio")
+											}
+											className={`text-white/80 hover:bg-transparent ${styles.tauriNoDrag}`}
+										>
+											{systemAudioEnabled ? (
+												<MdVolumeUp size={16} className="text-[#09cf67]" />
+											) : (
+												<MdVolumeOff size={16} className="text-white/35" />
+											)}
+										</Button>
+
+										<Button
+											variant="link"
+											size="icon"
+											onClick={toggleMicMenu}
+											title={
+												isMicEnabled
+													? t("microphone.settings", "Microphone settings")
+													: t("microphone.enable", "Enable microphone")
+											}
+											className={`text-white/80 hover:bg-transparent ${styles.tauriNoDrag}`}
+										>
+											{isMicEnabled ? (
+												<MdMic size={16} className="text-[#09cf67]" />
+											) : (
+												<MdMicOff size={16} className="text-white/35" />
+											)}
+										</Button>
+
+										<Button
+											variant="link"
+											size="icon"
+											onClick={toggleCameraMenu}
+											title={
+												cameraEnabled
+													? t("recording.disableFacecam", "Disable facecam")
+													: t("recording.enableFacecam", "Enable facecam")
+											}
+											className={`text-white/80 hover:bg-transparent ${styles.tauriNoDrag}`}
+										>
+											{cameraEnabled ? (
+												<MdVideocam size={16} className="text-[#09cf67]" />
+											) : (
+												<MdVideocamOff size={16} className="text-white/35" />
+											)}
+										</Button>
+
+										<Button
+											variant="link"
+											size="icon"
+											onClick={toggleCountdownMenu}
+											disabled={countdownActive}
+											title={t("recording.countdownDelay", "Countdown delay")}
+											className={`gap-1 text-white/80 hover:bg-transparent ${styles.tauriNoDrag}`}
+										>
+											<Timer
+												size={16}
+												className={countdownDelay > 0 ? "text-[#09cf67]" : "text-white/35"}
+											/>
+											{countdownDelay > 0 && (
+												<span className="text-[10px] text-[#8cf0ba]">{countdownDelay}s</span>
+											)}
+										</Button>
+									</div>
+
+									<div className={dividerClass} />
+
+									<Button
+										variant="link"
+										size="icon"
+										onClick={
+											hasSelectedSource
+												? handleStartRecordingFromToolbar
+												: () => openSourceSelector()
+										}
+										disabled={countdownActive || !hasSelectedSource}
+										title={t("recording.record", "Record")}
+										className={`h-9 w-9 text-white bg-transparent hover:bg-transparent disabled:opacity-35 ${styles.tauriNoDrag}`}
+									>
+										{countdownActive ? (
+											<span className="font-mono text-xs font-semibold tabular-nums text-[#8cf0ba]">
+												{countdownRemaining}s
+											</span>
+										) : (
+											<BsRecordCircle size={22} className="text-red-400" />
+										)}
+									</Button>
+
+									<div className="ml-auto" />
+									<LanguageToggle />
+									<div className={dividerClass} />
+									{toolbarMoreButton}
+									<div className={dividerClass} />
+									{toolbarWindowActions}
 								</>
 							)}
-
-							{/* Source selector */}
-							<Button
-								variant="link"
-								size="sm"
-								className={`gap-1 text-white/80 bg-transparent hover:bg-transparent px-0 text-xs ${styles.tauriNoDrag}`}
-								onClick={() => openSourceSelector()}
-								disabled={recording}
-								title={selectedSource}
-							>
-								<MdMonitor size={14} className="text-white/80" />
-								<ContentClamp truncateLength={6}>{selectedSource}</ContentClamp>
-							</Button>
-
-							<div className={dividerClass} />
-
-							{/* Audio / Mic / Camera */}
-							<div className={`flex items-center gap-1 ${styles.tauriNoDrag}`}>
-								<Button
-									variant="link"
-									size="icon"
-									onClick={() => !recording && setSystemAudioEnabled(!systemAudioEnabled)}
-									disabled={recording}
-									title={
-										systemAudioEnabled
-											? t("recording.disableSystemAudio", "Disable system audio")
-											: t("recording.enableSystemAudio", "Enable system audio")
-									}
-									className={`text-white/80 hover:bg-transparent ${styles.tauriNoDrag}`}
-								>
-									{systemAudioEnabled ? (
-										<MdVolumeUp size={16} className="text-[#09cf67]" />
-									) : (
-										<MdVolumeOff size={16} className="text-white/35" />
-									)}
-								</Button>
-
-								<Button
-									variant="link"
-									size="icon"
-									onClick={toggleMicMenu}
-									disabled={recording}
-									title={
-										isMicEnabled
-											? t("microphone.settings", "Microphone settings")
-											: t("microphone.enable", "Enable microphone")
-									}
-									className={`text-white/80 hover:bg-transparent ${styles.tauriNoDrag}`}
-								>
-									{isMicEnabled ? (
-										<MdMic size={16} className="text-[#09cf67]" />
-									) : (
-										<MdMicOff size={16} className="text-white/35" />
-									)}
-								</Button>
-
-								<Button
-									variant="link"
-									size="icon"
-									onClick={toggleCameraMenu}
-									disabled={recording}
-									title={
-										cameraEnabled
-											? t("recording.disableFacecam", "Disable facecam")
-											: t("recording.enableFacecam", "Enable facecam")
-									}
-									className={`text-white/80 hover:bg-transparent ${styles.tauriNoDrag}`}
-								>
-									{cameraEnabled ? (
-										<MdVideocam size={16} className="text-[#09cf67]" />
-									) : (
-										<MdVideocamOff size={16} className="text-white/35" />
-									)}
-								</Button>
-
-								<Button
-									variant="link"
-									size="icon"
-									onClick={toggleCountdownMenu}
-									disabled={recording || countdownActive}
-									title={t("recording.countdownDelay", "Countdown delay")}
-									className={`gap-1 text-white/80 hover:bg-transparent ${styles.tauriNoDrag}`}
-								>
-									<Timer
-										size={16}
-										className={countdownDelay > 0 ? "text-[#09cf67]" : "text-white/35"}
-									/>
-									{countdownDelay > 0 && (
-										<span className="text-[10px] text-[#8cf0ba]">{countdownDelay}s</span>
-									)}
-								</Button>
-							</div>
-
-							<div className={dividerClass} />
-
-							{/* Record / Stop */}
-							<Button
-								variant="link"
-								size="sm"
-								onClick={hasSelectedSource ? toggleRecording : () => openSourceSelector()}
-								disabled={countdownActive || (!hasSelectedSource && !recording)}
-								className={`gap-1 text-white bg-transparent hover:bg-transparent px-0 text-xs ${styles.tauriNoDrag}`}
-							>
-								{recording ? (
-									<>
-										<FaRegStopCircle size={14} className="text-red-400" />
-										<span className="text-red-400 font-medium tabular-nums">
-											{formatTime(elapsed)}
-										</span>
-									</>
-								) : countdownActive ? (
-									<>
-										<Timer size={14} className="text-[#09cf67]" />
-										<span className="font-medium tabular-nums text-[#8cf0ba]">
-											{countdownRemaining}s
-										</span>
-									</>
-								) : (
-									<>
-										<BsRecordCircle
-											size={14}
-											className={hasSelectedSource ? "text-white/85" : "text-white/35"}
-										/>
-										<span className={hasSelectedSource ? "text-white/80" : "text-white/35"}>
-											{t("recording.record", "Record")}
-										</span>
-									</>
-								)}
-							</Button>
-
-							<div className="ml-auto" />
-							<LanguageToggle />
-							<div className={dividerClass} />
-							{toolbarWindowActions}
 						</div>
 					</>
 				)}

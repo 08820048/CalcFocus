@@ -38,21 +38,16 @@ function PlaybackControls({
 	const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
 	return (
-		<div className="flex items-center gap-2 px-1 py-0.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10 shadow-xl transition-all duration-300 hover:bg-black/70 hover:border-white/20">
+		<div className="flex items-center gap-2 px-1 py-0.5 bg-transparent">
 			<Button
 				onClick={onTogglePlayPause}
+				variant="ghost"
 				size="icon"
 				className={cn(
-					"w-8 h-8 rounded-full transition-all duration-200 border border-white/10",
-					isPlaying
-						? "bg-white/10 text-white hover:bg-white/20"
-						: "bg-white text-black hover:bg-white/90 hover:scale-105 shadow-[0_0_15px_rgba(255,255,255,0.3)]",
+					"w-8 h-8 rounded-none border-0 bg-transparent p-0 text-white shadow-none transition-all duration-200 hover:bg-transparent hover:text-[#09cf67] focus-visible:ring-[#09cf67]/50",
+					!isPlaying && "hover:scale-105",
 				)}
-				aria-label={
-					isPlaying
-						? t("playback.pause", "Pause")
-						: t("playback.play", "Play")
-				}
+				aria-label={isPlaying ? t("playback.pause", "Pause") : t("playback.play", "Play")}
 			>
 				{isPlaying ? (
 					<Pause className="w-3.5 h-3.5 fill-current" />

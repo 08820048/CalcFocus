@@ -86,9 +86,16 @@ type DesktopCaptureMediaDevices = MediaDevices & {
 
 type UseScreenRecorderReturn = {
 	recording: boolean;
+	paused: boolean;
+	canPauseRecording: boolean;
+	microphoneMuted: boolean;
+	canToggleMicrophoneDuringRecording: boolean;
 	countdownActive: boolean;
 	countdownRemaining: number;
 	toggleRecording: () => void;
+	pauseRecording: () => void;
+	resumeRecording: () => void;
+	setRecordingMicrophoneMuted: (muted: boolean) => void;
 	preparePermissions: (options?: { startup?: boolean }) => Promise<boolean>;
 	isMacOS: boolean;
 	microphoneEnabled: boolean;
@@ -148,6 +155,11 @@ function getSelectedSourceName(source: unknown) {
 
 export function useScreenRecorder(): UseScreenRecorderReturn {
 	const [recording, setRecording] = useState(false);
+	const [paused, setPaused] = useState(false);
+	const [canPauseRecording, setCanPauseRecording] = useState(false);
+	const [microphoneMuted, setMicrophoneMuted] = useState(false);
+	const [canToggleMicrophoneDuringRecording, setCanToggleMicrophoneDuringRecording] =
+		useState(false);
 	const [starting, setStarting] = useState(false);
 	const [countdownActive, setCountdownActive] = useState(false);
 	const [countdownRemaining, setCountdownRemaining] = useState(0);
@@ -169,6 +181,9 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 	const screenRecordingStartedAt = useRef<number | null>(null);
 	const pendingFacecamResult = useRef<Promise<FacecamCaptureResult> | null>(null);
 	const startTime = useRef<number>(0);
+	const pauseStartedAtMs = useRef<number | null>(null);
+	const accumulatedPausedDurationMs = useRef(0);
+	const finalizingPausedDurationMs = useRef(0);
 	const nativeScreenRecording = useRef(false);
 	const wgcRecording = useRef(false);
 	const linuxCursorTelemetryCaptureActive = useRef(false);
@@ -191,6 +206,46 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 			clearTimeout(countdownTimer.current);
 			countdownTimer.current = null;
 		}
+	}, []);
+
+	const resetRecordingRuntimeControls = useCallback(() => {
+		setPaused(false);
+		setCanPauseRecording(false);
+		setMicrophoneMuted(false);
+		setCanToggleMicrophoneDuringRecording(false);
+		pauseStartedAtMs.current = null;
+		accumulatedPausedDurationMs.current = 0;
+	}, []);
+
+	const setBrowserMicrophoneTracksMuted = useCallback((muted: boolean) => {
+		microphoneStream.current?.getAudioTracks().forEach((track) => {
+			track.enabled = !muted;
+		});
+	}, []);
+
+	const getPausedDurationForFinalize = useCallback(() => {
+		const activePauseDuration =
+			pauseStartedAtMs.current === null ? 0 : Date.now() - pauseStartedAtMs.current;
+		return accumulatedPausedDurationMs.current + Math.max(0, activePauseDuration);
+	}, []);
+
+	const markRecordingPaused = useCallback(() => {
+		if (pauseStartedAtMs.current === null) {
+			pauseStartedAtMs.current = Date.now();
+		}
+		setPaused(true);
+	}, []);
+
+	const markRecordingResumed = useCallback(() => {
+		if (pauseStartedAtMs.current !== null) {
+			accumulatedPausedDurationMs.current += Math.max(0, Date.now() - pauseStartedAtMs.current);
+			pauseStartedAtMs.current = null;
+		}
+		setPaused(false);
+	}, []);
+
+	const activeRecordingDuration = useCallback((startedAt: number) => {
+		return Math.max(0, Date.now() - startedAt - finalizingPausedDurationMs.current);
 	}, []);
 
 	const setCountdownDelay = useCallback((delay: number) => {
@@ -511,6 +566,9 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		const recorder = cameraRecorder.current;
 		const pending = pendingFacecamResult.current;
 
+		if (recorder?.state === "paused") {
+			recorder.resume();
+		}
 		if (recorder?.state === "recording") {
 			recorder.stop();
 		}
@@ -606,7 +664,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 
 					try {
 						const startedAt = cameraRecordingStartedAt.current ?? Date.now();
-						const duration = Math.max(0, Date.now() - startedAt);
+						const duration = activeRecordingDuration(startedAt);
 						const storedPath = await finalizeStagedWebm(
 							facecamRecordingPath,
 							facecamWriteChain,
@@ -645,6 +703,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 			recorder.start(RECORDER_TIMESLICE_MS);
 		},
 		[
+			activeRecordingDuration,
 			cameraDeviceId,
 			cameraEnabled,
 			finalizeStagedWebm,
@@ -655,8 +714,11 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 	);
 
 	const stopRecording = useCallback(() => {
+		finalizingPausedDurationMs.current = getPausedDurationForFinalize();
+		setPaused(false);
 		if (nativeScreenRecording.current) {
 			nativeScreenRecording.current = false;
+			resetRecordingRuntimeControls();
 			setRecording(false);
 
 			void (async () => {
@@ -671,12 +733,14 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 					console.error("Error stopping native screen recording:", error);
 				}
 				await backend.setRecordingState(false).catch(() => null);
+				resetRecordingRuntimeControls();
 
 				cleanupCapturedMedia();
 
 				if (!stoppedPath) {
 					console.error("Failed to stop native screen recording");
 					await facecamResultPromise.catch(() => null);
+					finalizingPausedDurationMs.current = 0;
 					await backend.switchToEditor();
 					return;
 				}
@@ -696,6 +760,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 				const recordingSession = buildRecordingSession(finalPath, facecamResult);
 				await backend.setCurrentVideoPath(finalPath).catch(() => null);
 				await backend.setCurrentRecordingSession(recordingSession);
+				finalizingPausedDurationMs.current = 0;
 				await backend.switchToEditor(
 					buildEditorWindowQuery({
 						mode: "session",
@@ -710,14 +775,25 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 			return;
 		}
 
-		if (mediaRecorder.current?.state === "recording") {
+		const recorder = mediaRecorder.current;
+		if (recorder?.state === "recording" || recorder?.state === "paused") {
+			if (recorder.state === "paused") {
+				recorder.resume();
+			}
 			pendingFacecamResult.current = stopFacecamCapture();
 			cleanupCapturedMedia();
-			mediaRecorder.current.stop();
+			recorder.stop();
 			setRecording(false);
+			resetRecordingRuntimeControls();
 			void backend.setRecordingState(false);
 		}
-	}, [buildRecordingSession, cleanupCapturedMedia, stopFacecamCapture]);
+	}, [
+		buildRecordingSession,
+		cleanupCapturedMedia,
+		getPausedDurationForFinalize,
+		resetRecordingRuntimeControls,
+		stopFacecamCapture,
+	]);
 
 	useEffect(() => {
 		void (async () => {
@@ -742,6 +818,9 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		backend
 			.onRecordingStateChanged((isRecording) => {
 				setRecording(isRecording);
+				if (!isRecording) {
+					resetRecordingRuntimeControls();
+				}
 			})
 			.then((fn) => {
 				unlistenState = fn;
@@ -751,6 +830,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 			.onRecordingInterrupted(() => {
 				setRecording(false);
 				nativeScreenRecording.current = false;
+				resetRecordingRuntimeControls();
 				void stopLinuxCursorTelemetryCapture(null);
 				cleanupCapturedMedia();
 				void backend.setRecordingState(false);
@@ -769,14 +849,23 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 				void backend.stopNativeScreenRecording();
 			}
 
-			if (mediaRecorder.current?.state === "recording") {
-				mediaRecorder.current.stop();
+			const recorder = mediaRecorder.current;
+			if (recorder?.state === "recording" || recorder?.state === "paused") {
+				if (recorder.state === "paused") {
+					recorder.resume();
+				}
+				recorder.stop();
 			}
 
-			if (cameraRecorder.current?.state === "recording") {
-				cameraRecorder.current.stop();
+			const facecamRecorder = cameraRecorder.current;
+			if (facecamRecorder?.state === "recording" || facecamRecorder?.state === "paused") {
+				if (facecamRecorder.state === "paused") {
+					facecamRecorder.resume();
+				}
+				facecamRecorder.stop();
 			}
 
+			resetRecordingRuntimeControls();
 			void stopLinuxCursorTelemetryCapture(null);
 			cleanupCapturedMedia();
 			if (recordingFilePath.current) {
@@ -797,8 +886,15 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 				facecamWriteError,
 				facecamHasData,
 			);
+			finalizingPausedDurationMs.current = 0;
 		};
-	}, [cleanupCapturedMedia, resetStagedFileState, stopLinuxCursorTelemetryCapture, stopRecording]);
+	}, [
+		cleanupCapturedMedia,
+		resetRecordingRuntimeControls,
+		resetStagedFileState,
+		stopLinuxCursorTelemetryCapture,
+		stopRecording,
+	]);
 
 	const startRecording = async () => {
 		if (startInFlight.current) {
@@ -812,6 +908,9 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		pendingFacecamResult.current = Promise.resolve(null);
 		cameraRecordingStartedAt.current = null;
 		screenRecordingStartedAt.current = null;
+		pauseStartedAtMs.current = null;
+		accumulatedPausedDurationMs.current = 0;
+		finalizingPausedDurationMs.current = 0;
 
 		try {
 			const selectedSource = await backend.getSelectedSource();
@@ -883,6 +982,9 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 					await startFacecamCapture(recordingSessionId.current);
 					nativeScreenRecording.current = true;
 					wgcRecording.current = useWgcCapture;
+					setCanPauseRecording(useNativeMacScreenCapture);
+					setCanToggleMicrophoneDuringRecording(useNativeMacScreenCapture && microphoneEnabled);
+					setMicrophoneMuted(false);
 					startTime.current = Date.now();
 					screenRecordingStartedAt.current = startTime.current;
 					setRecording(true);
@@ -1102,12 +1204,13 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 			};
 			recorder.onerror = () => {
 				setRecording(false);
+				resetRecordingRuntimeControls();
 			};
 			recorder.onstop = async () => {
 				mediaRecorder.current = null;
 				cleanupCapturedMedia();
 
-				const duration = Math.max(0, Date.now() - startTime.current);
+				const duration = activeRecordingDuration(startTime.current);
 
 				try {
 					const storedPath = await finalizeStagedWebm(
@@ -1120,6 +1223,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 					if (!storedPath) {
 						console.error("Failed to store video");
 						await stopLinuxCursorTelemetryCapture(null);
+						finalizingPausedDurationMs.current = 0;
 						return;
 					}
 
@@ -1132,6 +1236,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 					const recordingSession = buildRecordingSession(storedPath, facecamResult);
 
 					await backend.setCurrentRecordingSession(recordingSession);
+					finalizingPausedDurationMs.current = 0;
 					await backend.switchToEditor(
 						buildEditorWindowQuery({
 							mode: "session",
@@ -1154,11 +1259,15 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 						recordingWriteError,
 						recordingHasData,
 					);
+					finalizingPausedDurationMs.current = 0;
 				}
 			};
 
 			await startFacecamCapture(recordingSessionId.current);
 			recorder.start(RECORDER_TIMESLICE_MS);
+			setCanPauseRecording(true);
+			setCanToggleMicrophoneDuringRecording(microphoneEnabled);
+			setMicrophoneMuted(false);
 			startTime.current = Date.now();
 			screenRecordingStartedAt.current = startTime.current;
 			setRecording(true);
@@ -1171,6 +1280,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 					: "Failed to start recording",
 			);
 			setRecording(false);
+			resetRecordingRuntimeControls();
 			const facecamResultPromise = stopFacecamCapture();
 			await stopLinuxCursorTelemetryCapture(recordingFilePath.current);
 			cleanupCapturedMedia();
@@ -1193,6 +1303,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 				facecamHasData,
 			);
 			await facecamResultPromise.catch(() => null);
+			finalizingPausedDurationMs.current = 0;
 		} finally {
 			startInFlight.current = false;
 			setStarting(false);
@@ -1217,11 +1328,97 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		})();
 	};
 
+	const pauseRecording = () => {
+		if (!recording || paused || !canPauseRecording) {
+			return;
+		}
+
+		if (nativeScreenRecording.current) {
+			void (async () => {
+				try {
+					await backend.pauseNativeScreenRecording();
+					if (cameraRecorder.current?.state === "recording") {
+						cameraRecorder.current.pause();
+					}
+					markRecordingPaused();
+				} catch (error) {
+					console.error("Failed to pause native screen recording:", error);
+				}
+			})();
+			return;
+		}
+
+		if (mediaRecorder.current?.state === "recording") {
+			mediaRecorder.current.pause();
+			if (cameraRecorder.current?.state === "recording") {
+				cameraRecorder.current.pause();
+			}
+			markRecordingPaused();
+		}
+	};
+
+	const resumeRecording = () => {
+		if (!recording || !paused || !canPauseRecording) {
+			return;
+		}
+
+		if (nativeScreenRecording.current) {
+			void (async () => {
+				try {
+					await backend.resumeNativeScreenRecording();
+					if (cameraRecorder.current?.state === "paused") {
+						cameraRecorder.current.resume();
+					}
+					markRecordingResumed();
+				} catch (error) {
+					console.error("Failed to resume native screen recording:", error);
+				}
+			})();
+			return;
+		}
+
+		if (mediaRecorder.current?.state === "paused") {
+			mediaRecorder.current.resume();
+			if (cameraRecorder.current?.state === "paused") {
+				cameraRecorder.current.resume();
+			}
+			markRecordingResumed();
+		}
+	};
+
+	const setRecordingMicrophoneMuted = (muted: boolean) => {
+		if (!recording || !microphoneEnabled || !canToggleMicrophoneDuringRecording) {
+			return;
+		}
+
+		if (nativeScreenRecording.current) {
+			void backend
+				.setNativeMicrophoneMuted(muted)
+				.then(() => {
+					setMicrophoneMuted(muted);
+				})
+				.catch((error) => {
+					console.error("Failed to toggle native microphone mute:", error);
+				});
+			return;
+		}
+
+		setBrowserMicrophoneTracksMuted(muted);
+		setMicrophoneMuted(muted);
+	};
+
 	return {
 		recording,
+		paused,
+		canPauseRecording,
+		microphoneMuted,
+		canToggleMicrophoneDuringRecording,
 		countdownActive,
 		countdownRemaining,
 		toggleRecording,
+		pauseRecording,
+		resumeRecording,
+		setRecordingMicrophoneMuted,
 		preparePermissions,
 		isMacOS,
 		microphoneEnabled,
