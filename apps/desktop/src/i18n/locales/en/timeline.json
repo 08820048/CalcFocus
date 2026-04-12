@@ -17,6 +17,7 @@
 		"cannotPlace": "Cannot place zoom here",
 		"cannotPlaceDescription": "Zoom already exists at this location or not enough space available.",
 		"suggestionUnavailable": "Zoom suggestion handler unavailable",
+		"unavailableWhileLooping": "Suggested zooms are unavailable while cursor looping is enabled.",
 		"noCursorTelemetry": "No cursor telemetry available",
 		"noCursorTelemetryDescription": "Record a screencast first to generate cursor-based suggestions.",
 		"noUsableCursorTelemetry": "No usable cursor telemetry",

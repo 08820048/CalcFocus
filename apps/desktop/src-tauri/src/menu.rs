@@ -51,6 +51,17 @@ pub fn setup_menu(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let save_project_as = MenuItemBuilder::with_id("menu-save-project-as", "Save Project As...")
         .accelerator("CmdOrCtrl+Shift+S")
         .build(app)?;
+    let undo = MenuItemBuilder::with_id("menu-undo", "Undo")
+        .accelerator("CmdOrCtrl+Z")
+        .build(app)?;
+    let redo_accelerator = if cfg!(target_os = "macos") {
+        "CmdOrCtrl+Shift+Z"
+    } else {
+        "CmdOrCtrl+Y"
+    };
+    let redo = MenuItemBuilder::with_id("menu-redo", "Redo")
+        .accelerator(redo_accelerator)
+        .build(app)?;
 
     let file_menu = SubmenuBuilder::new(app, "File")
         .item(&open_video)
@@ -64,8 +75,8 @@ pub fn setup_menu(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
 
     // Edit menu
     let edit_menu = SubmenuBuilder::new(app, "Edit")
-        .undo()
-        .redo()
+        .item(&undo)
+        .item(&redo)
         .separator()
         .cut()
         .copy()
@@ -120,6 +131,20 @@ pub fn setup_menu(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
                 crate::commands::window_mgmt::is_editor_window_label(label)
             }) {
                 let _ = window.emit("menu-save-project-as", ());
+            }
+        }
+        "menu-undo" => {
+            if let Some(window) = focused_window_with_predicate(app, |label| {
+                crate::commands::window_mgmt::is_editor_window_label(label)
+            }) {
+                let _ = window.emit("menu-undo", ());
+            }
+        }
+        "menu-redo" => {
+            if let Some(window) = focused_window_with_predicate(app, |label| {
+                crate::commands::window_mgmt::is_editor_window_label(label)
+            }) {
+                let _ = window.emit("menu-redo", ());
             }
         }
         "menu-check-updates" => {

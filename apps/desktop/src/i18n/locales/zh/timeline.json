@@ -17,6 +17,7 @@
 		"cannotPlace": "无法在这里放置缩放",
 		"cannotPlaceDescription": "该位置已存在缩放区域，或没有足够的可用空间。",
 		"suggestionUnavailable": "缩放建议处理器不可用",
+		"unavailableWhileLooping": "启用光标循环时，无法生成缩放建议。",
 		"noCursorTelemetry": "没有可用的光标遥测数据",
 		"noCursorTelemetryDescription": "请先录制一次屏幕操作，再生成基于光标的缩放建议。",
 		"noUsableCursorTelemetry": "没有可用的光标数据",

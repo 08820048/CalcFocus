@@ -63,6 +63,7 @@ pub async fn switch_to_editor(app: AppHandle, query: Option<String>) -> Result<(
     {
         builder = builder
             .theme(Some(Theme::Dark))
+            .hidden_title(true)
             .title_bar_style(TitleBarStyle::Overlay)
             .traffic_light_position(Position::Logical(LogicalPosition::new(12.0, 12.0)));
     }

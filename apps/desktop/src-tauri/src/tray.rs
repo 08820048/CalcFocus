@@ -58,7 +58,7 @@ pub fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
 
     TrayIconBuilder::with_id("main")
         .icon(tray_icon_image(app)?)
-        .icon_as_template(false)
+        .icon_as_template(cfg!(target_os = "macos"))
         .menu(&menu)
         .on_menu_event(|app, event| match event.id().as_ref() {
             "open" => {
@@ -97,11 +97,7 @@ pub fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
 
 #[cfg(target_os = "macos")]
 fn tray_icon_image(_app: &tauri::App) -> Result<Image<'static>, Box<dyn std::error::Error>> {
-    Ok(Image::new_owned(
-        include_bytes!("../icons/tray-icon.rgba.bin").to_vec(),
-        793,
-        863,
-    ))
+    Ok(Image::from_bytes(include_bytes!("../icons/tray-icon.png"))?.to_owned())
 }
 
 #[cfg(not(target_os = "macos"))]

@@ -403,6 +403,14 @@ export function onMenuSaveProjectAs(callback: () => void): Promise<UnlistenFn> {
 	return listen("menu-save-project-as", callback);
 }
 
+export function onMenuUndo(callback: () => void): Promise<UnlistenFn> {
+	return listen("menu-undo", callback);
+}
+
+export function onMenuRedo(callback: () => void): Promise<UnlistenFn> {
+	return listen("menu-redo", callback);
+}
+
 export function onRequestSaveBeforeClose(callback: () => void): Promise<UnlistenFn> {
 	return listen("request-save-before-close", callback);
 }

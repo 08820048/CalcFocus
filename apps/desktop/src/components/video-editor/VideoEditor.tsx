@@ -9,7 +9,9 @@ import {
 	HelpCircle,
 	Image,
 	LoaderCircle,
+	Redo2,
 	SlidersHorizontal,
+	Undo2,
 } from "lucide-react";
 import { Profiler, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
@@ -70,10 +72,7 @@ import {
 } from "./projectPersistence";
 import { SettingsPanel } from "./SettingsPanel";
 import TimelineEditor from "./timeline/TimelineEditor";
-import {
-	detectInteractionCandidates,
-	normalizeCursorTelemetry,
-} from "./timeline/zoomSuggestionUtils";
+import { normalizeCursorTelemetry } from "./timeline/zoomSuggestionUtils";
 import {
 	type AnnotationRegion,
 	type CropRegion,
@@ -130,6 +129,11 @@ type EditorHistorySnapshot = {
 type PendingExportSave = {
 	fileName: string;
 	arrayBuffer: ArrayBuffer;
+};
+
+type PendingPreviewRestore = {
+	time: number;
+	resumePlayback: boolean;
 };
 
 function getZoomRegionSignature(region: ZoomRegion) {
@@ -196,6 +200,7 @@ export default function VideoEditor() {
 	const [currentProjectPath, setCurrentProjectPath] = useState<string | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [playbackReady, setPlaybackReady] = useState(false);
+	const [previewVersion, setPreviewVersion] = useState(0);
 	const [error, setError] = useState<string | null>(null);
 	const [isPlaying, setIsPlaying] = useState(false);
 	const timeStore = useTimeStore();
@@ -244,6 +249,8 @@ export default function VideoEditor() {
 	const [exportedFilePath, setExportedFilePath] = useState<string | undefined>(undefined);
 	const [hasPendingExportSave, setHasPendingExportSave] = useState(false);
 	const [lastSavedSnapshot, setLastSavedSnapshot] = useState<string | null>(null);
+	const [autoSuggestZoomsTrigger, setAutoSuggestZoomsTrigger] = useState(0);
+	const [historyVersion, setHistoryVersion] = useState(0);
 
 	const videoPlaybackRef = useRef<VideoPlaybackRef>(null);
 	const nextZoomIdRef = useRef(1);
@@ -257,12 +264,27 @@ export default function VideoEditor() {
 	const nextAnnotationZIndexRef = useRef(1); // Track z-index for stacking order
 	const exporterRef = useRef<VideoExporter | null>(null);
 	const autoSuggestedVideoPathRef = useRef<string | null>(null);
+	const pendingFreshRecordingAutoZoomPathRef = useRef<string | null>(null);
+	const pendingTelemetryRetryTimeoutRef = useRef<number | null>(null);
 	const historyPastRef = useRef<EditorHistorySnapshot[]>([]);
 	const historyFutureRef = useRef<EditorHistorySnapshot[]>([]);
 	const historyCurrentRef = useRef<EditorHistorySnapshot | null>(null);
 	const applyingHistoryRef = useRef(false);
 	const pendingExportSaveRef = useRef<PendingExportSave | null>(null);
+	const pendingPreviewRestoreRef = useRef<PendingPreviewRestore | null>(null);
 	const playbackOverlayWasVisibleRef = useRef(false);
+
+	const syncHistoryButtons = useCallback(() => {
+		setHistoryVersion((version) => version + 1);
+	}, []);
+
+	const resetHistoryState = useCallback(() => {
+		historyPastRef.current = [];
+		historyFutureRef.current = [];
+		historyCurrentRef.current = null;
+		applyingHistoryRef.current = false;
+		syncHistoryButtons();
+	}, [syncHistoryButtons]);
 
 	const cloneSnapshot = useCallback((snapshot: EditorHistorySnapshot): EditorHistorySnapshot => {
 		return {
@@ -349,7 +371,8 @@ export default function VideoEditor() {
 		historyFutureRef.current.push(cloneSnapshot(current));
 		historyCurrentRef.current = cloneSnapshot(previous);
 		applyHistorySnapshot(previous);
-	}, [applyHistorySnapshot, buildHistorySnapshot, cloneSnapshot]);
+		syncHistoryButtons();
+	}, [applyHistorySnapshot, buildHistorySnapshot, cloneSnapshot, syncHistoryButtons]);
 
 	const handleRedo = useCallback(() => {
 		if (historyFutureRef.current.length === 0) return;
@@ -361,7 +384,8 @@ export default function VideoEditor() {
 		historyPastRef.current.push(cloneSnapshot(current));
 		historyCurrentRef.current = cloneSnapshot(next);
 		applyHistorySnapshot(next);
-	}, [applyHistorySnapshot, buildHistorySnapshot, cloneSnapshot]);
+		syncHistoryButtons();
+	}, [applyHistorySnapshot, buildHistorySnapshot, cloneSnapshot, syncHistoryButtons]);
 
 	const resolvePlaybackPaths = useCallback(
 		async (sourcePath: string, nextFacecamPath?: string | null) => {
@@ -391,7 +415,15 @@ export default function VideoEditor() {
 		setError(null);
 		setPlaybackReady(false);
 		setCursorTelemetry([]);
-	}, [timeStore]);
+		setAutoSuggestZoomsTrigger(0);
+		if (pendingTelemetryRetryTimeoutRef.current !== null) {
+			window.clearTimeout(pendingTelemetryRetryTimeoutRef.current);
+			pendingTelemetryRetryTimeoutRef.current = null;
+		}
+		pendingFreshRecordingAutoZoomPathRef.current = null;
+		pendingPreviewRestoreRef.current = null;
+		resetHistoryState();
+	}, [resetHistoryState, timeStore]);
 
 	const applyLoadedProject = useCallback(
 		async (candidate: unknown, path?: string | null) => {
@@ -590,17 +622,24 @@ export default function VideoEditor() {
 		gifSizePreset,
 	]);
 
+	const canUndo = historyPastRef.current.length > 0;
+	const canRedo = historyFutureRef.current.length > 0;
+
+	void historyVersion;
+
 	useEffect(() => {
 		const snapshot = cloneSnapshot(buildHistorySnapshot());
 
 		if (!historyCurrentRef.current) {
 			historyCurrentRef.current = snapshot;
+			syncHistoryButtons();
 			return;
 		}
 
 		if (applyingHistoryRef.current) {
 			historyCurrentRef.current = snapshot;
 			applyingHistoryRef.current = false;
+			syncHistoryButtons();
 			return;
 		}
 
@@ -614,7 +653,8 @@ export default function VideoEditor() {
 		}
 		historyCurrentRef.current = snapshot;
 		historyFutureRef.current = [];
-	}, [buildHistorySnapshot, cloneSnapshot]);
+		syncHistoryButtons();
+	}, [buildHistorySnapshot, cloneSnapshot, syncHistoryButtons]);
 
 	const hasUnsavedChanges = Boolean(
 		currentProjectPath &&
@@ -647,6 +687,7 @@ export default function VideoEditor() {
 					search: window.location.search,
 				});
 				if (initialState.kind === "project") {
+					pendingFreshRecordingAutoZoomPathRef.current = null;
 					const restored = await applyLoadedProject(
 						initialState.data,
 						initialState.filePath ?? null,
@@ -662,6 +703,7 @@ export default function VideoEditor() {
 						nextFacecamPath,
 					);
 					resetPlaybackStateForSourceChange();
+					pendingFreshRecordingAutoZoomPathRef.current = resolvedVideoPath;
 					setVideoSourcePath(initialState.sourcePath);
 					setVideoPath(resolvedVideoPath);
 					setSourceName(initialState.sourceName);
@@ -678,6 +720,7 @@ export default function VideoEditor() {
 				} else if (initialState.kind === "video") {
 					const resolvedVideoPath = await backend.resolveMediaPlaybackUrl(initialState.sourcePath);
 					resetPlaybackStateForSourceChange();
+					pendingFreshRecordingAutoZoomPathRef.current = null;
 					setVideoSourcePath(initialState.sourcePath);
 					setVideoPath(resolvedVideoPath);
 					setSourceName(initialState.sourceName);
@@ -688,6 +731,7 @@ export default function VideoEditor() {
 					setCurrentProjectPath(null);
 					setLastSavedSnapshot(null);
 				} else {
+					pendingFreshRecordingAutoZoomPathRef.current = null;
 					setSourceName(null);
 					setError(t("errors.noVideoToLoad", "No video to load. Please record or select a video."));
 				}
@@ -893,6 +937,8 @@ export default function VideoEditor() {
 		let unlistenLoad: (() => void) | undefined;
 		let unlistenSave: (() => void) | undefined;
 		let unlistenSaveAs: (() => void) | undefined;
+		let unlistenUndo: (() => void) | undefined;
+		let unlistenRedo: (() => void) | undefined;
 
 		backend.onMenuLoadProject(handleLoadProject).then((fn) => {
 			unlistenLoad = fn;
@@ -903,16 +949,25 @@ export default function VideoEditor() {
 		backend.onMenuSaveProjectAs(handleSaveProjectAs).then((fn) => {
 			unlistenSaveAs = fn;
 		});
+		backend.onMenuUndo(handleUndo).then((fn) => {
+			unlistenUndo = fn;
+		});
+		backend.onMenuRedo(handleRedo).then((fn) => {
+			unlistenRedo = fn;
+		});
 
 		return () => {
 			unlistenLoad?.();
 			unlistenSave?.();
 			unlistenSaveAs?.();
+			unlistenUndo?.();
+			unlistenRedo?.();
 		};
-	}, [handleLoadProject, handleSaveProject, handleSaveProjectAs]);
+	}, [handleLoadProject, handleRedo, handleSaveProject, handleSaveProjectAs, handleUndo]);
 
 	useEffect(() => {
 		let mounted = true;
+		let retryAttempts = 0;
 
 		async function loadCursorTelemetry() {
 			if (!videoSourcePath || !playbackReady) {
@@ -926,19 +981,46 @@ export default function VideoEditor() {
 				const result = await backend.getCursorTelemetry(videoSourcePath);
 				if (mounted) {
 					const previewVideo = videoPlaybackRef.current?.video;
-					setCursorTelemetry(
-						normalizeCursorTelemetryPayload(result, {
-							videoWidth: previewVideo?.videoWidth,
-							videoHeight: previewVideo?.videoHeight,
-							durationMs: duration > 0 ? Math.round(duration * 1000) : undefined,
-						}),
-					);
+					const normalizedTelemetry = normalizeCursorTelemetryPayload(result, {
+						videoWidth: previewVideo?.videoWidth,
+						videoHeight: previewVideo?.videoHeight,
+						durationMs: duration > 0 ? Math.round(duration * 1000) : undefined,
+					});
+					setCursorTelemetry(normalizedTelemetry);
 					markVideoEditorTiming("cursor-telemetry-ready");
+
+					const shouldRetryFreshRecordingTelemetry =
+						normalizedTelemetry.length < 2 &&
+						pendingFreshRecordingAutoZoomPathRef.current === videoPath &&
+						retryAttempts < 12;
+
+					if (shouldRetryFreshRecordingTelemetry) {
+						retryAttempts += 1;
+						pendingTelemetryRetryTimeoutRef.current = window.setTimeout(() => {
+							pendingTelemetryRetryTimeoutRef.current = null;
+							if (mounted) {
+								void loadCursorTelemetry();
+							}
+						}, 350);
+					}
 				}
 			} catch (telemetryError) {
 				console.warn("Unable to load cursor telemetry:", telemetryError);
 				if (mounted) {
 					setCursorTelemetry((current) => (current.length === 0 ? current : []));
+
+					if (
+						pendingFreshRecordingAutoZoomPathRef.current === videoPath &&
+						retryAttempts < 12
+					) {
+						retryAttempts += 1;
+						pendingTelemetryRetryTimeoutRef.current = window.setTimeout(() => {
+							pendingTelemetryRetryTimeoutRef.current = null;
+							if (mounted) {
+								void loadCursorTelemetry();
+							}
+						}, 350);
+					}
 				}
 			}
 		}
@@ -947,8 +1029,12 @@ export default function VideoEditor() {
 
 		return () => {
 			mounted = false;
+			if (pendingTelemetryRetryTimeoutRef.current !== null) {
+				window.clearTimeout(pendingTelemetryRetryTimeoutRef.current);
+				pendingTelemetryRetryTimeoutRef.current = null;
+			}
 		};
-	}, [duration, playbackReady, videoSourcePath]);
+	}, [duration, playbackReady, videoPath, videoSourcePath]);
 
 	const showPlaybackLoadingOverlay = Boolean(videoPath) && !playbackReady && !error;
 
@@ -963,6 +1049,66 @@ export default function VideoEditor() {
 			playbackOverlayWasVisibleRef.current = false;
 		}
 	}, [error, playbackReady, showPlaybackLoadingOverlay, videoPath]);
+
+	useEffect(() => {
+		if (!playbackReady) {
+			return;
+		}
+
+		const pendingRestore = pendingPreviewRestoreRef.current;
+		if (!pendingRestore) {
+			return;
+		}
+
+		pendingPreviewRestoreRef.current = null;
+		let cancelled = false;
+
+		const restorePreview = async () => {
+			const playback = videoPlaybackRef.current;
+			const video = playback?.video;
+			if (!playback || !video || cancelled) {
+				return;
+			}
+
+			const durationSeconds = Number.isFinite(video.duration) ? video.duration : 0;
+			const maxSeekTime =
+				durationSeconds > 0 ? Math.max(durationSeconds - 0.001, 0) : pendingRestore.time;
+			const targetTime = Math.max(0, Math.min(pendingRestore.time, maxSeekTime));
+
+			playback.pause();
+
+			if (Math.abs(video.currentTime - targetTime) > 0.001) {
+				await new Promise<void>((resolve) => {
+					const handleSeeked = () => {
+						video.removeEventListener("seeked", handleSeeked);
+						resolve();
+					};
+
+					video.addEventListener("seeked", handleSeeked, { once: true });
+					video.currentTime = targetTime;
+				});
+			}
+
+			timeStore.setTime(targetTime);
+
+			if (pendingRestore.resumePlayback) {
+				try {
+					await playback.play();
+					return;
+				} catch (restoreError) {
+					console.error("Failed to resume preview playback after export:", restoreError);
+				}
+			}
+
+			await playback.refreshFrame().catch(() => undefined);
+		};
+
+		void restorePreview();
+
+		return () => {
+			cancelled = true;
+		};
+	}, [playbackReady, timeStore]);
 
 	const normalizedCursorTelemetry = useMemo(() => {
 		if (cursorTelemetry.length === 0) {
@@ -1037,80 +1183,37 @@ export default function VideoEditor() {
 	useEffect(() => {
 		if (
 			!videoPath ||
+			loading ||
+			!playbackReady ||
 			duration <= 0 ||
+			loopCursor ||
 			zoomRegions.length > 0 ||
-			normalizedCursorTelemetry.length < 2
+			effectiveCursorTelemetry.length < 2
 		) {
 			return;
 		}
 
+		if (pendingFreshRecordingAutoZoomPathRef.current !== videoPath) {
+			return;
+		}
+
 		if (autoSuggestedVideoPathRef.current === videoPath) {
+			pendingFreshRecordingAutoZoomPathRef.current = null;
 			return;
 		}
-
-		const totalMs = Math.max(0, Math.round(duration * 1000));
-		if (totalMs <= 0) {
-			return;
-		}
-
-		const candidates = detectInteractionCandidates(normalizedCursorTelemetry);
-		if (candidates.length === 0) {
-			autoSuggestedVideoPathRef.current = videoPath;
-			return;
-		}
-
-		const DEFAULT_DURATION_MS = 1100;
-		const MIN_SPACING_MS = 1800;
-		const sortedCandidates = [...candidates].sort((a, b) => b.strength - a.strength);
-		const acceptedCenters: number[] = [];
-
-		setZoomRegions((prev) => {
-			if (prev.length > 0) {
-				return prev;
-			}
-
-			const reservedSpans: Array<{ start: number; end: number }> = [];
-			const additions: ZoomRegion[] = [];
-			let nextId = nextZoomIdRef.current;
-
-			sortedCandidates.forEach((candidate) => {
-				const tooCloseToAccepted = acceptedCenters.some(
-					(center) => Math.abs(center - candidate.centerTimeMs) < MIN_SPACING_MS,
-				);
-				if (tooCloseToAccepted) {
-					return;
-				}
-
-				const centeredStart = Math.round(candidate.centerTimeMs - DEFAULT_DURATION_MS / 2);
-				const startMs = Math.max(0, Math.min(centeredStart, totalMs - DEFAULT_DURATION_MS));
-				const endMs = Math.min(totalMs, startMs + DEFAULT_DURATION_MS);
-
-				const hasOverlap = reservedSpans.some((span) => endMs > span.start && startMs < span.end);
-				if (hasOverlap) {
-					return;
-				}
-
-				additions.push({
-					id: `zoom-${nextId++}`,
-					startMs,
-					endMs,
-					depth: DEFAULT_ZOOM_DEPTH,
-					focus: clampFocusToDepth(candidate.focus, DEFAULT_ZOOM_DEPTH),
-				});
-				reservedSpans.push({ start: startMs, end: endMs });
-				acceptedCenters.push(candidate.centerTimeMs);
-			});
-
-			if (additions.length === 0) {
-				return prev;
-			}
-
-			nextZoomIdRef.current = nextId;
-			return [...prev, ...additions];
-		});
 
 		autoSuggestedVideoPathRef.current = videoPath;
-	}, [videoPath, duration, normalizedCursorTelemetry, zoomRegions.length]);
+		pendingFreshRecordingAutoZoomPathRef.current = null;
+		setAutoSuggestZoomsTrigger((value) => value + 1);
+	}, [
+		videoPath,
+		loading,
+		playbackReady,
+		duration,
+		loopCursor,
+		zoomRegions.length,
+		effectiveCursorTelemetry.length,
+	]);
 
 	// Initialize default wallpaper with resolved asset path
 	useEffect(() => {
@@ -1151,6 +1254,10 @@ export default function VideoEditor() {
 			playback.play().catch((err) => console.error("Video play failed:", err));
 		}
 	}, [isPlaying]);
+
+	const handleAutoSuggestZoomsConsumed = useCallback(() => {
+		setAutoSuggestZoomsTrigger(0);
+	}, []);
 
 	const handleSeek = useCallback((time: number) => {
 		const video = videoPlaybackRef.current?.video;
@@ -1638,106 +1745,11 @@ export default function VideoEditor() {
 		[t],
 	);
 
-	const restorePreviewAfterExport = useCallback(
-		async (restoreTime: number, resumePlayback: boolean) => {
-			const playback = videoPlaybackRef.current;
-			const video = playback?.video;
-
-			if (!playback || !video || !videoPath) {
-				return;
-			}
-
-			const waitForVideoData = async (reloadSource?: () => void) => {
-				if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-					return;
-				}
-
-				await new Promise<void>((resolve, reject) => {
-					const cleanup = () => {
-						video.removeEventListener("loadeddata", handleLoadedData);
-						video.removeEventListener("error", handleError);
-					};
-
-					const handleLoadedData = () => {
-						cleanup();
-						resolve();
-					};
-
-					const handleError = () => {
-						cleanup();
-						reject(new Error("Failed to reload preview video"));
-					};
-
-					video.addEventListener("loadeddata", handleLoadedData, { once: true });
-					video.addEventListener("error", handleError, { once: true });
-					reloadSource?.();
-
-					if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-						cleanup();
-						resolve();
-					}
-				});
-			};
-
-			const seekToTime = async (targetTime: number) => {
-				const duration = Number.isFinite(video.duration) ? video.duration : 0;
-				const maxSeekTime = duration > 0 ? Math.max(duration - 0.001, 0) : targetTime;
-				const clampedTime = Math.max(0, Math.min(targetTime, maxSeekTime));
-
-				if (Math.abs(video.currentTime - clampedTime) <= 0.001) {
-					return;
-				}
-
-				await new Promise<void>((resolve, reject) => {
-					const cleanup = () => {
-						video.removeEventListener("seeked", handleSeeked);
-						video.removeEventListener("error", handleError);
-					};
-
-					const handleSeeked = () => {
-						cleanup();
-						resolve();
-					};
-
-					const handleError = () => {
-						cleanup();
-						reject(new Error("Failed to seek preview video after export"));
-					};
-
-					video.addEventListener("seeked", handleSeeked, { once: true });
-					video.addEventListener("error", handleError, { once: true });
-					video.currentTime = clampedTime;
-				});
-			};
-
-			playback.pause();
-
-			const shouldReloadSource =
-				video.getAttribute("src") !== videoPath ||
-				video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA;
-
-			if (shouldReloadSource) {
-				video.src = videoPath;
-				await waitForVideoData(() => {
-					video.load();
-				});
-			}
-
-			await seekToTime(restoreTime);
-
-			if (resumePlayback) {
-				try {
-					await playback.play();
-					return;
-				} catch (error) {
-					console.error("Failed to resume preview playback after export:", error);
-				}
-			}
-
-			await playback.refreshFrame().catch(() => undefined);
-		},
-		[videoPath],
-	);
+	const remountPreview = useCallback((restoreState?: PendingPreviewRestore) => {
+		pendingPreviewRestoreRef.current = restoreState ?? null;
+		setPlaybackReady(false);
+		setPreviewVersion((version) => version + 1);
+	}, []);
 
 	const handleExport = useCallback(
 		async (settings: ExportSettings) => {
@@ -2026,11 +2038,7 @@ export default function VideoEditor() {
 					t("export.failedWithError", "Export failed: {{error}}", { error: errorMessage }),
 				);
 			} finally {
-				try {
-					await restorePreviewAfterExport(restoreTime, wasPlaying);
-				} catch (error) {
-					console.error("Failed to restore preview after export:", error);
-				}
+				remountPreview({ time: restoreTime, resumePlayback: wasPlaying });
 				setIsExporting(false);
 				exporterRef.current = null;
 				setShowExportDialog(keepExportDialogOpen);
@@ -2067,8 +2075,8 @@ export default function VideoEditor() {
 			isPlaying,
 			aspectRatio,
 			exportQuality,
+			remountPreview,
 			showExportSuccessToast,
-			restorePreviewAfterExport,
 			t,
 		],
 	);
@@ -2258,6 +2266,34 @@ export default function VideoEditor() {
 				className="relative h-10 flex-shrink-0 bg-[#09090b]/80 backdrop-blur-md border-b border-white/5 flex items-center justify-center px-6 z-50"
 				style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
 			>
+				<div
+					className={cn(
+						"absolute flex items-center gap-1",
+						isMac ? "left-[84px]" : "left-4",
+					)}
+					style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+				>
+					<button
+						type="button"
+						onClick={handleUndo}
+						disabled={!canUndo}
+						className="inline-flex h-7 w-7 items-center justify-center text-white/75 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
+						title={t("common.actions.undo", "Undo")}
+						aria-label={t("common.actions.undo", "Undo")}
+					>
+						<Undo2 className="h-3.5 w-3.5" />
+					</button>
+					<button
+						type="button"
+						onClick={handleRedo}
+						disabled={!canRedo}
+						className="inline-flex h-7 w-7 items-center justify-center text-white/75 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
+						title={t("common.actions.redo", "Redo")}
+						aria-label={t("common.actions.redo", "Redo")}
+					>
+						<Redo2 className="h-3.5 w-3.5" />
+					</button>
+				</div>
 				<span className="text-sm font-semibold tracking-tight text-white">
 					{editorNavbarTitle}
 				</span>
@@ -2581,6 +2617,7 @@ export default function VideoEditor() {
 									>
 										<Profiler id="VideoPlayback" onRender={onRenderProfiler}>
 											<VideoPlayback
+												key={`${videoPath || "no-video"}:${previewVersion}`}
 												aspectRatio={aspectRatio}
 												ref={videoPlaybackRef}
 												videoPath={videoPath || ""}
@@ -2665,6 +2702,9 @@ export default function VideoEditor() {
 										timeStore={timeStore}
 										onSeek={handleSeek}
 										cursorTelemetry={effectiveCursorTelemetry}
+										autoSuggestZoomsTrigger={autoSuggestZoomsTrigger}
+										onAutoSuggestZoomsConsumed={handleAutoSuggestZoomsConsumed}
+										disableSuggestedZooms={loopCursor}
 										zoomRegions={effectiveZoomRegions}
 										onZoomAdded={handleZoomAdded}
 										onZoomSuggested={handleZoomSuggested}

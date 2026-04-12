@@ -21,6 +21,12 @@ export interface CursorInteractionCandidate extends ZoomDwellCandidate {
 		| "text-field-click";
 }
 
+export interface SuggestedZoomRegion {
+	startMs: number;
+	endMs: number;
+	focus: ZoomFocus;
+}
+
 function normalizeTelemetrySample(
 	sample: CursorTelemetryPoint,
 	totalMs: number,
@@ -228,6 +234,78 @@ export function detectInteractionCandidates(
 	}
 
 	return [...explicitInteractionCandidates, ...dwellCandidates, ...doubleClickCandidates];
+}
+
+export function planSuggestedZoomRegions(options: {
+	candidates: CursorInteractionCandidate[];
+	totalMs: number;
+	defaultDurationMs: number;
+	reservedSpans?: Array<{ start: number; end: number }>;
+	suggestionSpacingMs?: number;
+	mergeNearbyGapMs?: number;
+}): SuggestedZoomRegion[] {
+	const {
+		candidates,
+		totalMs,
+		defaultDurationMs,
+		reservedSpans = [],
+		suggestionSpacingMs = 1800,
+		mergeNearbyGapMs = 1500,
+	} = options;
+
+	if (totalMs <= 0 || defaultDurationMs <= 0 || candidates.length === 0) {
+		return [];
+	}
+
+	const acceptedCenters: number[] = [];
+	const occupiedSpans = [...reservedSpans].sort((a, b) => a.start - b.start);
+	const accepted: SuggestedZoomRegion[] = [];
+	const sortedCandidates = [...candidates].sort((a, b) => b.strength - a.strength);
+
+	for (const candidate of sortedCandidates) {
+		const tooCloseToAccepted = acceptedCenters.some(
+			(center) => Math.abs(center - candidate.centerTimeMs) < suggestionSpacingMs,
+		);
+		if (tooCloseToAccepted) {
+			continue;
+		}
+
+		const centeredStart = Math.round(candidate.centerTimeMs - defaultDurationMs / 2);
+		const startMs = Math.max(0, Math.min(centeredStart, totalMs - defaultDurationMs));
+		const endMs = Math.min(totalMs, startMs + defaultDurationMs);
+		const hasOverlap = occupiedSpans.some((span) => endMs > span.start && startMs < span.end);
+
+		if (hasOverlap) {
+			continue;
+		}
+
+		accepted.push({
+			startMs,
+			endMs,
+			focus: candidate.focus,
+		});
+		occupiedSpans.push({ start: startMs, end: endMs });
+		acceptedCenters.push(candidate.centerTimeMs);
+	}
+
+	if (accepted.length === 0) {
+		return [];
+	}
+
+	const sortedAccepted = [...accepted].sort((a, b) => a.startMs - b.startMs);
+	const merged: SuggestedZoomRegion[] = [];
+
+	for (const region of sortedAccepted) {
+		const prev = merged[merged.length - 1];
+		if (prev && region.startMs - prev.endMs <= mergeNearbyGapMs) {
+			prev.endMs = Math.max(prev.endMs, region.endMs);
+			continue;
+		}
+
+		merged.push({ ...region });
+	}
+
+	return merged;
 }
 
 /**

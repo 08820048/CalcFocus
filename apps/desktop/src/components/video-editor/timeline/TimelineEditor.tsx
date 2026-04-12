@@ -56,7 +56,11 @@ import Item from "./Item";
 import KeyframeMarkers from "./KeyframeMarkers";
 import Row from "./Row";
 import TimelineWrapper from "./TimelineWrapper";
-import { detectInteractionCandidates, normalizeCursorTelemetry } from "./zoomSuggestionUtils";
+import {
+	detectInteractionCandidates,
+	normalizeCursorTelemetry,
+	planSuggestedZoomRegions,
+} from "./zoomSuggestionUtils";
 
 const ZOOM_ROW_ID = "row-zoom";
 const TRIM_ROW_ID = "row-trim";
@@ -65,12 +69,16 @@ const SPEED_ROW_ID = "row-speed";
 const FALLBACK_RANGE_MS = 1000;
 const TARGET_MARKER_COUNT = 12;
 const SUGGESTION_SPACING_MS = 1800;
+const MERGE_NEARBY_GAP_MS = 1500;
 
 interface TimelineEditorProps {
 	videoDuration: number;
 	timeStore: TimeStore;
 	onSeek?: (time: number) => void;
 	cursorTelemetry?: CursorTelemetryPoint[];
+	autoSuggestZoomsTrigger?: number;
+	onAutoSuggestZoomsConsumed?: () => void;
+	disableSuggestedZooms?: boolean;
 	zoomRegions: ZoomRegion[];
 	onZoomAdded: (span: Span) => void;
 	onZoomSuggested?: (span: Span, focus: ZoomFocus) => void;
@@ -680,6 +688,9 @@ function TimelineEditorInner({
 	timeStore,
 	onSeek,
 	cursorTelemetry = [],
+	autoSuggestZoomsTrigger = 0,
+	onAutoSuggestZoomsConsumed,
+	disableSuggestedZooms = false,
 	zoomRegions,
 	onZoomAdded,
 	onZoomSuggested,
@@ -979,6 +990,16 @@ function TimelineEditorInner({
 			return;
 		}
 
+		if (disableSuggestedZooms) {
+			toast.info(
+				t(
+					"zoom.unavailableWhileLooping",
+					"Suggested zooms are unavailable while cursor looping is enabled.",
+				),
+			);
+			return;
+		}
+
 		if (!onZoomSuggested) {
 			toast.error(t("zoom.suggestionUnavailable", "Zoom suggestion handler unavailable"));
 			return;
@@ -1027,38 +1048,16 @@ function TimelineEditorInner({
 			return;
 		}
 
-		const sortedCandidates = [...dwellCandidates].sort((a, b) => b.strength - a.strength);
-		const acceptedCenters: number[] = [];
-
-		let addedCount = 0;
-
-		sortedCandidates.forEach((candidate) => {
-			const tooCloseToAccepted = acceptedCenters.some(
-				(center) => Math.abs(center - candidate.centerTimeMs) < SUGGESTION_SPACING_MS,
-			);
-
-			if (tooCloseToAccepted) {
-				return;
-			}
-
-			const centeredStart = Math.round(candidate.centerTimeMs - defaultDuration / 2);
-			const candidateStart = Math.max(0, Math.min(centeredStart, totalMs - defaultDuration));
-			const candidateEnd = candidateStart + defaultDuration;
-			const hasOverlap = reservedSpans.some(
-				(span) => candidateEnd > span.start && candidateStart < span.end,
-			);
-
-			if (hasOverlap) {
-				return;
-			}
-
-			reservedSpans.push({ start: candidateStart, end: candidateEnd });
-			acceptedCenters.push(candidate.centerTimeMs);
-			onZoomSuggested({ start: candidateStart, end: candidateEnd }, candidate.focus);
-			addedCount += 1;
+		const mergedSuggestions = planSuggestedZoomRegions({
+			candidates: dwellCandidates,
+			totalMs,
+			defaultDurationMs: defaultDuration,
+			reservedSpans,
+			suggestionSpacingMs: SUGGESTION_SPACING_MS,
+			mergeNearbyGapMs: MERGE_NEARBY_GAP_MS,
 		});
 
-		if (addedCount === 0) {
+		if (mergedSuggestions.length === 0) {
 			toast.info(t("zoom.noSlots", "No auto-zoom slots available"), {
 				description: t(
 					"zoom.noSlotsDescription",
@@ -1068,10 +1067,17 @@ function TimelineEditorInner({
 			return;
 		}
 
+		for (const suggestion of mergedSuggestions) {
+			onZoomSuggested(
+				{ start: suggestion.startMs, end: suggestion.endMs },
+				suggestion.focus,
+			);
+		}
+
 		toast.success(
 			t("zoom.suggestionsAdded", "Added {{count}} interaction-based zoom suggestion{{plural}}", {
-				count: addedCount,
-				plural: addedCount === 1 ? "" : "s",
+				count: mergedSuggestions.length,
+				plural: mergedSuggestions.length === 1 ? "" : "s",
 			}),
 		);
 	}, [
@@ -1079,10 +1085,20 @@ function TimelineEditorInner({
 		totalMs,
 		defaultRegionDurationMs,
 		zoomRegions,
+		disableSuggestedZooms,
 		onZoomSuggested,
 		cursorTelemetry,
 		t,
 	]);
+
+	useEffect(() => {
+		if (autoSuggestZoomsTrigger <= 0) {
+			return;
+		}
+
+		onAutoSuggestZoomsConsumed?.();
+		handleSuggestZooms();
+	}, [autoSuggestZoomsTrigger, handleSuggestZooms, onAutoSuggestZoomsConsumed]);
 
 	const handleAddTrim = useCallback(() => {
 		if (!videoDuration || videoDuration === 0 || totalMs === 0 || !onTrimAdded) {
