@@ -58,8 +58,10 @@ const CLICK_RING_FADE_MS = 240;
 const CURSOR_MOTION_BLUR_BASE_MULTIPLIER = 0.08;
 const CURSOR_TIME_DISCONTINUITY_MS = 100;
 const CURSOR_STATIONARY_TARGET_EPSILON = 0.0008;
-const CURSOR_STATIONARY_SNAP_DELAY_MS = 52;
-const CURSOR_STATIONARY_SNAP_DISTANCE = 0.012;
+const CURSOR_STATIONARY_SNAP_DELAY_MS = 16;
+const CURSOR_STATIONARY_NEAR_SNAP_DISTANCE = 0.02;
+const CURSOR_STATIONARY_FAR_SNAP_DELAY_MS = 40;
+const CURSOR_STATIONARY_FAR_SNAP_DISTANCE = 0.05;
 const CURSOR_SVG_DROP_SHADOW_FILTER = "drop-shadow(0px 2px 3px rgba(0, 0, 0, 0.35))";
 const CURSOR_SHADOW_COLOR = 0x000000;
 const CURSOR_SHADOW_ALPHA = 0.35;
@@ -494,9 +496,13 @@ export class SmoothedCursorState {
 		if (this.stationaryTargetSinceMs !== null) {
 			const stationaryDurationMs = Math.max(0, timeMs - this.stationaryTargetSinceMs);
 			const distanceToTarget = Math.hypot(targetX - this.x, targetY - this.y);
+			const snapDistance =
+				stationaryDurationMs >= CURSOR_STATIONARY_FAR_SNAP_DELAY_MS
+					? CURSOR_STATIONARY_FAR_SNAP_DISTANCE
+					: CURSOR_STATIONARY_NEAR_SNAP_DISTANCE;
 			if (
 				stationaryDurationMs >= CURSOR_STATIONARY_SNAP_DELAY_MS &&
-				distanceToTarget <= CURSOR_STATIONARY_SNAP_DISTANCE
+				distanceToTarget <= snapDistance
 			) {
 				this.snapTo(targetX, targetY, timeMs);
 				return;

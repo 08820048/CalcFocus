@@ -15,7 +15,6 @@ import {
 	Application,
 	BlurFilter,
 	Container,
-	type FederatedPointerEvent,
 	Graphics,
 	Sprite,
 	Texture,
@@ -26,7 +25,6 @@ import {
 	type FacecamAnchor,
 	type FacecamSettings,
 	getFacecamLayout,
-	resolveAnchorFromPosition,
 } from "@/lib/recordingSession";
 import { DEFAULT_WALLPAPER_PATH, DEFAULT_WALLPAPER_RELATIVE_PATH } from "@/lib/wallpapers";
 import { type AspectRatio, formatAspectRatioForCSS } from "@/utils/aspectRatioUtils";
@@ -214,7 +212,6 @@ const VideoPlayback = memo(
 				cursorMotionBlur = DEFAULT_CURSOR_MOTION_BLUR,
 				cursorClickBounce = DEFAULT_CURSOR_CLICK_BOUNCE,
 				onReadyChange,
-				onFacecamPositionChange,
 			},
 			ref,
 		) => {
@@ -226,10 +223,6 @@ const VideoPlayback = memo(
 			const videoContainerRef = useRef<Container | null>(null);
 			const cursorContainerRef = useRef<Container | null>(null);
 			const cameraContainerRef = useRef<Container | null>(null);
-			const facecamContainerRef = useRef<Container | null>(null);
-			const facecamSpriteRef = useRef<Sprite | null>(null);
-			const facecamMaskRef = useRef<Graphics | null>(null);
-			const facecamBorderRef = useRef<Graphics | null>(null);
 			const timeUpdateAnimationRef = useRef<number | null>(null);
 			const [pixiReady, setPixiReady] = useState(false);
 			const [metadataReady, setMetadataReady] = useState(false);
@@ -260,7 +253,6 @@ const VideoPlayback = memo(
 			const allowPlaybackRef = useRef(false);
 			const lockedVideoDimensionsRef = useRef<{ width: number; height: number } | null>(null);
 			const layoutVideoContentRef = useRef<(() => void) | null>(null);
-			const layoutFacecamOverlayRef = useRef<(() => void) | null>(null);
 			const trimRegionsRef = useRef<TrimRegion[]>([]);
 
 			useEffect(() => {
@@ -324,84 +316,6 @@ const VideoPlayback = memo(
 				[],
 			);
 
-			const layoutFacecamOverlay = useCallback(() => {
-				const facecamContainer = facecamContainerRef.current;
-				const facecamSprite = facecamSpriteRef.current;
-				const facecamMask = facecamMaskRef.current;
-				const facecamBorder = facecamBorderRef.current;
-				const facecamVideo = facecamVideoRef.current;
-				const settings = facecamSettingsRef.current;
-
-				if (
-					!facecamContainer ||
-					!facecamSprite ||
-					!facecamMask ||
-					!facecamBorder ||
-					!facecamVideo ||
-					!settings
-				) {
-					return;
-				}
-
-				const stageWidth = stageSizeRef.current.width || containerRef.current?.clientWidth || 0;
-				const stageHeight = stageSizeRef.current.height || containerRef.current?.clientHeight || 0;
-
-				if (!stageWidth || !stageHeight || !settings.enabled || !facecamVideoPath) {
-					facecamContainer.visible = false;
-					return;
-				}
-
-				const { x, y, size, borderRadius } = getFacecamLayout(stageWidth, stageHeight, settings);
-				const scale = Math.max(
-					size / Math.max(1, facecamVideo.videoWidth),
-					size / Math.max(1, facecamVideo.videoHeight),
-				);
-				const drawWidth = facecamVideo.videoWidth * scale;
-				const drawHeight = facecamVideo.videoHeight * scale;
-				const centerX = x + size / 2;
-				const centerY = y + size / 2;
-
-				facecamSprite.scale.set(scale);
-				facecamSprite.position.set(x + (size - drawWidth) / 2, y + (size - drawHeight) / 2);
-
-				facecamMask.clear();
-				facecamBorder.clear();
-
-				if (settings.shape === "circle") {
-					facecamMask.circle(centerX, centerY, size / 2);
-					facecamMask.fill({ color: 0xffffff });
-					if (settings.borderWidth > 0) {
-						facecamBorder.circle(
-							centerX,
-							centerY,
-							Math.max(0, size / 2 - settings.borderWidth / 2),
-						);
-						facecamBorder.stroke({
-							color: Number.parseInt(settings.borderColor.replace("#", ""), 16),
-							width: settings.borderWidth,
-						});
-					}
-				} else {
-					facecamMask.roundRect(x, y, size, size, borderRadius);
-					facecamMask.fill({ color: 0xffffff });
-					if (settings.borderWidth > 0) {
-						facecamBorder.roundRect(
-							x + settings.borderWidth / 2,
-							y + settings.borderWidth / 2,
-							Math.max(0, size - settings.borderWidth),
-							Math.max(0, size - settings.borderWidth),
-							Math.max(0, borderRadius - settings.borderWidth / 2),
-						);
-						facecamBorder.stroke({
-							color: Number.parseInt(settings.borderColor.replace("#", ""), 16),
-							width: settings.borderWidth,
-						});
-					}
-				}
-
-				facecamContainer.visible = true;
-			}, [facecamVideoPath]);
-
 			const layoutVideoContent = useCallback(() => {
 				const container = containerRef.current;
 				const app = appRef.current;
@@ -463,17 +377,12 @@ const VideoPlayback = memo(
 						: null;
 
 					updateOverlayForRegion(activeRegion);
-					layoutFacecamOverlayRef.current?.();
 				}
 			}, [updateOverlayForRegion, cropRegion, borderRadius, padding]);
 
 			useEffect(() => {
 				layoutVideoContentRef.current = layoutVideoContent;
 			}, [layoutVideoContent]);
-
-			useEffect(() => {
-				layoutFacecamOverlayRef.current = layoutFacecamOverlay;
-			}, [layoutFacecamOverlay]);
 
 			const selectedZoom = useMemo(() => {
 				if (!selectedZoomId) return null;
@@ -789,14 +698,6 @@ const VideoPlayback = memo(
 			}, [corePreviewReady, selectedZoom, updateOverlayForRegion]);
 
 			useEffect(() => {
-				if (!pixiReady) {
-					return;
-				}
-
-				layoutFacecamOverlay();
-			}, [layoutFacecamOverlay, pixiReady]);
-
-			useEffect(() => {
 				const overlayEl = overlayRef.current;
 				if (!overlayEl) return;
 				if (!selectedZoom) {
@@ -844,13 +745,6 @@ const VideoPlayback = memo(
 					cameraContainerRef.current = cameraContainer;
 					app.stage.addChild(cameraContainer);
 
-					const facecamContainer = new Container();
-					facecamContainer.visible = false;
-					facecamContainer.eventMode = "static";
-					facecamContainer.cursor = "grab";
-					facecamContainerRef.current = facecamContainer;
-					app.stage.addChild(facecamContainer);
-
 					// Video container - holds the masked video sprite
 					const videoContainer = new Container();
 					videoContainerRef.current = videoContainer;
@@ -876,10 +770,6 @@ const VideoPlayback = memo(
 					}
 					appRef.current = null;
 					cameraContainerRef.current = null;
-					facecamContainerRef.current = null;
-					facecamSpriteRef.current = null;
-					facecamMaskRef.current = null;
-					facecamBorderRef.current = null;
 					videoContainerRef.current = null;
 					cursorContainerRef.current = null;
 					videoSpriteRef.current = null;
@@ -1081,157 +971,6 @@ const VideoPlayback = memo(
 					videoSpriteRef.current = null;
 				};
 			}, [layoutVideoContent, onPlayStateChange, onTimeUpdate, previewSceneReady]);
-
-			useEffect(() => {
-				if (!pixiReady || !facecamReady || !facecamVideoPath) {
-					const facecamContainer = facecamContainerRef.current;
-					if (facecamContainer) {
-						facecamContainer.visible = false;
-					}
-					return;
-				}
-
-				const facecamVideo = facecamVideoRef.current;
-				const app = appRef.current;
-				const facecamContainer = facecamContainerRef.current;
-
-				if (!facecamVideo || !app || !facecamContainer) {
-					return;
-				}
-
-				const source = VideoSource.from(facecamVideo);
-				if ("autoPlay" in source) {
-					(source as { autoPlay?: boolean }).autoPlay = false;
-				}
-				if ("autoUpdate" in source) {
-					(source as { autoUpdate?: boolean }).autoUpdate = true;
-				}
-				const facecamTexture = Texture.from(source);
-				const facecamSprite = new Sprite(facecamTexture);
-				const facecamMask = new Graphics();
-				const facecamBorder = new Graphics();
-
-				facecamSpriteRef.current = facecamSprite;
-				facecamMaskRef.current = facecamMask;
-				facecamBorderRef.current = facecamBorder;
-
-				facecamContainer.addChild(facecamSprite);
-				facecamContainer.addChild(facecamMask);
-				facecamContainer.addChild(facecamBorder);
-				facecamContainer.mask = facecamMask;
-
-				layoutFacecamOverlay();
-
-				return () => {
-					facecamContainer.visible = false;
-					facecamContainer.mask = null;
-					facecamContainer.removeChildren();
-
-					facecamBorder.destroy();
-					facecamMask.destroy();
-					facecamSprite.destroy();
-					facecamTexture.destroy(false);
-
-					facecamSpriteRef.current = null;
-					facecamMaskRef.current = null;
-					facecamBorderRef.current = null;
-				};
-			}, [pixiReady, facecamReady, facecamVideoPath, layoutFacecamOverlay]);
-
-			// Facecam drag interaction
-			useEffect(() => {
-				const facecamContainer = facecamContainerRef.current;
-				if (!facecamContainer || !onFacecamPositionChange) return;
-
-				let isDragging = false;
-				let dragOffsetX = 0;
-				let dragOffsetY = 0;
-
-				const onPointerDown = (event: FederatedPointerEvent) => {
-					if (!facecamContainer.parent) return;
-					isDragging = true;
-					const localPos = facecamContainer.parent.toLocal(event.global);
-					dragOffsetX = localPos.x - facecamContainer.x;
-					dragOffsetY = localPos.y - facecamContainer.y;
-					facecamContainer.cursor = "grabbing";
-					facecamContainer.alpha = 0.85;
-				};
-
-				const onPointerMove = (event: FederatedPointerEvent) => {
-					if (!isDragging || !facecamContainer.parent) return;
-
-					const stageWidth = stageSizeRef.current.width;
-					const stageHeight = stageSizeRef.current.height;
-					if (!stageWidth || !stageHeight) return;
-
-					const localPos = facecamContainer.parent.toLocal(event.global);
-					const settings = facecamSettingsRef.current;
-					if (!settings) return;
-
-					const minDim = Math.min(stageWidth, stageHeight);
-					const size = minDim * (settings.size / 100);
-
-					const newX = Math.max(0, Math.min(localPos.x - dragOffsetX, stageWidth - size));
-					const newY = Math.max(0, Math.min(localPos.y - dragOffsetY, stageHeight - size));
-
-					// Update position directly for immediate visual feedback
-					facecamContainer.x = newX - (facecamContainer.x !== 0 ? 0 : facecamContainer.x);
-					// We need to move all children rather than the container when layout sets absolute positions
-					const facecamSprite = facecamSpriteRef.current;
-					const facecamMask = facecamMaskRef.current;
-					const facecamBorder = facecamBorderRef.current;
-					if (facecamSprite && facecamMask && facecamBorder && settings) {
-						const layout = getFacecamLayout(stageWidth, stageHeight, settings);
-						const dx = newX - layout.x;
-						const dy = newY - layout.y;
-						facecamContainer.position.set(dx, dy);
-					}
-				};
-
-				const onPointerUp = () => {
-					if (!isDragging) return;
-					isDragging = false;
-					facecamContainer.cursor = "grab";
-					facecamContainer.alpha = 1;
-
-					const stageWidth = stageSizeRef.current.width;
-					const stageHeight = stageSizeRef.current.height;
-					const settings = facecamSettingsRef.current;
-					if (!stageWidth || !stageHeight || !settings) return;
-
-					const minDim = Math.min(stageWidth, stageHeight);
-					const size = minDim * (settings.size / 100);
-					const layout = getFacecamLayout(stageWidth, stageHeight, settings);
-
-					// Compute actual pixel position from container offset
-					const pixelX = layout.x + facecamContainer.x;
-					const pixelY = layout.y + facecamContainer.y;
-
-					const newPosition = resolveAnchorFromPosition(
-						pixelX,
-						pixelY,
-						size,
-						stageWidth,
-						stageHeight,
-					);
-
-					// Reset container offset - the layout will handle positioning
-					facecamContainer.position.set(0, 0);
-					onFacecamPositionChange(newPosition);
-				};
-
-				facecamContainer.on("pointerdown", onPointerDown);
-				facecamContainer.on("globalpointermove", onPointerMove);
-				facecamContainer.on("pointerup", onPointerUp);
-				facecamContainer.on("pointerupoutside", onPointerUp);
-
-				return () => {
-					facecamContainer.off("pointerdown", onPointerDown);
-					facecamContainer.off("globalpointermove", onPointerMove);
-					facecamContainer.off("pointerup", onPointerUp);
-					facecamContainer.off("pointerupoutside", onPointerUp);
-				};
-			}, [onFacecamPositionChange]);
 
 			useEffect(() => {
 				if (!previewSceneReady) return;
@@ -1534,7 +1273,17 @@ const VideoPlayback = memo(
 
 				video.currentTime = 0;
 				video.pause();
-				setFacecamReady(true);
+			};
+
+			const handleFacecamLoadedData = () => {
+				const video = facecamVideoRef.current;
+				if (!video) {
+					return;
+				}
+
+				if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+					setFacecamReady(true);
+				}
 			};
 
 			const [resolvedWallpaper, setResolvedWallpaper] = useState<string | null>(null);
@@ -1598,6 +1347,20 @@ const VideoPlayback = memo(
 				}
 				return 16 / 9;
 			})();
+
+			const facecamStageWidth =
+				overlayRef.current?.clientWidth || containerRef.current?.clientWidth || stageSizeRef.current.width;
+			const facecamStageHeight =
+				overlayRef.current?.clientHeight ||
+				containerRef.current?.clientHeight ||
+				stageSizeRef.current.height;
+			const facecamOverlayLayout =
+				facecamVideoPath &&
+				facecamSettings?.enabled &&
+				facecamStageWidth > 0 &&
+				facecamStageHeight > 0
+					? getFacecamLayout(facecamStageWidth, facecamStageHeight, facecamSettings)
+					: null;
 
 			return (
 				<div
@@ -1709,17 +1472,36 @@ const VideoPlayback = memo(
 							onError("Failed to load video");
 						}}
 					/>
-					{facecamVideoPath && (
-						<video
-							ref={facecamVideoRef}
-							src={facecamVideoPath}
-							preload="auto"
-							muted
-							playsInline
-							style={OFFSCREEN_MEDIA_SOURCE_STYLE}
-							onLoadedMetadata={handleFacecamLoadedMetadata}
-							onError={() => setFacecamReady(false)}
-						/>
+					{facecamVideoPath && facecamOverlayLayout && (
+						<div
+							className="absolute overflow-hidden bg-black/80"
+							style={{
+								left: facecamOverlayLayout.x,
+								top: facecamOverlayLayout.y,
+								width: facecamOverlayLayout.size,
+								height: facecamOverlayLayout.size,
+								borderRadius: facecamOverlayLayout.borderRadius,
+								border:
+									facecamSettings && facecamSettings.borderWidth > 0
+										? `${facecamSettings.borderWidth}px solid ${facecamSettings.borderColor}`
+										: "none",
+								boxSizing: "border-box",
+								display: facecamReady ? "block" : "none",
+								pointerEvents: "none",
+							}}
+						>
+							<video
+								ref={facecamVideoRef}
+								src={facecamVideoPath}
+								preload="auto"
+								muted
+								playsInline
+								className="h-full w-full object-cover"
+								onLoadedMetadata={handleFacecamLoadedMetadata}
+								onLoadedData={handleFacecamLoadedData}
+								onError={() => setFacecamReady(false)}
+							/>
+						</div>
 					)}
 				</div>
 			);

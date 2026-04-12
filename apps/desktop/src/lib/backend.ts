@@ -173,8 +173,11 @@ export function startCursorTelemetryCapture(): Promise<void> {
 	return invoke("start_cursor_telemetry_capture");
 }
 
-export function stopCursorTelemetryCapture(videoPath?: string | null): Promise<void> {
-	return invoke("stop_cursor_telemetry_capture", { videoPath });
+export function stopCursorTelemetryCapture(
+	videoPath?: string | null,
+	timestampAdjustmentMs?: number | null,
+): Promise<void> {
+	return invoke("stop_cursor_telemetry_capture", { videoPath, timestampAdjustmentMs });
 }
 
 export function selectScreenArea(): Promise<{

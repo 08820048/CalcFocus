@@ -83,6 +83,24 @@ fn cursor_telemetry_payload(samples: Vec<CursorTelemetryPoint>) -> serde_json::V
     serde_json::json!({ "samples": samples, "clicks": [] })
 }
 
+fn apply_timestamp_adjustment(
+    samples: &[CursorTelemetryPoint],
+    timestamp_adjustment_ms: Option<f64>,
+) -> Vec<CursorTelemetryPoint> {
+    let adjustment = timestamp_adjustment_ms.unwrap_or(0.0);
+    if !adjustment.is_finite() || adjustment.abs() < f64::EPSILON {
+        return samples.to_vec();
+    }
+
+    samples
+        .iter()
+        .map(|sample| CursorTelemetryPoint {
+            timestamp: (sample.timestamp + adjustment).max(0.0),
+            ..sample.clone()
+        })
+        .collect()
+}
+
 #[cfg(target_os = "linux")]
 fn validate_linux_cursor_sampler() -> Result<(), String> {
     x11rb::connect(None).map(|_| ()).map_err(|error| {
@@ -378,9 +396,13 @@ fn spawn_macos_cursor_sampler(
 async fn write_cursor_telemetry_sidecar(
     video_path: &str,
     samples: &[CursorTelemetryPoint],
+    timestamp_adjustment_ms: Option<f64>,
 ) -> Result<(), String> {
     let telemetry_path = telemetry_path_for_video(video_path);
-    let payload = cursor_telemetry_payload(samples.to_vec());
+    let payload = cursor_telemetry_payload(apply_timestamp_adjustment(
+        samples,
+        timestamp_adjustment_ms,
+    ));
     let serialized = serde_json::to_vec_pretty(&payload).map_err(|error| error.to_string())?;
     tokio::fs::write(&telemetry_path, serialized)
         .await
@@ -442,6 +464,7 @@ pub fn start_cursor_telemetry_capture(
 pub async fn stop_cursor_telemetry_capture(
     state: tauri::State<'_, Mutex<AppState>>,
     video_path: Option<String>,
+    timestamp_adjustment_ms: Option<f64>,
 ) -> Result<(), String> {
     let capture = {
         let mut app_state = state.lock().map_err(|error| error.to_string())?;
@@ -450,7 +473,11 @@ pub async fn stop_cursor_telemetry_capture(
 
     let Some(capture) = capture else {
         if let Some(video_path) = video_path.filter(|path| !path.trim().is_empty()) {
-            write_cursor_telemetry_sidecar(&video_path, &Vec::<CursorTelemetryPoint>::new())
+            write_cursor_telemetry_sidecar(
+                &video_path,
+                &Vec::<CursorTelemetryPoint>::new(),
+                timestamp_adjustment_ms,
+            )
                 .await?;
         }
         return Ok(());
@@ -470,14 +497,15 @@ pub async fn stop_cursor_telemetry_capture(
     }
 
     let samples = samples.lock().map_err(|error| error.to_string())?.clone();
+    let adjusted_samples = apply_timestamp_adjustment(&samples, timestamp_adjustment_ms);
 
     if let Some(video_path) = video_path.filter(|path| !path.trim().is_empty()) {
         {
             let mut app_state = state.lock().map_err(|error| error.to_string())?;
-            app_state.cursor_telemetry = samples.clone();
+            app_state.cursor_telemetry = adjusted_samples.clone();
         }
 
-        write_cursor_telemetry_sidecar(&video_path, &samples).await?;
+        write_cursor_telemetry_sidecar(&video_path, &samples, timestamp_adjustment_ms).await?;
     } else {
         let mut app_state = state.lock().map_err(|error| error.to_string())?;
         app_state.cursor_telemetry.clear();
@@ -592,6 +620,31 @@ mod tests {
             Some(1)
         );
         assert_eq!(payload["clicks"], serde_json::json!([]));
+    }
+
+    #[test]
+    fn test_apply_timestamp_adjustment_shifts_and_clamps_samples() {
+        let samples = vec![
+            CursorTelemetryPoint {
+                x: 0.2,
+                y: 0.4,
+                timestamp: 12.0,
+                cursor_type: Some("arrow".to_string()),
+                click_type: None,
+            },
+            CursorTelemetryPoint {
+                x: 0.3,
+                y: 0.5,
+                timestamp: 42.0,
+                cursor_type: Some("arrow".to_string()),
+                click_type: Some("left".to_string()),
+            },
+        ];
+
+        let adjusted = apply_timestamp_adjustment(&samples, Some(-20.0));
+        assert_eq!(adjusted[0].timestamp, 0.0);
+        assert_eq!(adjusted[1].timestamp, 22.0);
+        assert_eq!(adjusted[1].click_type.as_deref(), Some("left"));
     }
 
     #[cfg(target_os = "macos")]
@@ -731,8 +784,12 @@ mod tests {
             click_type: None,
         }];
 
-        let result =
-            write_cursor_telemetry_sidecar(video_path.to_string_lossy().as_ref(), &samples).await;
+        let result = write_cursor_telemetry_sidecar(
+            video_path.to_string_lossy().as_ref(),
+            &samples,
+            None,
+        )
+        .await;
         assert!(result.is_ok());
 
         let written = tokio::fs::read_to_string(&telemetry_path).await.unwrap();

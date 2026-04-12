@@ -26,7 +26,8 @@ const MIN_FRAME_RATE = 30;
 const CHROME_MEDIA_SOURCE = "desktop";
 const RECORDING_FILE_PREFIX = "recording-";
 const VIDEO_FILE_EXTENSION = ".webm";
-const FACECAM_FILE_SUFFIX = ".facecam.webm";
+const FACECAM_WEBM_FILE_SUFFIX = ".facecam.webm";
+const FACECAM_MP4_FILE_SUFFIX = ".facecam.mp4";
 const AUDIO_BITRATE_VOICE = 128_000;
 const AUDIO_BITRATE_SYSTEM = 192_000;
 const MIC_GAIN_BOOST = 1.4;
@@ -42,6 +43,11 @@ type FacecamCaptureResult = {
 	path: string;
 	offsetMs: number;
 } | null;
+
+type RecordingTarget = {
+	mimeType: string;
+	fileSuffix: string;
+};
 
 type ChromeDesktopVideoConstraints = {
 	mandatory: {
@@ -187,6 +193,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 	const nativeScreenRecording = useRef(false);
 	const wgcRecording = useRef(false);
 	const cursorTelemetryCaptureActive = useRef(false);
+	const cursorTelemetryStartedAtMs = useRef<number | null>(null);
 	const startInFlight = useRef(false);
 	const hasPromptedForReselect = useRef(false);
 	const selectedSourceName = useRef<string | undefined>(undefined);
@@ -346,7 +353,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		[],
 	);
 
-	const finalizeStagedWebm = useCallback(
+	const finalizeStagedRecording = useCallback(
 		async (
 			pathRef: React.MutableRefObject<string | null>,
 			writeChainRef: React.MutableRefObject<Promise<void>>,
@@ -371,16 +378,55 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 				return null;
 			}
 
-			const bytes = await backend.readLocalFile(path);
-			const webmFile = new WebmFile(bytes);
-			const changed = fixParsedWebmDuration(webmFile, durationMs, { logger: false });
-			const outputBytes = changed ? (webmFile.source ?? bytes) : bytes;
-			await backend.replaceRecordingData(path, outputBytes);
+			if (path.toLowerCase().endsWith(".webm")) {
+				const bytes = await backend.readLocalFile(path);
+				const webmFile = new WebmFile(bytes);
+				const changed = fixParsedWebmDuration(webmFile, durationMs, { logger: false });
+				const outputBytes = changed ? (webmFile.source ?? bytes) : bytes;
+				await backend.replaceRecordingData(path, outputBytes);
+			}
 
 			resetStagedFileState(pathRef, writeChainRef, errorRef, hasDataRef);
 			return path;
 		},
 		[resetStagedFileState],
+	);
+
+	const buildRecordingTarget = useCallback(
+		(options: { preferMp4?: boolean } = {}): RecordingTarget => {
+			const preferred = options.preferMp4 && isMacOS
+				? [
+						"video/mp4;codecs=avc1.42E01E",
+						'video/mp4;codecs="avc1.42E01E"',
+						"video/mp4;codecs=h264",
+						'video/mp4;codecs="h264"',
+						"video/mp4",
+						"video/webm;codecs=av1",
+						"video/webm;codecs=h264",
+						"video/webm;codecs=vp9",
+						"video/webm;codecs=vp8",
+						"video/webm",
+					]
+				: [
+						"video/webm;codecs=av1",
+						"video/webm;codecs=h264",
+						"video/webm;codecs=vp9",
+						"video/webm;codecs=vp8",
+						"video/webm",
+					];
+
+			const mimeType = preferred.find((type) => MediaRecorder.isTypeSupported(type)) ?? "video/webm";
+
+			return {
+				mimeType,
+				fileSuffix: mimeType.includes("mp4")
+					? FACECAM_MP4_FILE_SUFFIX
+					: options.preferMp4
+						? FACECAM_WEBM_FILE_SUFFIX
+						: VIDEO_FILE_EXTENSION,
+			};
+		},
+		[isMacOS],
 	);
 
 	const startCursorTelemetryCapture = useCallback(async (platform: string) => {
@@ -391,21 +437,29 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		try {
 			await backend.startCursorTelemetryCapture();
 			cursorTelemetryCaptureActive.current = true;
+			cursorTelemetryStartedAtMs.current = Date.now();
 		} catch (error) {
 			cursorTelemetryCaptureActive.current = false;
+			cursorTelemetryStartedAtMs.current = null;
 			console.warn(`${platform} cursor telemetry capture is unavailable:`, error);
 		}
 	}, []);
 
 	const stopCursorTelemetryCapture = useCallback(async (videoPath?: string | null) => {
 		if (!cursorTelemetryCaptureActive.current) {
+			cursorTelemetryStartedAtMs.current = null;
 			return;
 		}
 
 		cursorTelemetryCaptureActive.current = false;
+		const timestampAdjustmentMs =
+			cursorTelemetryStartedAtMs.current !== null && screenRecordingStartedAt.current !== null
+				? cursorTelemetryStartedAtMs.current - screenRecordingStartedAt.current
+				: null;
+		cursorTelemetryStartedAtMs.current = null;
 
 		try {
-			await backend.stopCursorTelemetryCapture(videoPath ?? null);
+			await backend.stopCursorTelemetryCapture(videoPath ?? null, timestampAdjustmentMs);
 		} catch (error) {
 			console.warn("Failed to persist cursor telemetry:", error);
 		}
@@ -508,17 +562,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		[microphoneEnabled, cameraEnabled, isMacOS],
 	);
 
-	const selectMimeType = useCallback(() => {
-		const preferred = [
-			"video/webm;codecs=av1",
-			"video/webm;codecs=h264",
-			"video/webm;codecs=vp9",
-			"video/webm;codecs=vp8",
-			"video/webm",
-		];
-
-		return preferred.find((type) => MediaRecorder.isTypeSupported(type)) ?? "video/webm";
-	}, []);
+	const selectMimeType = useCallback(() => buildRecordingTarget().mimeType, [buildRecordingTarget]);
 
 	const computeBitrate = (width: number, height: number) => {
 		const pixels = width * height;
@@ -623,7 +667,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 				return;
 			}
 
-			const mimeType = selectMimeType();
+			const recordingTarget = buildRecordingTarget({ preferMp4: true });
 			resetStagedFileState(
 				facecamRecordingPath,
 				facecamWriteChain,
@@ -631,11 +675,11 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 				facecamHasData,
 			);
 			facecamRecordingPath.current = await backend.prepareRecordingFile(
-				`${RECORDING_FILE_PREFIX}${sessionId}${FACECAM_FILE_SUFFIX}`,
+				`${RECORDING_FILE_PREFIX}${sessionId}${recordingTarget.fileSuffix}`,
 			);
 
 			const recorder = new MediaRecorder(cameraStream.current, {
-				mimeType,
+				mimeType: recordingTarget.mimeType,
 				videoBitsPerSecond: FACECAM_BITRATE,
 			});
 			cameraRecorder.current = recorder;
@@ -679,7 +723,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 					try {
 						const startedAt = cameraRecordingStartedAt.current ?? Date.now();
 						const duration = activeRecordingDuration(startedAt);
-						const storedPath = await finalizeStagedWebm(
+						const storedPath = await finalizeStagedRecording(
 							facecamRecordingPath,
 							facecamWriteChain,
 							facecamWriteError,
@@ -718,12 +762,12 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		},
 		[
 			activeRecordingDuration,
+			buildRecordingTarget,
 			cameraDeviceId,
 			cameraEnabled,
-			finalizeStagedWebm,
+			finalizeStagedRecording,
 			queueRecordingChunkWrite,
 			resetStagedFileState,
-			selectMimeType,
 		],
 	);
 
@@ -797,7 +841,6 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 				recorder.resume();
 			}
 			pendingFacecamResult.current = stopFacecamCapture();
-			cleanupCapturedMedia();
 			recorder.stop();
 			setRecording(false);
 			resetRecordingRuntimeControls();
@@ -925,6 +968,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		pendingFacecamResult.current = Promise.resolve(null);
 		cameraRecordingStartedAt.current = null;
 		screenRecordingStartedAt.current = null;
+		cursorTelemetryStartedAtMs.current = null;
 		pauseStartedAtMs.current = null;
 		accumulatedPausedDurationMs.current = 0;
 		finalizingPausedDurationMs.current = 0;
@@ -961,10 +1005,6 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 			}
 
 			if (useNativeMacScreenCapture || useWgcCapture) {
-				if (useNativeMacScreenCapture) {
-					await startCursorTelemetryCapture(platform);
-				}
-
 				let micLabel: string | undefined;
 				if (microphoneEnabled) {
 					try {
@@ -1000,14 +1040,17 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 				}
 
 				if (nativeStarted) {
+					startTime.current = Date.now();
+					screenRecordingStartedAt.current = startTime.current;
+					if (useNativeMacScreenCapture) {
+						await startCursorTelemetryCapture(platform);
+					}
 					await startFacecamCapture(recordingSessionId.current);
 					nativeScreenRecording.current = true;
 					wgcRecording.current = useWgcCapture;
 					setCanPauseRecording(useNativeMacScreenCapture);
 					setCanToggleMicrophoneDuringRecording(useNativeMacScreenCapture && microphoneEnabled);
 					setMicrophoneMuted(false);
-					startTime.current = Date.now();
-					screenRecordingStartedAt.current = startTime.current;
 					setRecording(true);
 					await backend.setRecordingState(true);
 					return;
@@ -1223,12 +1266,16 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 			};
 			recorder.onstop = async () => {
 				mediaRecorder.current = null;
-				cleanupCapturedMedia();
-
 				const duration = activeRecordingDuration(startTime.current);
 
 				try {
-					const storedPath = await finalizeStagedWebm(
+					const facecamResult = pendingFacecamResult.current
+						? await pendingFacecamResult.current
+						: null;
+					pendingFacecamResult.current = null;
+					cleanupCapturedMedia();
+
+					const storedPath = await finalizeStagedRecording(
 						recordingFilePath,
 						recordingWriteChain,
 						recordingWriteError,
@@ -1244,10 +1291,6 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 
 					await backend.setCurrentVideoPath(storedPath).catch(() => null);
 					await stopCursorTelemetryCapture(storedPath);
-					const facecamResult = pendingFacecamResult.current
-						? await pendingFacecamResult.current
-						: null;
-					pendingFacecamResult.current = null;
 					const recordingSession = buildRecordingSession(storedPath, facecamResult);
 
 					await backend.setCurrentRecordingSession(recordingSession);
@@ -1278,13 +1321,13 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 				}
 			};
 
-			await startFacecamCapture(recordingSessionId.current);
 			recorder.start(RECORDER_TIMESLICE_MS);
+			startTime.current = Date.now();
+			screenRecordingStartedAt.current = startTime.current;
+			await startFacecamCapture(recordingSessionId.current);
 			setCanPauseRecording(true);
 			setCanToggleMicrophoneDuringRecording(microphoneEnabled);
 			setMicrophoneMuted(false);
-			startTime.current = Date.now();
-			screenRecordingStartedAt.current = startTime.current;
 			setRecording(true);
 			await backend.setRecordingState(true);
 		} catch (error) {
