@@ -16,6 +16,32 @@ fn get_wgc_process() -> &'static Mutex<Option<SidecarProcess>> {
 }
 
 #[cfg(target_os = "windows")]
+fn read_bool(options: &serde_json::Value, keys: &[&str], default: bool) -> bool {
+    keys.iter()
+        .find_map(|key| options.get(*key).and_then(|value| value.as_bool()))
+        .unwrap_or(default)
+}
+
+#[cfg(target_os = "windows")]
+fn read_u64(options: &serde_json::Value, keys: &[&str], default: u64) -> u64 {
+    keys.iter()
+        .find_map(|key| options.get(*key).and_then(|value| value.as_u64()))
+        .unwrap_or(default)
+}
+
+#[cfg(target_os = "windows")]
+fn read_string(options: &serde_json::Value, keys: &[&str]) -> Option<String> {
+    keys.iter().find_map(|key| {
+        options
+            .get(*key)
+            .and_then(|value| value.as_str())
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(ToOwned::to_owned)
+    })
+}
+
+#[cfg(target_os = "windows")]
 pub async fn start_capture(
     _app: &AppHandle,
     source: &serde_json::Value,
@@ -27,11 +53,13 @@ pub async fn start_capture(
     let config = serde_json::json!({
         "outputPath": output_path,
         "sourceId": source.get("id").and_then(|v| v.as_str()).unwrap_or(""),
-        "frameRate": options.get("frameRate").and_then(|v| v.as_u64()).unwrap_or(60),
-        "width": options.get("width").and_then(|v| v.as_u64()).unwrap_or(1920),
-        "height": options.get("height").and_then(|v| v.as_u64()).unwrap_or(1080),
-        "recordSystemAudio": options.get("recordSystemAudio").and_then(|v| v.as_bool()).unwrap_or(true),
-        "recordMicrophone": options.get("recordMicrophone").and_then(|v| v.as_bool()).unwrap_or(false),
+        "frameRate": read_u64(options, &["frameRate", "fps"], 60),
+        "width": read_u64(options, &["width"], 1920),
+        "height": read_u64(options, &["height"], 1080),
+        "recordSystemAudio": read_bool(options, &["capturesSystemAudio", "recordSystemAudio"], true),
+        "recordMicrophone": read_bool(options, &["capturesMicrophone", "recordMicrophone"], false),
+        "microphoneDeviceId": read_string(options, &["microphoneDeviceId"]),
+        "microphoneLabel": read_string(options, &["microphoneLabel"]),
     });
 
     let config_str = serde_json::to_string(&config).map_err(|e| e.to_string())?;
@@ -88,20 +116,52 @@ mod tests {
 
     // ==================== WGC Config Construction ====================
 
+    fn build_wgc_config(
+        source: &serde_json::Value,
+        options: &serde_json::Value,
+        output_path: &str,
+    ) -> serde_json::Value {
+        fn test_read_bool(options: &serde_json::Value, keys: &[&str], default: bool) -> bool {
+            keys.iter()
+                .find_map(|key| options.get(*key).and_then(|value| value.as_bool()))
+                .unwrap_or(default)
+        }
+
+        fn test_read_u64(options: &serde_json::Value, keys: &[&str], default: u64) -> u64 {
+            keys.iter()
+                .find_map(|key| options.get(*key).and_then(|value| value.as_u64()))
+                .unwrap_or(default)
+        }
+
+        fn test_read_string(options: &serde_json::Value, keys: &[&str]) -> Option<String> {
+            keys.iter().find_map(|key| {
+                options
+                    .get(*key)
+                    .and_then(|value| value.as_str())
+                    .map(str::trim)
+                    .filter(|value| !value.is_empty())
+                    .map(ToOwned::to_owned)
+            })
+        }
+
+        serde_json::json!({
+            "outputPath": output_path,
+            "sourceId": source.get("id").and_then(|v| v.as_str()).unwrap_or(""),
+            "frameRate": test_read_u64(options, &["frameRate", "fps"], 60),
+            "width": test_read_u64(options, &["width"], 1920),
+            "height": test_read_u64(options, &["height"], 1080),
+            "recordSystemAudio": test_read_bool(options, &["capturesSystemAudio", "recordSystemAudio"], true),
+            "recordMicrophone": test_read_bool(options, &["capturesMicrophone", "recordMicrophone"], false),
+            "microphoneDeviceId": test_read_string(options, &["microphoneDeviceId"]),
+            "microphoneLabel": test_read_string(options, &["microphoneLabel"]),
+        })
+    }
+
     #[test]
     fn test_wgc_config_construction_defaults() {
         let source = serde_json::json!({"id": "screen:0"});
         let options = serde_json::json!({});
-
-        let config = serde_json::json!({
-            "outputPath": "/tmp/test.mov",
-            "sourceId": source.get("id").and_then(|v| v.as_str()).unwrap_or(""),
-            "frameRate": options.get("frameRate").and_then(|v| v.as_u64()).unwrap_or(60),
-            "width": options.get("width").and_then(|v| v.as_u64()).unwrap_or(1920),
-            "height": options.get("height").and_then(|v| v.as_u64()).unwrap_or(1080),
-            "recordSystemAudio": options.get("recordSystemAudio").and_then(|v| v.as_bool()).unwrap_or(true),
-            "recordMicrophone": options.get("recordMicrophone").and_then(|v| v.as_bool()).unwrap_or(false),
-        });
+        let config = build_wgc_config(&source, &options, "/tmp/test.mov");
 
         assert_eq!(config["sourceId"], "screen:0");
         assert_eq!(config["frameRate"], 60);
@@ -109,33 +169,45 @@ mod tests {
         assert_eq!(config["height"], 1080);
         assert_eq!(config["recordSystemAudio"], true);
         assert_eq!(config["recordMicrophone"], false);
+        assert!(config["microphoneDeviceId"].is_null());
+        assert!(config["microphoneLabel"].is_null());
     }
 
     #[test]
     fn test_wgc_config_construction_custom_options() {
         let source = serde_json::json!({"id": "window:42"});
         let options = serde_json::json!({
-            "frameRate": 30,
+            "fps": 30,
             "width": 2560,
             "height": 1440,
-            "recordSystemAudio": false,
-            "recordMicrophone": true
+            "capturesSystemAudio": false,
+            "capturesMicrophone": true,
+            "microphoneDeviceId": "device-42",
+            "microphoneLabel": "USB Mic"
         });
-
-        let config = serde_json::json!({
-            "outputPath": "/tmp/test.mov",
-            "sourceId": source.get("id").and_then(|v| v.as_str()).unwrap_or(""),
-            "frameRate": options.get("frameRate").and_then(|v| v.as_u64()).unwrap_or(60),
-            "width": options.get("width").and_then(|v| v.as_u64()).unwrap_or(1920),
-            "height": options.get("height").and_then(|v| v.as_u64()).unwrap_or(1080),
-            "recordSystemAudio": options.get("recordSystemAudio").and_then(|v| v.as_bool()).unwrap_or(true),
-            "recordMicrophone": options.get("recordMicrophone").and_then(|v| v.as_bool()).unwrap_or(false),
-        });
+        let config = build_wgc_config(&source, &options, "/tmp/test.mov");
 
         assert_eq!(config["sourceId"], "window:42");
         assert_eq!(config["frameRate"], 30);
         assert_eq!(config["width"], 2560);
         assert_eq!(config["height"], 1440);
+        assert_eq!(config["recordSystemAudio"], false);
+        assert_eq!(config["recordMicrophone"], true);
+        assert_eq!(config["microphoneDeviceId"], "device-42");
+        assert_eq!(config["microphoneLabel"], "USB Mic");
+    }
+
+    #[test]
+    fn test_wgc_config_supports_legacy_audio_option_names() {
+        let source = serde_json::json!({"id": "screen:1"});
+        let options = serde_json::json!({
+            "frameRate": 24,
+            "recordSystemAudio": false,
+            "recordMicrophone": true
+        });
+        let config = build_wgc_config(&source, &options, "/tmp/test.mov");
+
+        assert_eq!(config["frameRate"], 24);
         assert_eq!(config["recordSystemAudio"], false);
         assert_eq!(config["recordMicrophone"], true);
     }
@@ -169,8 +241,6 @@ mod tests {
 
     #[cfg(not(target_os = "windows"))]
     mod non_windows_tests {
-        use super::*;
-
         #[tokio::test]
         async fn test_start_capture_error_on_non_windows() {
             // We can't create a real AppHandle without Tauri runtime,

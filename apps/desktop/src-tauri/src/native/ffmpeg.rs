@@ -99,7 +99,7 @@ pub async fn stop_capture(_app: &AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-fn which_ffmpeg() -> Result<String, String> {
+pub(crate) fn which_ffmpeg() -> Result<String, String> {
     // Check common FFmpeg paths
     let candidates = [
         "ffmpeg",
@@ -350,10 +350,18 @@ mod tests {
             "/opt/homebrew/bin/ffmpeg",
         ];
         for c in &candidates {
-            assert!(c.contains("ffmpeg"), "Candidate should contain ffmpeg: {}", c);
+            assert!(
+                c.contains("ffmpeg"),
+                "Candidate should contain ffmpeg: {}",
+                c
+            );
             // Absolute paths should start with /
             if c.len() > "ffmpeg".len() {
-                assert!(c.starts_with('/'), "Absolute path should start with /: {}", c);
+                assert!(
+                    c.starts_with('/'),
+                    "Absolute path should start with /: {}",
+                    c
+                );
             }
         }
     }

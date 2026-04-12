@@ -82,6 +82,97 @@ fn build_microphone_output_path(
 }
 
 #[cfg(target_os = "macos")]
+fn build_mixed_output_path(video_path: &str) -> PathBuf {
+    let output = Path::new(video_path);
+    let parent = output.parent().unwrap_or_else(|| Path::new(""));
+    let stem = output
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .filter(|value| !value.is_empty())
+        .unwrap_or("recording");
+    let extension = output
+        .extension()
+        .and_then(|value| value.to_str())
+        .filter(|value| !value.is_empty())
+        .unwrap_or("mov");
+
+    let mixed_file_name = format!("{stem}-mixed.{extension}");
+    if parent.as_os_str().is_empty() {
+        PathBuf::from(mixed_file_name)
+    } else {
+        parent.join(mixed_file_name)
+    }
+}
+
+#[cfg(target_os = "macos")]
+pub async fn mux_microphone_track_if_present(video_path: &str) -> Result<Option<String>, String> {
+    let Some(microphone_path) = build_microphone_output_path(video_path, true, true) else {
+        return Ok(None);
+    };
+
+    if !tokio::fs::try_exists(&microphone_path)
+        .await
+        .map_err(|error| error.to_string())?
+    {
+        return Ok(None);
+    }
+
+    let ffmpeg_path = super::ffmpeg::which_ffmpeg()?;
+    let mixed_output_path = build_mixed_output_path(video_path);
+    let mixed_output_path_str = mixed_output_path.to_string_lossy().to_string();
+    let args = [
+        "-y",
+        "-i",
+        video_path,
+        "-i",
+        microphone_path.as_str(),
+        "-filter_complex",
+        "[0:a][1:a]amix=inputs=2:duration=longest:normalize=0[aout]",
+        "-map",
+        "0:v:0",
+        "-map",
+        "[aout]",
+        "-c:v",
+        "copy",
+        "-c:a",
+        "aac",
+        "-b:a",
+        "192k",
+        "-movflags",
+        "+faststart",
+        mixed_output_path_str.as_str(),
+    ];
+
+    let output = tokio::process::Command::new(&ffmpeg_path)
+        .args(args)
+        .output()
+        .await
+        .map_err(|error| format!("Failed to run FFmpeg for microphone muxing: {error}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        let message = if !stderr.is_empty() { stderr } else { stdout };
+        let _ = tokio::fs::remove_file(&mixed_output_path).await;
+        return Err(if message.is_empty() {
+            format!(
+                "FFmpeg microphone muxing exited with code {}",
+                output.status.code().unwrap_or(-1)
+            )
+        } else {
+            message
+        });
+    }
+
+    tokio::fs::rename(&mixed_output_path, video_path)
+        .await
+        .map_err(|error| format!("Failed to replace video after microphone muxing: {error}"))?;
+    let _ = tokio::fs::remove_file(&microphone_path).await;
+
+    Ok(Some(video_path.to_string()))
+}
+
+#[cfg(target_os = "macos")]
 pub async fn start_capture(
     _app: &AppHandle,
     source: &serde_json::Value,
@@ -105,6 +196,7 @@ pub async fn start_capture(
         read_bool(options, &["capturesMicrophone", "recordMicrophone"], false);
     let shows_cursor = read_bool(options, &["showsCursor", "captureCursor"], false);
     let microphone_device_id = read_string(options, &["microphoneDeviceId"]);
+    let microphone_label = read_string(options, &["microphoneLabel"]);
     let fps = read_u64(options, &["fps", "frameRate"]).unwrap_or(60);
     let crop_rect = options
         .get("cropRect")
@@ -125,6 +217,7 @@ pub async fn start_capture(
         "capturesSystemAudio": captures_system_audio,
         "capturesMicrophone": captures_microphone,
         "microphoneDeviceId": microphone_device_id,
+        "microphoneLabel": microphone_label,
         "cropRect": crop_rect,
     });
 

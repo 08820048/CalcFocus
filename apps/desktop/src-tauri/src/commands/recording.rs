@@ -118,7 +118,7 @@ pub async fn stop_native_screen_recording(
     app: AppHandle,
     state: tauri::State<'_, Mutex<AppState>>,
 ) -> Result<String, String> {
-    let output_path = {
+    let mut output_path = {
         let s = state.lock().map_err(|e| e.to_string())?;
         s.current_video_path.clone().unwrap_or_default()
     };
@@ -126,6 +126,13 @@ pub async fn stop_native_screen_recording(
     #[cfg(target_os = "macos")]
     {
         crate::native::macos_capture::stop_capture(&app).await?;
+        if !output_path.trim().is_empty() {
+            if let Some(mixed_path) =
+                crate::native::macos_capture::mux_microphone_track_if_present(&output_path).await?
+            {
+                output_path = mixed_path;
+            }
+        }
     }
 
     #[cfg(target_os = "windows")]

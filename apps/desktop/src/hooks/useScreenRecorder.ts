@@ -749,12 +749,11 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 				await backend.setRecordingState(false).catch(() => null);
 				resetRecordingRuntimeControls();
 
-				cleanupCapturedMedia();
-
 				if (!stoppedPath) {
 					console.error("Failed to stop native screen recording");
 					await stopCursorTelemetryCapture(null);
 					await facecamResultPromise.catch(() => null);
+					cleanupCapturedMedia();
 					finalizingPausedDurationMs.current = 0;
 					await backend.switchToEditor();
 					return;
@@ -772,6 +771,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 				}
 
 				const facecamResult = await facecamResultPromise.catch(() => null);
+				cleanupCapturedMedia();
 				await stopCursorTelemetryCapture(finalPath);
 				const recordingSession = buildRecordingSession(finalPath, facecamResult);
 				await backend.setCurrentVideoPath(finalPath).catch(() => null);
@@ -966,7 +966,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 				}
 
 				let micLabel: string | undefined;
-				if (useWgcCapture && microphoneEnabled) {
+				if (microphoneEnabled) {
 					try {
 						const devices = await navigator.mediaDevices.enumerateDevices();
 						const mic = devices.find(

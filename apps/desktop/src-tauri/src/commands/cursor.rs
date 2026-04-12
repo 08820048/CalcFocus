@@ -9,6 +9,8 @@ use crate::state::{AppState, CursorTelemetryCapture, CursorTelemetryPoint, Selec
 
 #[cfg(target_os = "macos")]
 use std::ffi::c_void;
+#[cfg(target_os = "macos")]
+use std::path::{Path, PathBuf};
 
 #[cfg(target_os = "macos")]
 type CGDirectDisplayID = u32;
@@ -47,7 +49,10 @@ struct CursorCaptureBounds {
 }
 
 #[cfg(target_os = "macos")]
-const MACOS_CURSOR_SAMPLE_INTERVAL_MS: u64 = 33;
+const MACOS_CURSOR_SAMPLE_INTERVAL_MS: u64 = 16;
+
+#[cfg(target_os = "macos")]
+const MACOS_WINDOW_BOUNDS_REFRESH_INTERVAL_MS: u64 = 250;
 
 #[cfg(target_os = "macos")]
 #[link(name = "CoreGraphics", kind = "framework")]
@@ -175,6 +180,29 @@ fn parse_macos_source_display_id(value: &str) -> Option<CGDirectDisplayID> {
 }
 
 #[cfg(target_os = "macos")]
+fn parse_macos_window_id_segment(value: &str) -> Option<u64> {
+    let segment = value.trim();
+    if segment.is_empty() {
+        return None;
+    }
+
+    segment.parse::<u64>().ok()
+}
+
+#[cfg(target_os = "macos")]
+fn parse_macos_window_id(value: &str) -> Option<u64> {
+    let value = value.trim();
+    if let Some(rest) = value.strip_prefix("window:") {
+        return rest
+            .split(':')
+            .next()
+            .and_then(parse_macos_window_id_segment);
+    }
+
+    parse_macos_window_id_segment(value)
+}
+
+#[cfg(target_os = "macos")]
 fn selected_display_id(source: Option<&SelectedSource>) -> CGDirectDisplayID {
     source
         .and_then(|source| {
@@ -231,6 +259,34 @@ fn source_window_capture_bounds(source: Option<&SelectedSource>) -> Option<Curso
 }
 
 #[cfg(target_os = "macos")]
+fn refresh_window_capture_bounds(
+    sidecar_path: &Path,
+    window_id: u64,
+) -> Option<CursorCaptureBounds> {
+    let output = std::process::Command::new(sidecar_path)
+        .arg("--thumbnail-width")
+        .arg("1")
+        .arg("--thumbnail-height")
+        .arg("1")
+        .arg("--types")
+        .arg("window")
+        .arg("--no-thumbnails")
+        .output()
+        .ok()?;
+
+    if !output.status.success() {
+        return None;
+    }
+
+    let sources: Vec<SelectedSource> = serde_json::from_slice(&output.stdout).ok()?;
+    let matched_source = sources.iter().find(|source| {
+        source.window_id == Some(window_id) || parse_macos_window_id(&source.id) == Some(window_id)
+    })?;
+
+    source_window_capture_bounds(Some(matched_source))
+}
+
+#[cfg(target_os = "macos")]
 fn selected_capture_bounds(source: Option<&SelectedSource>) -> CursorCaptureBounds {
     source_window_capture_bounds(source)
         .unwrap_or_else(|| display_capture_bounds(selected_display_id(source)))
@@ -259,14 +315,44 @@ fn spawn_macos_cursor_sampler(
     samples: Arc<Mutex<Vec<CursorTelemetryPoint>>>,
     source: Option<SelectedSource>,
 ) -> Result<JoinHandle<()>, String> {
-    let bounds = selected_capture_bounds(source.as_ref());
+    let tracked_window_id = source.as_ref().and_then(|selected| {
+        selected
+            .window_id
+            .or_else(|| parse_macos_window_id(&selected.id))
+    });
+    let sidecar_path: Option<PathBuf> = tracked_window_id
+        .and_then(|_| crate::native::sidecar::get_sidecar_path("openscreen-window-list").ok());
+    let initial_bounds = tracked_window_id
+        .and_then(|window_id| {
+            sidecar_path
+                .as_deref()
+                .and_then(|path| refresh_window_capture_bounds(path, window_id))
+        })
+        .unwrap_or_else(|| selected_capture_bounds(source.as_ref()));
 
     Ok(std::thread::spawn(move || {
         let started_at = Instant::now();
+        let mut bounds = initial_bounds;
+        let mut last_bounds_refresh_at = Instant::now();
 
         loop {
             if stop.load(Ordering::Relaxed) {
                 break;
+            }
+
+            if let (Some(window_id), Some(sidecar_path)) =
+                (tracked_window_id, sidecar_path.as_deref())
+            {
+                if last_bounds_refresh_at.elapsed()
+                    >= Duration::from_millis(MACOS_WINDOW_BOUNDS_REFRESH_INTERVAL_MS)
+                {
+                    if let Some(refreshed_bounds) =
+                        refresh_window_capture_bounds(sidecar_path, window_id)
+                    {
+                        bounds = refreshed_bounds;
+                    }
+                    last_bounds_refresh_at = Instant::now();
+                }
             }
 
             if let Some(location) = current_cursor_location() {
@@ -513,6 +599,14 @@ mod tests {
     fn test_parse_macos_display_id_accepts_plain_or_screen_id() {
         assert_eq!(parse_macos_display_id("42"), Some(42));
         assert_eq!(parse_macos_display_id("screen:42:0"), Some(42));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_parse_macos_window_id_accepts_plain_or_window_id() {
+        assert_eq!(parse_macos_window_id("42"), Some(42));
+        assert_eq!(parse_macos_window_id("window:42:0"), Some(42));
+        assert_eq!(parse_macos_window_id("screen:42:0"), None);
     }
 
     #[cfg(target_os = "macos")]
