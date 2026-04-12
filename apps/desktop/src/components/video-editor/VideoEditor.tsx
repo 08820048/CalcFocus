@@ -77,6 +77,7 @@ import {
 import {
 	type AnnotationRegion,
 	type CropRegion,
+	type CursorStyle,
 	type CursorTelemetryPoint,
 	clampFocusToDepth,
 	DEFAULT_ANNOTATION_POSITION,
@@ -88,6 +89,7 @@ import {
 	DEFAULT_CURSOR_CLICK_BOUNCE,
 	DEFAULT_CURSOR_MOTION_BLUR,
 	DEFAULT_CURSOR_SIZE,
+	DEFAULT_CURSOR_STYLE,
 	DEFAULT_CURSOR_SMOOTHING,
 	DEFAULT_FIGURE_DATA,
 	DEFAULT_PLAYBACK_SPEED,
@@ -207,6 +209,7 @@ export default function VideoEditor() {
 	const [connectZooms, setConnectZooms] = useState(true);
 	const [showCursor, setShowCursor] = useState(true);
 	const [loopCursor, setLoopCursor] = useState(false);
+	const [cursorStyle, setCursorStyle] = useState<CursorStyle>(DEFAULT_CURSOR_STYLE);
 	const [cursorSize, setCursorSize] = useState(DEFAULT_CURSOR_SIZE);
 	const [cursorSmoothing, setCursorSmoothing] = useState(DEFAULT_CURSOR_SMOOTHING);
 	const [cursorMotionBlur, setCursorMotionBlur] = useState(DEFAULT_CURSOR_MOTION_BLUR);
@@ -434,6 +437,7 @@ export default function VideoEditor() {
 			setConnectZooms(normalizedEditor.connectZooms);
 			setShowCursor(normalizedEditor.showCursor);
 			setLoopCursor(normalizedEditor.loopCursor);
+			setCursorStyle(normalizedEditor.cursorStyle);
 			setCursorSize(normalizedEditor.cursorSize);
 			setCursorSmoothing(normalizedEditor.cursorSmoothing);
 			setCursorMotionBlur(normalizedEditor.cursorMotionBlur);
@@ -524,6 +528,7 @@ export default function VideoEditor() {
 					connectZooms,
 					showCursor,
 					loopCursor,
+					cursorStyle,
 					cursorSize,
 					cursorSmoothing,
 					cursorMotionBlur,
@@ -564,6 +569,7 @@ export default function VideoEditor() {
 		connectZooms,
 		showCursor,
 		loopCursor,
+		cursorStyle,
 		cursorSize,
 		cursorSmoothing,
 		cursorMotionBlur,
@@ -726,6 +732,7 @@ export default function VideoEditor() {
 					connectZooms,
 					showCursor,
 					loopCursor,
+					cursorStyle,
 					cursorSize,
 					cursorSmoothing,
 					cursorMotionBlur,
@@ -790,6 +797,7 @@ export default function VideoEditor() {
 			connectZooms,
 			showCursor,
 			loopCursor,
+			cursorStyle,
 			cursorSize,
 			cursorSmoothing,
 			cursorMotionBlur,
@@ -1810,6 +1818,7 @@ export default function VideoEditor() {
 						zoomRegions: effectiveZoomRegions,
 						cursorTelemetry: effectiveCursorTelemetry,
 						showCursor,
+						cursorStyle,
 						cursorSize,
 						cursorSmoothing,
 						cursorMotionBlur,
@@ -1962,6 +1971,7 @@ export default function VideoEditor() {
 						zoomRegions: effectiveZoomRegions,
 						cursorTelemetry: effectiveCursorTelemetry,
 						showCursor,
+						cursorStyle,
 						cursorSize,
 						cursorSmoothing,
 						cursorMotionBlur,
@@ -2044,6 +2054,7 @@ export default function VideoEditor() {
 			showCursor,
 			effectiveCursorTelemetry,
 			effectiveZoomRegions,
+			cursorStyle,
 			cursorSize,
 			cursorSmoothing,
 			cursorMotionBlur,
@@ -2247,7 +2258,7 @@ export default function VideoEditor() {
 				className="relative h-10 flex-shrink-0 bg-[#09090b]/80 backdrop-blur-md border-b border-white/5 flex items-center justify-center px-6 z-50"
 				style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
 			>
-				<span className="text-sm font-semibold tracking-tight text-white/90">
+				<span className="text-sm font-semibold tracking-tight text-white">
 					{editorNavbarTitle}
 				</span>
 				<div
@@ -2499,6 +2510,8 @@ export default function VideoEditor() {
 									onShowCursorChange={setShowCursor}
 									loopCursor={loopCursor}
 									onLoopCursorChange={setLoopCursor}
+									cursorStyle={cursorStyle}
+									onCursorStyleChange={setCursorStyle}
 									cursorSize={cursorSize}
 									onCursorSizeChange={setCursorSize}
 									cursorSmoothing={cursorSmoothing}
@@ -2603,6 +2616,7 @@ export default function VideoEditor() {
 												onAnnotationSizeChange={handleAnnotationSizeChange}
 												cursorTelemetry={effectiveCursorTelemetry}
 												showCursor={showCursor}
+												cursorStyle={cursorStyle}
 												cursorSize={cursorSize}
 												cursorSmoothing={cursorSmoothing}
 												cursorMotionBlur={cursorMotionBlur}

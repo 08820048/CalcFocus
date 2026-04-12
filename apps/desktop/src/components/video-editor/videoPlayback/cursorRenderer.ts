@@ -1,17 +1,27 @@
 import { MotionBlurFilter } from "pixi-filters/motion-blur";
 import { getSystemCursorAssets } from "@/lib/backend";
 import { Assets, BlurFilter, Container, Graphics, Sprite, Texture } from "@/lib/pixi";
-import type { CursorTelemetryPoint } from "../types";
+import type { CursorStyle, CursorTelemetryPoint } from "../types";
+import { DEFAULT_CURSOR_STYLE } from "../types";
 import {
 	createSpringState,
 	getCursorSpringConfig,
 	resetSpringState,
 	stepSpringValue,
 } from "./motionSmoothing";
+import {
+	CURSOR_PACK_SOURCES,
+	type CursorPackSource,
+	type CursorPackStyle,
+	type CursorPackVariant,
+	minimalCursorUrl,
+} from "./cursorStyleAssets";
 import { type CursorViewportRect, projectCursorPositionToViewport } from "./cursorViewport";
 import { UPLOADED_CURSOR_SAMPLE_SIZE, uploadedCursorAssets } from "./uploadedCursorAssets";
 
 type CursorAssetKey = NonNullable<CursorTelemetryPoint["cursorType"]>;
+type StatefulCursorStyle = Extract<CursorStyle, "tahoe" | "mono">;
+type SingleCursorStyle = Extract<CursorStyle, "dot" | "figma">;
 
 type LoadedCursorAsset = {
 	texture: Texture;
@@ -20,6 +30,8 @@ type LoadedCursorAsset = {
 	anchorX: number;
 	anchorY: number;
 };
+
+type LoadedCursorPackAssets = Record<CursorPackVariant, LoadedCursorAsset>;
 
 /**
  * Configuration for cursor rendering.
@@ -39,6 +51,8 @@ export interface CursorRenderConfig {
 	motionBlur: number;
 	/** Click bounce multiplier. */
 	clickBounce: number;
+	/** Cursor visual style. */
+	style: CursorStyle;
 }
 
 export const DEFAULT_CURSOR_CONFIG: CursorRenderConfig = {
@@ -49,6 +63,7 @@ export const DEFAULT_CURSOR_CONFIG: CursorRenderConfig = {
 	smoothingFactor: 0.18,
 	motionBlur: 0,
 	clickBounce: 1,
+	style: DEFAULT_CURSOR_STYLE,
 };
 
 const REFERENCE_WIDTH = 1920;
@@ -79,6 +94,10 @@ const CURSOR_FALLBACK_ARROW_DATA_URL = `data:image/svg+xml;charset=utf-8,${encod
 
 let cursorAssetsPromise: Promise<void> | null = null;
 let loadedCursorAssets: Partial<Record<CursorAssetKey, LoadedCursorAsset>> = {};
+let loadedInvertedCursorAssets: Partial<Record<CursorAssetKey, LoadedCursorAsset>> = {};
+let loadedCursorStyleAssets: Partial<Record<SingleCursorStyle, LoadedCursorAsset>> = {};
+let loadedCursorPackAssets: Partial<Record<CursorPackStyle, LoadedCursorPackAssets>> = {};
+const warnedMissingCursorPackStyles = new Set<CursorPackStyle>();
 const SUPPORTED_CURSOR_KEYS: CursorAssetKey[] = [
 	"arrow",
 	"text",
@@ -90,6 +109,19 @@ const SUPPORTED_CURSOR_KEYS: CursorAssetKey[] = [
 	"resize-ns",
 	"not-allowed",
 ];
+const CURSOR_PACK_POINTER_TYPES = new Set<CursorAssetKey>(["pointer", "open-hand", "closed-hand"]);
+
+function isStatefulCursorStyle(style: CursorStyle): style is StatefulCursorStyle {
+	return style === "tahoe" || style === "mono";
+}
+
+function isSingleCursorStyle(style: CursorStyle): style is SingleCursorStyle {
+	return style === "dot" || style === "figma";
+}
+
+function resolveCursorPackVariant(cursorType: CursorAssetKey): CursorPackVariant {
+	return CURSOR_PACK_POINTER_TYPES.has(cursorType) ? "pointer" : "default";
+}
 
 function loadImage(dataUrl: string) {
 	return new Promise<HTMLImageElement>((resolve, reject) => {
@@ -104,6 +136,79 @@ function loadImage(dataUrl: string) {
 
 function clamp(value: number, min: number, max: number) {
 	return Math.min(max, Math.max(min, value));
+}
+
+function trimCanvasToAlpha(canvas: HTMLCanvasElement, hotspot?: { x: number; y: number }) {
+	const ctx = canvas.getContext("2d");
+	if (!ctx) {
+		return {
+			dataUrl: canvas.toDataURL("image/png"),
+			width: canvas.width,
+			height: canvas.height,
+			hotspot,
+		};
+	}
+
+	const { width, height } = canvas;
+	const imageData = ctx.getImageData(0, 0, width, height);
+	const { data } = imageData;
+	let minX = width;
+	let minY = height;
+	let maxX = -1;
+	let maxY = -1;
+
+	for (let y = 0; y < height; y += 1) {
+		for (let x = 0; x < width; x += 1) {
+			const alpha = data[(y * width + x) * 4 + 3];
+			if (alpha === 0) {
+				continue;
+			}
+
+			minX = Math.min(minX, x);
+			minY = Math.min(minY, y);
+			maxX = Math.max(maxX, x);
+			maxY = Math.max(maxY, y);
+		}
+	}
+
+	if (maxX < minX || maxY < minY) {
+		return {
+			dataUrl: canvas.toDataURL("image/png"),
+			width,
+			height,
+			hotspot,
+		};
+	}
+
+	const croppedWidth = maxX - minX + 1;
+	const croppedHeight = maxY - minY + 1;
+	const croppedCanvas = document.createElement("canvas");
+	croppedCanvas.width = croppedWidth;
+	croppedCanvas.height = croppedHeight;
+	const croppedCtx = croppedCanvas.getContext("2d")!;
+	croppedCtx.drawImage(
+		canvas,
+		minX,
+		minY,
+		croppedWidth,
+		croppedHeight,
+		0,
+		0,
+		croppedWidth,
+		croppedHeight,
+	);
+
+	return {
+		dataUrl: croppedCanvas.toDataURL("image/png"),
+		width: croppedWidth,
+		height: croppedHeight,
+		hotspot: hotspot
+			? {
+					x: hotspot.x - minX,
+					y: hotspot.y - minY,
+				}
+			: undefined,
+	};
 }
 
 function getNormalizedAnchor(
@@ -171,6 +276,41 @@ function getAvailableCursorKeys(): CursorAssetKey[] {
 	return loadedKeys.length > 0 ? loadedKeys : ["arrow"];
 }
 
+function getCursorStyleAsset(style: SingleCursorStyle) {
+	const asset = loadedCursorStyleAssets[style];
+	if (!asset) {
+		throw new Error(`Missing cursor style asset for ${style}`);
+	}
+
+	return asset;
+}
+
+function getCursorPackStyleAsset(style: CursorPackStyle, key: CursorAssetKey) {
+	const styleAssets = loadedCursorPackAssets[style];
+	if (!styleAssets) {
+		if (!warnedMissingCursorPackStyles.has(style)) {
+			warnedMissingCursorPackStyles.add(style);
+			console.warn(
+				`[CursorRenderer] Missing cursor pack assets for ${style}; falling back to Tahoe cursors.`,
+			);
+		}
+		return getStatefulCursorAsset("tahoe", key);
+	}
+
+	const variant = resolveCursorPackVariant(key);
+	return styleAssets[variant] ?? styleAssets.default;
+}
+
+function getStatefulCursorAsset(style: StatefulCursorStyle, key: CursorAssetKey) {
+	const assetMap = style === "mono" ? loadedInvertedCursorAssets : loadedCursorAssets;
+	const asset = assetMap[key] ?? assetMap.arrow;
+	if (!asset) {
+		throw new Error(`Missing ${style} cursor asset for ${key}`);
+	}
+
+	return asset;
+}
+
 async function createLoadedCursorAsset(
 	url: string,
 	normalizedAnchor: { x: number; y: number },
@@ -190,6 +330,107 @@ async function createLoadedCursorAsset(
 
 async function createFallbackArrowAsset(): Promise<LoadedCursorAsset> {
 	return createLoadedCursorAsset(CURSOR_FALLBACK_ARROW_DATA_URL, CURSOR_FALLBACK_ARROW_HOTSPOT);
+}
+
+async function createInvertedCursorAsset(asset: LoadedCursorAsset): Promise<LoadedCursorAsset> {
+	const canvas = document.createElement("canvas");
+	canvas.width = asset.image.naturalWidth;
+	canvas.height = asset.image.naturalHeight;
+	const ctx = canvas.getContext("2d")!;
+	ctx.drawImage(asset.image, 0, 0);
+	const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+	const { data } = imageData;
+	for (let index = 0; index < data.length; index += 4) {
+		if (data[index + 3] === 0) {
+			continue;
+		}
+
+		data[index] = 255 - data[index];
+		data[index + 1] = 255 - data[index + 1];
+		data[index + 2] = 255 - data[index + 2];
+	}
+	ctx.putImageData(imageData, 0, 0);
+
+	const dataUrl = canvas.toDataURL("image/png");
+	await Assets.load(dataUrl);
+	const image = await loadImage(dataUrl);
+	const texture = Texture.from(dataUrl);
+
+	return {
+		texture,
+		image,
+		aspectRatio: asset.aspectRatio,
+		anchorX: asset.anchorX,
+		anchorY: asset.anchorY,
+	};
+}
+
+async function createCursorStyleAsset(style: SingleCursorStyle): Promise<LoadedCursorAsset> {
+	if (style === "figma") {
+		const image = await loadImage(minimalCursorUrl);
+		const sourceCanvas = document.createElement("canvas");
+		sourceCanvas.width = image.naturalWidth;
+		sourceCanvas.height = image.naturalHeight;
+		const sourceCtx = sourceCanvas.getContext("2d")!;
+		sourceCtx.drawImage(image, 0, 0);
+		const trimmed = trimCanvasToAlpha(sourceCanvas, { x: 40, y: 22 });
+		await Assets.load(trimmed.dataUrl);
+		const trimmedImage = await loadImage(trimmed.dataUrl);
+		const texture = Texture.from(trimmed.dataUrl);
+
+		return {
+			texture,
+			image: trimmedImage,
+			aspectRatio: trimmed.height > 0 ? trimmed.width / trimmed.height : 1,
+			anchorX: trimmed.hotspot && trimmed.width > 0 ? trimmed.hotspot.x / trimmed.width : 0,
+			anchorY: trimmed.hotspot && trimmed.height > 0 ? trimmed.hotspot.y / trimmed.height : 0,
+		};
+	}
+
+	const canvas = document.createElement("canvas");
+	canvas.width = 112;
+	canvas.height = 112;
+	const ctx = canvas.getContext("2d")!;
+	const cx = canvas.width / 2;
+	const cy = canvas.height / 2;
+	const radius = 26;
+	ctx.fillStyle = "#ffffff";
+	ctx.strokeStyle = "rgba(15, 23, 42, 0.88)";
+	ctx.lineWidth = 10;
+	ctx.beginPath();
+	ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+	ctx.fill();
+	ctx.stroke();
+
+	const dataUrl = canvas.toDataURL("image/png");
+	await Assets.load(dataUrl);
+	const image = await loadImage(dataUrl);
+	const texture = Texture.from(dataUrl);
+
+	return {
+		texture,
+		image,
+		aspectRatio: canvas.height > 0 ? canvas.width / canvas.height : 1,
+		anchorX: 0.5,
+		anchorY: 0.5,
+	};
+}
+
+async function createCursorPackAsset(
+	url: string,
+	anchor: { x: number; y: number },
+): Promise<LoadedCursorAsset> {
+	await Assets.load(url);
+	const image = await loadImage(url);
+	const texture = Texture.from(url);
+
+	return {
+		texture,
+		image,
+		aspectRatio: image.naturalHeight > 0 ? image.naturalWidth / image.naturalHeight : 1,
+		anchorX: clamp(anchor.x, 0, 1),
+		anchorY: clamp(anchor.y, 0, 1),
+	};
 }
 
 export async function preloadCursorAssets() {
@@ -267,6 +508,47 @@ export async function preloadCursorAssets() {
 			if (!loadedCursorAssets.arrow) {
 				loadedCursorAssets.arrow = await createFallbackArrowAsset();
 			}
+
+			const invertedEntries = await Promise.all(
+				(Object.entries(loadedCursorAssets) as Array<[CursorAssetKey, LoadedCursorAsset]>).map(
+					async ([key, asset]) => [key, await createInvertedCursorAsset(asset)] as const,
+				),
+			);
+			loadedInvertedCursorAssets = Object.fromEntries(invertedEntries) as Partial<
+				Record<CursorAssetKey, LoadedCursorAsset>
+			>;
+
+			const customStyleEntries = await Promise.all(
+				(["dot", "figma"] as const).map(
+					async (style) => [style, await createCursorStyleAsset(style)] as const,
+				),
+			);
+			loadedCursorStyleAssets = Object.fromEntries(customStyleEntries) as Partial<
+				Record<SingleCursorStyle, LoadedCursorAsset>
+			>;
+
+			const cursorPackEntries = await Promise.all(
+				(Object.entries(CURSOR_PACK_SOURCES) as Array<[CursorPackStyle, CursorPackSource]>).map(
+					async ([style, source]) => {
+						try {
+							const [defaultAsset, pointerAsset] = await Promise.all([
+								createCursorPackAsset(source.defaultUrl, source.defaultAnchor),
+								createCursorPackAsset(source.pointerUrl, source.pointerAnchor),
+							]);
+							return [style, { default: defaultAsset, pointer: pointerAsset }] as const;
+						} catch (error) {
+							console.warn(
+								`[CursorRenderer] Failed to load cursor pack style for: ${style}`,
+								error,
+							);
+							return null;
+						}
+					},
+				),
+			);
+			loadedCursorPackAssets = Object.fromEntries(
+				cursorPackEntries.filter(Boolean).map((entry) => entry!),
+			) as Partial<Record<CursorPackStyle, LoadedCursorPackAssets>>;
 		})();
 	}
 
@@ -566,6 +848,9 @@ function drawClickRing(graphics: Graphics, px: number, py: number, h: number, pr
 export class PixiCursorOverlay {
 	public readonly container: Container;
 	private clickRingGraphics: Graphics;
+	private customCursorShadowSprite: Sprite;
+	private customCursorShadowFilter: BlurFilter;
+	private customCursorSprite: Sprite;
 	private cursorShadowSprites: Partial<Record<CursorAssetKey, Sprite>>;
 	private cursorShadowFilters: Partial<Record<CursorAssetKey, BlurFilter>>;
 	private cursorSprites: Partial<Record<CursorAssetKey, Sprite>>;
@@ -583,6 +868,20 @@ export class PixiCursorOverlay {
 		this.container.label = "cursor-overlay";
 
 		this.clickRingGraphics = new Graphics();
+		const initialCustomAsset = getCursorStyleAsset("figma");
+		this.customCursorShadowSprite = new Sprite(initialCustomAsset.texture);
+		this.customCursorShadowSprite.anchor.set(initialCustomAsset.anchorX, initialCustomAsset.anchorY);
+		this.customCursorShadowSprite.visible = false;
+		this.customCursorShadowSprite.tint = CURSOR_SHADOW_COLOR;
+		this.customCursorShadowSprite.alpha = CURSOR_SHADOW_ALPHA;
+		this.customCursorShadowFilter = new BlurFilter();
+		this.customCursorShadowFilter.blur = CURSOR_SHADOW_BLUR;
+		this.customCursorShadowFilter.quality = 4;
+		this.customCursorShadowFilter.padding = CURSOR_SHADOW_PADDING;
+		this.customCursorShadowSprite.filters = [this.customCursorShadowFilter];
+		this.customCursorSprite = new Sprite(initialCustomAsset.texture);
+		this.customCursorSprite.anchor.set(initialCustomAsset.anchorX, initialCustomAsset.anchorY);
+		this.customCursorSprite.visible = false;
 		this.cursorShadowSprites = {};
 		this.cursorShadowFilters = {};
 		this.cursorSprites = {};
@@ -612,10 +911,13 @@ export class PixiCursorOverlay {
 
 		this.container.addChild(
 			this.clickRingGraphics,
+			this.customCursorShadowSprite,
 			...Object.values(this.cursorShadowSprites),
+			this.customCursorSprite,
 			...Object.values(this.cursorSprites),
 		);
 		this.setMotionBlur(this.config.motionBlur);
+		this.setStyle(this.config.style);
 	}
 
 	setDotRadius(dotRadius: number) {
@@ -639,6 +941,28 @@ export class PixiCursorOverlay {
 
 	setClickBounce(clickBounce: number) {
 		this.config.clickBounce = Math.max(0, clickBounce);
+	}
+
+	setStyle(style: CursorStyle) {
+		this.config.style = style;
+
+		if (!isStatefulCursorStyle(style)) {
+			return;
+		}
+
+		for (const key of getAvailableCursorKeys()) {
+			const asset = getStatefulCursorAsset(style, key);
+			const shadowSprite = this.cursorShadowSprites[key];
+			const sprite = this.cursorSprites[key];
+			if (shadowSprite) {
+				shadowSprite.texture = asset.texture;
+				shadowSprite.anchor.set(asset.anchorX, asset.anchorY);
+			}
+			if (sprite) {
+				sprite.texture = asset.texture;
+				sprite.anchor.set(asset.anchorX, asset.anchorY);
+			}
+		}
 	}
 
 	update(
@@ -694,9 +1018,6 @@ export class PixiCursorOverlay {
 			timeMs,
 		);
 		const spriteKey = (cursorType in this.cursorSprites ? cursorType : "arrow") as CursorAssetKey;
-		const asset = getCursorAsset(spriteKey);
-		const shadowSprite = this.cursorShadowSprites[spriteKey] ?? this.cursorShadowSprites.arrow!;
-		const sprite = this.cursorSprites[spriteKey] ?? this.cursorSprites.arrow!;
 		const bounceScale = Math.max(
 			0.72,
 			1 - Math.sin(clickBounceProgress * Math.PI) * (0.08 * this.config.clickBounce),
@@ -718,17 +1039,57 @@ export class PixiCursorOverlay {
 			currentSprite.visible = key === spriteKey;
 		}
 
-		if (shadowSprite) {
-			shadowSprite.height = scaledH * bounceScale;
-			shadowSprite.width = scaledH * bounceScale * asset.aspectRatio;
-			shadowSprite.position.set(px + CURSOR_SHADOW_OFFSET_X, py + CURSOR_SHADOW_OFFSET_Y);
-		}
+		if (isStatefulCursorStyle(this.config.style)) {
+			this.customCursorShadowSprite.visible = false;
+			this.customCursorSprite.visible = false;
+			const asset = getStatefulCursorAsset(this.config.style, spriteKey);
+			const shadowSprite = this.cursorShadowSprites[spriteKey] ?? this.cursorShadowSprites.arrow!;
+			const sprite = this.cursorSprites[spriteKey] ?? this.cursorSprites.arrow!;
 
-		if (sprite) {
-			sprite.alpha = this.config.dotAlpha;
-			sprite.height = scaledH * bounceScale;
-			sprite.width = scaledH * bounceScale * asset.aspectRatio;
-			sprite.position.set(px, py);
+			if (shadowSprite) {
+				shadowSprite.height = scaledH * bounceScale;
+				shadowSprite.width = scaledH * bounceScale * asset.aspectRatio;
+				shadowSprite.position.set(px + CURSOR_SHADOW_OFFSET_X, py + CURSOR_SHADOW_OFFSET_Y);
+			}
+
+			if (sprite) {
+				sprite.alpha = this.config.dotAlpha;
+				sprite.height = scaledH * bounceScale;
+				sprite.width = scaledH * bounceScale * asset.aspectRatio;
+				sprite.position.set(px, py);
+			}
+		} else {
+			for (const shadowSprite of Object.values(this.cursorShadowSprites)) {
+				if (shadowSprite) {
+					shadowSprite.visible = false;
+				}
+			}
+			for (const sprite of Object.values(this.cursorSprites)) {
+				if (sprite) {
+					sprite.visible = false;
+				}
+			}
+
+			const asset = isSingleCursorStyle(this.config.style)
+				? getCursorStyleAsset(this.config.style)
+				: getCursorPackStyleAsset(this.config.style, spriteKey);
+			this.customCursorShadowSprite.texture = asset.texture;
+			this.customCursorShadowSprite.anchor.set(asset.anchorX, asset.anchorY);
+			this.customCursorShadowSprite.visible = true;
+			this.customCursorShadowSprite.height = scaledH * bounceScale;
+			this.customCursorShadowSprite.width = scaledH * bounceScale * asset.aspectRatio;
+			this.customCursorShadowSprite.position.set(
+				px + CURSOR_SHADOW_OFFSET_X,
+				py + CURSOR_SHADOW_OFFSET_Y,
+			);
+
+			this.customCursorSprite.texture = asset.texture;
+			this.customCursorSprite.anchor.set(asset.anchorX, asset.anchorY);
+			this.customCursorSprite.visible = true;
+			this.customCursorSprite.alpha = this.config.dotAlpha;
+			this.customCursorSprite.height = scaledH * bounceScale;
+			this.customCursorSprite.width = scaledH * bounceScale * asset.aspectRatio;
+			this.customCursorSprite.position.set(px, py);
 		}
 
 		this.applyCursorMotionBlur(px, py, timeMs, freeze);
@@ -768,6 +1129,10 @@ export class PixiCursorOverlay {
 	reset(): void {
 		this.state.reset();
 		this.clickRingGraphics.clear();
+		this.customCursorShadowSprite.visible = false;
+		this.customCursorShadowSprite.scale.set(1);
+		this.customCursorSprite.visible = false;
+		this.customCursorSprite.scale.set(1);
 		for (const shadowSprite of Object.values(this.cursorShadowSprites)) {
 			shadowSprite.visible = false;
 			shadowSprite.scale.set(1);
@@ -786,6 +1151,7 @@ export class PixiCursorOverlay {
 
 	destroy(): void {
 		this.clickRingGraphics.destroy();
+		this.customCursorShadowFilter.destroy();
 		for (const shadowFilter of Object.values(this.cursorShadowFilters)) {
 			shadowFilter.destroy();
 		}
@@ -819,7 +1185,11 @@ export function drawCursorOnCanvas(
 	const spriteKey = (
 		cursorType && loadedCursorAssets[cursorType] ? cursorType : "arrow"
 	) as CursorAssetKey;
-	const asset = getCursorAsset(spriteKey);
+	const asset = isStatefulCursorStyle(config.style)
+		? getStatefulCursorAsset(config.style, spriteKey)
+		: isSingleCursorStyle(config.style)
+			? getCursorStyleAsset(config.style)
+			: getCursorPackStyleAsset(config.style, spriteKey);
 	const bounceScale = Math.max(
 		0.72,
 		1 - Math.sin(clickBounceProgress * Math.PI) * (0.08 * config.clickBounce),

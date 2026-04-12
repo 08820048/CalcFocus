@@ -9,6 +9,7 @@ import type {
 	CropRegion,
 	TrimRegion,
 	AnnotationRegion,
+	CursorStyle,
 	SpeedRegion,
 	CursorTelemetryPoint,
 } from "@/components/video-editor/types";
@@ -37,6 +38,7 @@ interface VideoExporterConfig extends ExportConfig {
 	annotationRegions?: AnnotationRegion[];
 	cursorTelemetry?: CursorTelemetryPoint[];
 	showCursor?: boolean;
+	cursorStyle?: CursorStyle;
 	cursorSize?: number;
 	cursorSmoothing?: number;
 	cursorMotionBlur?: number;
@@ -100,6 +102,7 @@ export class VideoExporter {
 				previewHeight: this.config.previewHeight,
 				cursorTelemetry: this.config.cursorTelemetry,
 				showCursor: this.config.showCursor,
+				cursorStyle: this.config.cursorStyle,
 				cursorSize: this.config.cursorSize,
 				cursorSmoothing: this.config.cursorSmoothing,
 				cursorMotionBlur: this.config.cursorMotionBlur,

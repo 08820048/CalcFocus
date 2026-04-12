@@ -531,9 +531,34 @@ export function LaunchWindow() {
 		[preparePermissions, t],
 	);
 
+	const runPickerFromHud = useCallback(
+		async <T,>(picker: () => Promise<T | null | undefined>) => {
+			micSend({ type: "CLOSE_POPOVER" });
+			setCameraPopoverOpen(false);
+			setCountdownPopoverOpen(false);
+			setMoreMenuOpen(false);
+
+			await backend.hudOverlayHide();
+			await new Promise((resolve) => setTimeout(resolve, 350));
+
+			try {
+				const result = await picker();
+				if (result == null) {
+					await backend.hudOverlayShow();
+				}
+				return result;
+			} catch (error) {
+				await backend.hudOverlayShow().catch(() => {
+					// Ignore show-window races after a failed picker attempt.
+				});
+				throw error;
+			}
+		},
+		[micSend],
+	);
+
 	const openVideoFile = useCallback(async () => {
-		setMoreMenuOpen(false);
-		const path = await backend.openVideoFilePicker();
+		const path = await runPickerFromHud(() => backend.openVideoFilePicker());
 		if (!path) return;
 		await backend.setCurrentVideoPath(path);
 		await backend.switchToEditor(
@@ -542,10 +567,10 @@ export function LaunchWindow() {
 				videoPath: path,
 			}),
 		);
-	}, []);
+	}, [runPickerFromHud]);
 
 	const openProjectFile = useCallback(async () => {
-		const result = await backend.loadProjectFile();
+		const result = await runPickerFromHud(() => backend.loadProjectFile());
 		if (!result?.filePath) return;
 		await backend.switchToEditor(
 			buildEditorWindowQuery({
@@ -553,7 +578,7 @@ export function LaunchWindow() {
 				projectPath: result.filePath,
 			}),
 		);
-	}, []);
+	}, [runPickerFromHud]);
 
 	useEffect(() => {
 		const unlistenVideo = backend.onMenuOpenVideoFile(() => {

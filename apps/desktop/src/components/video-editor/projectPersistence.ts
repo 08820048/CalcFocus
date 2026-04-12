@@ -15,11 +15,14 @@ import {
 	DEFAULT_CURSOR_CLICK_BOUNCE,
 	DEFAULT_CURSOR_MOTION_BLUR,
 	DEFAULT_CURSOR_SIZE,
+	DEFAULT_CURSOR_STYLE,
 	DEFAULT_CURSOR_SMOOTHING,
+	CURSOR_STYLE_VALUES,
 	DEFAULT_FIGURE_DATA,
 	DEFAULT_PLAYBACK_SPEED,
 	DEFAULT_ZOOM_DEPTH,
 	DEFAULT_ZOOM_MOTION_BLUR,
+	type CursorStyle,
 	type SpeedRegion,
 	type TrimRegion,
 	type ZoomRegion,
@@ -37,6 +40,7 @@ export interface ProjectEditorState {
 	connectZooms: boolean;
 	showCursor: boolean;
 	loopCursor: boolean;
+	cursorStyle: CursorStyle;
 	cursorSize: number;
 	cursorSmoothing: number;
 	cursorMotionBlur: number;
@@ -97,6 +101,8 @@ export function validateProjectData(candidate: unknown): candidate is EditorProj
 
 export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): ProjectEditorState {
 	const validAspectRatios = new Set<AspectRatio>(ASPECT_RATIOS);
+	const isCursorStyle = (value: unknown): value is CursorStyle =>
+		typeof value === "string" && CURSOR_STYLE_VALUES.includes(value as CursorStyle);
 	const legacyMotionBlurEnabled = (editor as Partial<{ motionBlurEnabled: boolean }>)
 		.motionBlurEnabled;
 	const legacyShowBlur = (editor as Partial<{ showBlur: boolean }>).showBlur;
@@ -285,6 +291,7 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 		connectZooms: typeof editor.connectZooms === "boolean" ? editor.connectZooms : true,
 		showCursor: typeof editor.showCursor === "boolean" ? editor.showCursor : true,
 		loopCursor: typeof editor.loopCursor === "boolean" ? editor.loopCursor : false,
+		cursorStyle: isCursorStyle(editor.cursorStyle) ? editor.cursorStyle : DEFAULT_CURSOR_STYLE,
 		cursorSize: isFiniteNumber(editor.cursorSize)
 			? clamp(editor.cursorSize, 0.5, 10)
 			: DEFAULT_CURSOR_SIZE,

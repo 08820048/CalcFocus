@@ -31,10 +31,12 @@ import { type AspectRatio, formatAspectRatioForCSS } from "@/utils/aspectRatioUt
 import { AnnotationOverlay } from "./AnnotationOverlay";
 import {
 	type AnnotationRegion,
+	type CursorStyle,
 	type CursorTelemetryPoint,
 	DEFAULT_CURSOR_CLICK_BOUNCE,
 	DEFAULT_CURSOR_MOTION_BLUR,
 	DEFAULT_CURSOR_SIZE,
+	DEFAULT_CURSOR_STYLE,
 	DEFAULT_CURSOR_SMOOTHING,
 	type SpeedRegion,
 	type TrimRegion,
@@ -59,6 +61,7 @@ import { clampFocusToStage as clampFocusToStageUtil } from "./videoPlayback/focu
 import { layoutVideoContent as layoutVideoContentUtil } from "./videoPlayback/layoutUtils";
 import { clamp01 } from "./videoPlayback/mathUtils";
 import { updateOverlayIndicator } from "./videoPlayback/overlayUtils";
+import { getDisplayedTimelineWindowMs } from "./videoPlayback/cursorLoopTelemetry";
 import { createVideoEventHandlers } from "./videoPlayback/videoEventHandlers";
 import { findDominantRegion } from "./videoPlayback/zoomRegionUtils";
 import {
@@ -146,6 +149,7 @@ interface VideoPlaybackProps {
 	onAnnotationSizeChange?: (id: string, size: { width: number; height: number }) => void;
 	cursorTelemetry?: CursorTelemetryPoint[];
 	showCursor?: boolean;
+	cursorStyle?: CursorStyle;
 	cursorSize?: number;
 	cursorSmoothing?: number;
 	cursorMotionBlur?: number;
@@ -207,6 +211,7 @@ const VideoPlayback = memo(
 				onAnnotationSizeChange,
 				cursorTelemetry = [],
 				showCursor = false,
+				cursorStyle = DEFAULT_CURSOR_STYLE,
 				cursorSize = DEFAULT_CURSOR_SIZE,
 				cursorSmoothing = DEFAULT_CURSOR_SMOOTHING,
 				cursorMotionBlur = DEFAULT_CURSOR_MOTION_BLUR,
@@ -273,6 +278,7 @@ const VideoPlayback = memo(
 			const cursorOverlayRef = useRef<PixiCursorOverlay | null>(null);
 			const cursorTelemetryRef = useRef<CursorTelemetryPoint[]>([]);
 			const showCursorRef = useRef(showCursor);
+			const cursorStyleRef = useRef(cursorStyle);
 			const cursorSizeRef = useRef(cursorSize);
 			const cursorSmoothingRef = useRef(cursorSmoothing);
 			const cursorMotionBlurRef = useRef(cursorMotionBlur);
@@ -389,6 +395,26 @@ const VideoPlayback = memo(
 				return zoomRegions.find((region) => region.id === selectedZoomId) ?? null;
 			}, [zoomRegions, selectedZoomId]);
 
+			const seekVideoToTime = useCallback(async (video: HTMLVideoElement, timeSeconds: number) => {
+				if (!Number.isFinite(timeSeconds)) {
+					return;
+				}
+
+				if (Math.abs(video.currentTime - timeSeconds) < 0.0005) {
+					return;
+				}
+
+				await new Promise<void>((resolve) => {
+					const handleSeeked = () => {
+						video.removeEventListener("seeked", handleSeeked);
+						resolve();
+					};
+
+					video.addEventListener("seeked", handleSeeked, { once: true });
+					video.currentTime = timeSeconds;
+				});
+			}, []);
+
 			useImperativeHandle(ref, () => ({
 				video: videoRef.current,
 				app: appRef.current,
@@ -399,6 +425,24 @@ const VideoPlayback = memo(
 					const vid = videoRef.current;
 					if (!vid) return;
 					try {
+						const durationSeconds = Number.isFinite(vid.duration) ? vid.duration : 0;
+						const timelineWindow = getDisplayedTimelineWindowMs(
+							Math.round(durationSeconds * 1000),
+							trimRegionsRef.current,
+						);
+						const playbackStartSeconds = timelineWindow.startMs / 1000;
+						const playbackEndSeconds = timelineWindow.endMs / 1000;
+						const restartThresholdSeconds =
+							durationSeconds > 0 ? Math.min(1 / 30, durationSeconds / 1000 || 1 / 30) : 1 / 30;
+						const shouldRestartFromStart =
+							vid.ended ||
+							(playbackEndSeconds > playbackStartSeconds &&
+								vid.currentTime >= playbackEndSeconds - restartThresholdSeconds);
+
+						if (shouldRestartFromStart) {
+							await seekVideoToTime(vid, playbackStartSeconds);
+						}
+
 						allowPlaybackRef.current = true;
 						await vid.play();
 					} catch (error) {
@@ -449,7 +493,7 @@ const VideoPlayback = memo(
 						video.currentTime = nudgeTarget;
 					});
 				},
-			}));
+			}), [containerRef, seekVideoToTime]);
 
 			const updateFocusFromClientPoint = (clientX: number, clientY: number) => {
 				const overlayEl = overlayRef.current;
@@ -564,6 +608,10 @@ const VideoPlayback = memo(
 			useEffect(() => {
 				showCursorRef.current = showCursor;
 			}, [showCursor]);
+
+			useEffect(() => {
+				cursorStyleRef.current = cursorStyle;
+			}, [cursorStyle]);
 
 			useEffect(() => {
 				cursorSizeRef.current = cursorSize;
@@ -796,6 +844,7 @@ const VideoPlayback = memo(
 
 						if (!cursorOverlayRef.current) {
 							const cursorOverlay = new PixiCursorOverlay({
+								style: cursorStyleRef.current,
 								dotRadius: DEFAULT_CURSOR_CONFIG.dotRadius * cursorSizeRef.current,
 								smoothingFactor: cursorSmoothingRef.current,
 								motionBlur: cursorMotionBlurRef.current,
@@ -1225,8 +1274,9 @@ const VideoPlayback = memo(
 				overlay.setSmoothingFactor(cursorSmoothing);
 				overlay.setMotionBlur(cursorMotionBlur);
 				overlay.setClickBounce(cursorClickBounce);
+				overlay.setStyle(cursorStyle);
 				overlay.reset();
-			}, [cursorSize, cursorSmoothing, cursorMotionBlur, cursorClickBounce]);
+			}, [cursorStyle, cursorSize, cursorSmoothing, cursorMotionBlur, cursorClickBounce]);
 
 			const handleLoadedMetadata = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
 				const video = e.currentTarget;

@@ -3,6 +3,7 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { I18nProvider } from "@/contexts/I18nContext";
 
 vi.mock("@/lib/backend", () => ({
 	openExternalUrl: vi.fn(),
@@ -43,7 +44,9 @@ async function renderPanel() {
 
 	await act(async () => {
 		root.render(
-			<SettingsPanel selected="#000000" onWallpaperChange={vi.fn()} aspectRatio="16:9" />,
+			<I18nProvider>
+				<SettingsPanel selected="#000000" onWallpaperChange={vi.fn()} aspectRatio="16:9" />
+			</I18nProvider>,
 		);
 	});
 	await flushEffects();
@@ -74,6 +77,16 @@ beforeEach(() => {
 	Object.defineProperty(globalThis, "ResizeObserver", {
 		configurable: true,
 		value: ResizeObserverMock,
+	});
+
+	Object.defineProperty(window, "localStorage", {
+		configurable: true,
+		value: {
+			getItem: vi.fn(() => null),
+			setItem: vi.fn(),
+			removeItem: vi.fn(),
+			clear: vi.fn(),
+		},
 	});
 });
 

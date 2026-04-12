@@ -84,6 +84,7 @@ const mockState = vi.hoisted(() => {
 		setSmoothingFactor = vi.fn();
 		setMotionBlur = vi.fn();
 		setClickBounce = vi.fn();
+		setStyle = vi.fn();
 		reset = vi.fn();
 		update = vi.fn();
 		destroy = vi.fn();
@@ -291,6 +292,7 @@ async function flushEffects() {
 
 async function renderPlayback(
 	overrides: Partial<ComponentProps<typeof VideoPlayback>> = {},
+	options?: { ref?: { current: unknown } },
 ): Promise<RenderHarness> {
 	const container = document.createElement("div");
 	Object.defineProperty(container, "clientWidth", { configurable: true, value: 960 });
@@ -314,7 +316,9 @@ async function renderPlayback(
 
 	const render = async (nextOverrides?: Partial<ComponentProps<typeof VideoPlayback>>) => {
 		await act(async () => {
-			root.render(<VideoPlayback {...baseProps} {...overrides} {...nextOverrides} />);
+			root.render(
+				<VideoPlayback ref={options?.ref} {...baseProps} {...overrides} {...nextOverrides} />,
+			);
 		});
 		await flushEffects();
 	};
@@ -494,6 +498,52 @@ describe("VideoPlayback", () => {
 
 		expect(video.muted).toBe(false);
 		expect(video.volume).toBeCloseTo(0.8);
+		await harness.unmount();
+	});
+
+	it("restarts from the visible playback start when play is pressed after reaching the end", async () => {
+		const playbackRef = { current: null as any };
+		const harness = await renderPlayback(
+			{
+				trimRegions: [
+					{
+						id: "trim-1",
+						startMs: 0,
+						endMs: 2000,
+					},
+				],
+			},
+			{ ref: playbackRef },
+		);
+		const video = getPrimaryVideo(harness.container);
+		const playSpy = vi.spyOn(video, "play");
+
+		defineMediaProperty(video, "duration", 10);
+
+		let currentTime = 10;
+		let ended = true;
+		Object.defineProperty(video, "currentTime", {
+			configurable: true,
+			get: () => currentTime,
+			set: (value: number) => {
+				currentTime = value;
+				ended = value >= 10;
+				queueMicrotask(() => {
+					video.dispatchEvent(new Event("seeked"));
+				});
+			},
+		});
+		Object.defineProperty(video, "ended", {
+			configurable: true,
+			get: () => ended,
+		});
+
+		await act(async () => {
+			await playbackRef.current.play();
+		});
+
+		expect(currentTime).toBeCloseTo(2);
+		expect(playSpy).toHaveBeenCalledTimes(1);
 		await harness.unmount();
 	});
 });

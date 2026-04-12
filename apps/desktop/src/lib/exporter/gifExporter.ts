@@ -3,7 +3,15 @@ import type { ExportProgress, ExportResult, GifFrameRate, GifSizePreset, GIF_SIZ
 import { StreamingVideoDecoder } from './streamingDecoder';
 import { FrameRenderer } from './frameRenderer';
 import { SyncedVideoProvider } from './syncedVideoProvider';
-import type { ZoomRegion, CropRegion, TrimRegion, AnnotationRegion, SpeedRegion, CursorTelemetryPoint } from '@/components/video-editor/types';
+import type {
+  ZoomRegion,
+  CropRegion,
+  TrimRegion,
+  AnnotationRegion,
+  CursorStyle,
+  SpeedRegion,
+  CursorTelemetryPoint,
+} from '@/components/video-editor/types';
 import type { FacecamSettings } from '@/lib/recordingSession';
 
 const GIF_WORKER_URL = new URL('gif.js/dist/gif.worker.js', import.meta.url).toString();
@@ -34,6 +42,7 @@ interface GifExporterConfig {
   annotationRegions?: AnnotationRegion[];
   cursorTelemetry?: CursorTelemetryPoint[];
   showCursor?: boolean;
+  cursorStyle?: CursorStyle;
   cursorSize?: number;
   cursorSmoothing?: number;
   cursorMotionBlur?: number;
@@ -121,6 +130,7 @@ export class GifExporter {
         previewHeight: this.config.previewHeight,
         cursorTelemetry: this.config.cursorTelemetry,
         showCursor: this.config.showCursor,
+        cursorStyle: this.config.cursorStyle,
         cursorSize: this.config.cursorSize,
         cursorSmoothing: this.config.cursorSmoothing,
         cursorMotionBlur: this.config.cursorMotionBlur,

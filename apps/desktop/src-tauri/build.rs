@@ -6,6 +6,23 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 fn main() {
+    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+    println!(
+        "cargo:rerun-if-changed={}",
+        manifest_dir.join("icons").display()
+    );
+    println!(
+        "cargo:rerun-if-changed={}",
+        manifest_dir.join("Info.plist").display()
+    );
+    println!(
+        "cargo:rerun-if-changed={}",
+        manifest_dir.join("tauri.conf.json").display()
+    );
+    println!(
+        "cargo:rerun-if-changed={}",
+        manifest_dir.join("tauri.dev.conf.json").display()
+    );
     compile_sidecars();
     tauri_build::build();
 }

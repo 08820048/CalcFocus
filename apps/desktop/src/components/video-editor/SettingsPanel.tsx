@@ -11,7 +11,7 @@ import {
 	Volume2,
 	X,
 } from "lucide-react";
-import { memo, type ReactNode, useMemo, useRef, useState } from "react";
+import { memo, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -33,11 +33,21 @@ import type {
 	AnnotationRegion,
 	AnnotationType,
 	CropRegion,
+	CursorStyle,
 	FigureData,
 	PlaybackSpeed,
 	ZoomDepth,
 } from "./types";
 import { SPEED_OPTIONS } from "./types";
+import {
+	CURSOR_STYLE_OPTIONS,
+	CURSOR_STYLE_STATIC_PREVIEW_URLS,
+	minimalCursorUrl,
+} from "./videoPlayback/cursorStyleAssets";
+import {
+	UPLOADED_CURSOR_SAMPLE_SIZE,
+	uploadedCursorAssets,
+} from "./videoPlayback/uploadedCursorAssets";
 
 const GRADIENTS = [
 	"linear-gradient( 111.6deg,  rgba(114,167,232,1) 9.4%, rgba(253,129,82,1) 43.9%, rgba(253,129,82,1) 54.8%, rgba(249,202,86,1) 86.3% )",
@@ -119,6 +129,8 @@ interface SettingsPanelProps {
 	onShowCursorChange?: (enabled: boolean) => void;
 	loopCursor?: boolean;
 	onLoopCursorChange?: (enabled: boolean) => void;
+	cursorStyle?: CursorStyle;
+	onCursorStyleChange?: (style: CursorStyle) => void;
 	cursorSize?: number;
 	onCursorSizeChange?: (size: number) => void;
 	cursorSmoothing?: number;
@@ -227,6 +239,200 @@ function WallpaperPreviewTile({
 	);
 }
 
+function loadPreviewImage(url: string) {
+	return new Promise<HTMLImageElement>((resolve, reject) => {
+		const image = new Image();
+		image.decoding = "async";
+		image.onload = () => resolve(image);
+		image.onerror = () => reject(new Error(`Failed to load preview asset: ${url}`));
+		image.src = url;
+	});
+}
+
+function trimCanvasToAlpha(canvas: HTMLCanvasElement, hotspot?: { x: number; y: number }) {
+	const ctx = canvas.getContext("2d");
+	if (!ctx) {
+		return {
+			dataUrl: canvas.toDataURL("image/png"),
+			width: canvas.width,
+			height: canvas.height,
+			hotspot,
+		};
+	}
+
+	const { width, height } = canvas;
+	const imageData = ctx.getImageData(0, 0, width, height);
+	const { data } = imageData;
+	let minX = width;
+	let minY = height;
+	let maxX = -1;
+	let maxY = -1;
+
+	for (let y = 0; y < height; y += 1) {
+		for (let x = 0; x < width; x += 1) {
+			const alpha = data[(y * width + x) * 4 + 3];
+			if (alpha === 0) {
+				continue;
+			}
+
+			minX = Math.min(minX, x);
+			minY = Math.min(minY, y);
+			maxX = Math.max(maxX, x);
+			maxY = Math.max(maxY, y);
+		}
+	}
+
+	if (maxX < minX || maxY < minY) {
+		return {
+			dataUrl: canvas.toDataURL("image/png"),
+			width,
+			height,
+			hotspot,
+		};
+	}
+
+	const croppedWidth = maxX - minX + 1;
+	const croppedHeight = maxY - minY + 1;
+	const croppedCanvas = document.createElement("canvas");
+	croppedCanvas.width = croppedWidth;
+	croppedCanvas.height = croppedHeight;
+	const croppedCtx = croppedCanvas.getContext("2d")!;
+	croppedCtx.drawImage(
+		canvas,
+		minX,
+		minY,
+		croppedWidth,
+		croppedHeight,
+		0,
+		0,
+		croppedWidth,
+		croppedHeight,
+	);
+
+	return {
+		dataUrl: croppedCanvas.toDataURL("image/png"),
+		width: croppedWidth,
+		height: croppedHeight,
+		hotspot: hotspot
+			? {
+					x: hotspot.x - minX,
+					y: hotspot.y - minY,
+				}
+			: undefined,
+	};
+}
+
+async function createTrimmedSvgPreview(
+	url: string,
+	sampleSize: number,
+	trim?: { x: number; y: number; width: number; height: number },
+	hotspot?: { x: number; y: number },
+) {
+	const image = await loadPreviewImage(url);
+	const canvas = document.createElement("canvas");
+	canvas.width = sampleSize;
+	canvas.height = sampleSize;
+	const ctx = canvas.getContext("2d")!;
+	ctx.drawImage(image, 0, 0, sampleSize, sampleSize);
+
+	if (!trim) {
+		return trimCanvasToAlpha(canvas, hotspot).dataUrl;
+	}
+
+	const croppedCanvas = document.createElement("canvas");
+	croppedCanvas.width = trim.width;
+	croppedCanvas.height = trim.height;
+	const croppedCtx = croppedCanvas.getContext("2d")!;
+	croppedCtx.drawImage(
+		canvas,
+		trim.x,
+		trim.y,
+		trim.width,
+		trim.height,
+		0,
+		0,
+		trim.width,
+		trim.height,
+	);
+
+	return trimCanvasToAlpha(croppedCanvas, hotspot).dataUrl;
+}
+
+async function createInvertedPreview(url: string) {
+	const image = await loadPreviewImage(url);
+	const canvas = document.createElement("canvas");
+	canvas.width = image.naturalWidth;
+	canvas.height = image.naturalHeight;
+	const ctx = canvas.getContext("2d")!;
+	ctx.drawImage(image, 0, 0);
+	const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+	const { data } = imageData;
+	for (let index = 0; index < data.length; index += 4) {
+		if (data[index + 3] === 0) {
+			continue;
+		}
+
+		data[index] = 255 - data[index];
+		data[index + 1] = 255 - data[index + 1];
+		data[index + 2] = 255 - data[index + 2];
+	}
+	ctx.putImageData(imageData, 0, 0);
+	return canvas.toDataURL("image/png");
+}
+
+function CursorStylePreview({
+	style,
+	previewUrls,
+}: {
+	style: CursorStyle;
+	previewUrls: Partial<Record<"tahoe" | "figma" | "mono", string>>;
+}) {
+	if (style === "tahoe") {
+		return (
+			<img
+				src={previewUrls.tahoe ?? uploadedCursorAssets.arrow?.url}
+				alt=""
+				className="h-8 w-8 object-contain drop-shadow-[0_8px_12px_rgba(15,23,42,0.18)]"
+				draggable={false}
+			/>
+		);
+	}
+
+	if (style === "figma") {
+		return (
+			<img
+				src={previewUrls.figma ?? minimalCursorUrl}
+				alt=""
+				className="h-8 w-8 object-contain"
+				draggable={false}
+			/>
+		);
+	}
+
+	if (style === "dot") {
+		return (
+			<span className="h-[14px] w-[14px] rounded-full border-[2.5px] border-slate-900 bg-white shadow-[0_8px_12px_rgba(15,23,42,0.16)]" />
+		);
+	}
+
+	if (style === "mono") {
+		return (
+			<img
+				src={previewUrls.mono ?? previewUrls.tahoe ?? uploadedCursorAssets.arrow?.url}
+				alt=""
+				className="h-8 w-8 object-contain"
+				draggable={false}
+			/>
+		);
+	}
+
+	const previewUrl = CURSOR_STYLE_STATIC_PREVIEW_URLS[style];
+
+	return (
+		<img src={previewUrl} alt="" className="h-8 w-8 object-contain" draggable={false} />
+	);
+}
+
 function SettingsPanelInner({
 	selected,
 	onWallpaperChange,
@@ -252,6 +458,8 @@ function SettingsPanelInner({
 	onShowCursorChange,
 	loopCursor = false,
 	onLoopCursorChange,
+	cursorStyle = "tahoe",
+	onCursorStyleChange,
 	cursorSize = 5,
 	onCursorSizeChange,
 	cursorSmoothing = 2,
@@ -291,7 +499,50 @@ function SettingsPanelInner({
 	const [selectedColor, setSelectedColor] = useState("#ADADAD");
 	const [gradient, setGradient] = useState<string>(GRADIENTS[0]);
 	const [showCropModal, setShowCropModal] = useState(false);
+	const [cursorPreviewUrls, setCursorPreviewUrls] = useState<
+		Partial<Record<"tahoe" | "figma" | "mono", string>>
+	>({});
 	const cropSnapshotRef = useRef<CropRegion | null>(null);
+
+	useEffect(() => {
+		let cancelled = false;
+
+		void (async () => {
+			try {
+				const tahoeAsset = uploadedCursorAssets.arrow;
+				const tahoePreview = tahoeAsset
+					? await createTrimmedSvgPreview(
+							tahoeAsset.url,
+							UPLOADED_CURSOR_SAMPLE_SIZE,
+							tahoeAsset.trim,
+						)
+					: undefined;
+				const figmaPreview = await createTrimmedSvgPreview(minimalCursorUrl, 512);
+				const monoPreview = tahoePreview ? await createInvertedPreview(tahoePreview) : undefined;
+
+				if (!cancelled) {
+					setCursorPreviewUrls({
+						tahoe: tahoePreview,
+						figma: figmaPreview,
+						mono: monoPreview,
+					});
+				}
+			} catch {
+				if (!cancelled) {
+					setCursorPreviewUrls({
+						tahoe: uploadedCursorAssets.arrow?.url,
+						figma: minimalCursorUrl,
+						mono: uploadedCursorAssets.arrow?.url,
+					});
+				}
+			}
+		})();
+
+		return () => {
+			cancelled = true;
+		};
+	}, []);
+
 	const settingsSidebarTabs = useMemo<SettingsTabDefinition[]>(
 		() => [
 			{
@@ -564,6 +815,41 @@ function SettingsPanelInner({
 									onCheckedChange={onLoopCursorChange}
 									className="data-[state=checked]:bg-[#09cf67] scale-90"
 								/>
+							</div>
+						</div>
+						<div className={flatControlClass}>
+							<div className="mb-2 flex items-center justify-between">
+								<div className="text-[10px] font-medium text-slate-300">
+									{t("cursor.style", "Style")}
+								</div>
+								<span className="text-[10px] text-slate-500 font-mono">{cursorStyle}</span>
+							</div>
+							<div className="grid grid-cols-3 gap-2">
+								{CURSOR_STYLE_OPTIONS.map((option) => (
+									<Button
+										key={option.value}
+										type="button"
+										variant="outline"
+										onClick={() => onCursorStyleChange?.(option.value)}
+										title={option.label}
+										aria-label={option.label}
+										className={cn(
+											"flex aspect-square h-auto min-h-0 flex-col items-center justify-between rounded-[10px] border border-white/10 bg-white/[0.03] px-2 py-3 text-center shadow-none hover:border-white/20 hover:bg-white/[0.06]",
+											cursorStyle === option.value &&
+												"border-[#09cf67]/60 bg-[#09cf67]/10 text-white",
+										)}
+									>
+										<div className="flex min-h-0 flex-1 items-center justify-center">
+											<CursorStylePreview
+												style={option.value}
+												previewUrls={cursorPreviewUrls}
+											/>
+										</div>
+										<span className="mt-2 block text-[10px] font-medium text-slate-200">
+											{option.label}
+										</span>
+									</Button>
+								))}
 							</div>
 						</div>
 						<div className="grid grid-cols-2 gap-2">

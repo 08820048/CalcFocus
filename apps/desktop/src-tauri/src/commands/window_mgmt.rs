@@ -1,6 +1,6 @@
 use std::sync::Mutex;
 use tauri::window::Color;
-use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder, Window};
+use tauri::{AppHandle, Manager, Theme, WebviewUrl, WebviewWindowBuilder, Window};
 #[cfg(target_os = "macos")]
 use tauri::{LogicalPosition, Position, TitleBarStyle};
 
@@ -62,6 +62,7 @@ pub async fn switch_to_editor(app: AppHandle, query: Option<String>) -> Result<(
     #[cfg(target_os = "macos")]
     {
         builder = builder
+            .theme(Some(Theme::Dark))
             .title_bar_style(TitleBarStyle::Overlay)
             .traffic_light_position(Position::Logical(LogicalPosition::new(12.0, 12.0)));
     }
@@ -217,6 +218,7 @@ pub async fn switch_to_image_editor(app: AppHandle) -> Result<(), String> {
         #[cfg(target_os = "macos")]
         {
             builder = builder
+                .theme(Some(Theme::Dark))
                 .title_bar_style(TitleBarStyle::Overlay)
                 .traffic_light_position(Position::Logical(LogicalPosition::new(12.0, 12.0)));
         }

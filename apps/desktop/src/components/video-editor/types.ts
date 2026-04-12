@@ -30,13 +30,29 @@ export interface CursorTelemetryPoint {
 		| "not-allowed";
 }
 
+export const CURSOR_STYLE_VALUES = [
+	"tahoe",
+	"dot",
+	"figma",
+	"mono",
+	"lavender",
+	"parched",
+	"chooper",
+	"amongus",
+	"turtle",
+] as const;
+
+export type CursorStyle = (typeof CURSOR_STYLE_VALUES)[number];
+
 export interface CursorVisualSettings {
+	style: CursorStyle;
 	size: number;
 	smoothing: number;
 	motionBlur: number;
 	clickBounce: number;
 }
 
+export const DEFAULT_CURSOR_STYLE: CursorStyle = "tahoe";
 export const DEFAULT_CURSOR_SIZE = 3.0;
 export const DEFAULT_CURSOR_SMOOTHING = 0.67;
 export const DEFAULT_CURSOR_MOTION_BLUR = 0.35;

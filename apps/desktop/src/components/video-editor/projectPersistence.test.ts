@@ -9,6 +9,7 @@ describe("projectPersistence", () => {
 
 		expect(normalized.audioMuted).toBe(false);
 		expect(normalized.audioVolume).toBe(1);
+		expect(normalized.cursorStyle).toBe("tahoe");
 	});
 
 	it("persists audio settings in created project data", () => {
@@ -16,6 +17,7 @@ describe("projectPersistence", () => {
 			wallpaper: "#111111",
 			audioMuted: true,
 			audioVolume: 0.35,
+			cursorStyle: "figma",
 		});
 
 		const project = createProjectData("/tmp/demo.mp4", editor);
@@ -23,6 +25,7 @@ describe("projectPersistence", () => {
 		expect(project.version).toBe(PROJECT_VERSION);
 		expect(project.editor.audioMuted).toBe(true);
 		expect(project.editor.audioVolume).toBe(0.35);
+		expect(project.editor.cursorStyle).toBe("figma");
 	});
 
 	it("persists source metadata for reopened editor titles", () => {

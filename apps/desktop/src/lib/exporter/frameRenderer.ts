@@ -6,6 +6,7 @@ import type {
 	CropRegion,
 	AnnotationRegion,
 	SpeedRegion,
+	CursorStyle,
 	CursorTelemetryPoint,
 } from "@/components/video-editor/types";
 import { getFacecamLayout, type FacecamSettings } from "@/lib/recordingSession";
@@ -54,6 +55,7 @@ interface FrameRenderConfig {
 	previewHeight?: number;
 	cursorTelemetry?: CursorTelemetryPoint[];
 	showCursor?: boolean;
+	cursorStyle?: CursorStyle;
 	cursorSize?: number;
 	cursorSmoothing?: number;
 	cursorMotionBlur?: number;
@@ -176,6 +178,7 @@ export class FrameRenderer {
 
 		if (cursorOverlayEnabled) {
 			this.cursorOverlay = new PixiCursorOverlay({
+				style: this.config.cursorStyle ?? "tahoe",
 				dotRadius: DEFAULT_CURSOR_CONFIG.dotRadius * (this.config.cursorSize ?? 1.4),
 				smoothingFactor: this.config.cursorSmoothing ?? DEFAULT_CURSOR_CONFIG.smoothingFactor,
 				motionBlur: this.config.cursorMotionBlur ?? 0,
