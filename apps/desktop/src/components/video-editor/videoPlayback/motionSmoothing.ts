@@ -1,5 +1,3 @@
-import { spring } from "motion";
-
 export interface SpringState {
 	value: number;
 	velocity: number;
@@ -43,6 +41,46 @@ export function clampDeltaMs(deltaMs: number, fallbackMs = 1000 / 60) {
 	return Math.min(80, Math.max(1, deltaMs));
 }
 
+function resolveSpringPosition(
+	t: number,
+	target: number,
+	initialDelta: number,
+	initialVelocity: number,
+	dampingRatio: number,
+	undampedAngularFreq: number,
+): number {
+	if (dampingRatio < 1) {
+		const dampedFreq = undampedAngularFreq * Math.sqrt(1 - dampingRatio * dampingRatio);
+		const envelope = Math.exp(-dampingRatio * undampedAngularFreq * t);
+		return (
+			target -
+			envelope *
+				(((initialVelocity + dampingRatio * undampedAngularFreq * initialDelta) / dampedFreq) *
+					Math.sin(dampedFreq * t) +
+					initialDelta * Math.cos(dampedFreq * t))
+		);
+	}
+
+	if (dampingRatio === 1) {
+		return (
+			target -
+			Math.exp(-undampedAngularFreq * t) *
+				(initialDelta + (initialVelocity + undampedAngularFreq * initialDelta) * t)
+		);
+	}
+
+	const dampedFreq = undampedAngularFreq * Math.sqrt(dampingRatio * dampingRatio - 1);
+	const envelope = Math.exp(-dampingRatio * undampedAngularFreq * t);
+	const freqT = Math.min(dampedFreq * t, 300);
+	return (
+		target -
+		(envelope *
+			((initialVelocity + dampingRatio * undampedAngularFreq * initialDelta) * Math.sinh(freqT) +
+				dampedFreq * initialDelta * Math.cosh(freqT))) /
+			dampedFreq
+	);
+}
+
 export function stepSpringValue(
 	state: SpringState,
 	target: number,
@@ -67,23 +105,49 @@ export function stepSpringValue(
 		return state.value;
 	}
 
-	const previousValue = state.value;
-	const generator = spring({
-		keyframes: [state.value, target],
-		velocity: state.velocity,
-		stiffness: config.stiffness,
-		damping: config.damping,
-		mass: config.mass,
-		restDelta,
-		restSpeed,
-	});
+	const { stiffness, damping, mass } = config;
+	const undampedAngularFreq = Math.sqrt(stiffness / mass);
+	const dampingRatio = damping / (2 * Math.sqrt(stiffness * mass));
+	const initialDelta = target - state.value;
+	const initialVelocity = -state.velocity;
+	const tSec = safeDeltaMs / 1000;
 
-	const result = generator.next(safeDeltaMs);
-	state.value = result.done ? target : result.value;
-	state.velocity = ((state.value - previousValue) / safeDeltaMs) * 1000;
+	const current = resolveSpringPosition(
+		tSec,
+		target,
+		initialDelta,
+		initialVelocity,
+		dampingRatio,
+		undampedAngularFreq,
+	);
 
-	if (result.done) {
+	if (dampingRatio >= 1) {
+		const crossed =
+			(state.value <= target && current > target) || (state.value >= target && current < target);
+		if (crossed) {
+			state.value = target;
+			state.velocity = 0;
+			return state.value;
+		}
+	}
+
+	const epsilon = 0.0001;
+	const ahead = resolveSpringPosition(
+		tSec + epsilon,
+		target,
+		initialDelta,
+		initialVelocity,
+		dampingRatio,
+		undampedAngularFreq,
+	);
+	const velocity = (ahead - current) / epsilon;
+
+	if (Math.abs(target - current) <= restDelta && Math.abs(velocity) <= restSpeed) {
+		state.value = target;
 		state.velocity = 0;
+	} else {
+		state.value = current;
+		state.velocity = velocity;
 	}
 
 	return state.value;

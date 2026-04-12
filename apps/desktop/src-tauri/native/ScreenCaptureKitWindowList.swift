@@ -15,6 +15,10 @@ struct SourceListEntry: Codable {
 	let appName: String?
 	let windowTitle: String?
 	let windowId: UInt32?
+	let x: Double?
+	let y: Double?
+	let width: Double?
+	let height: Double?
 }
 
 struct ThumbnailSize {
@@ -326,7 +330,11 @@ do {
 				appIcon: nil,
 				appName: nil,
 				windowTitle: nil,
-				windowId: nil
+				windowId: nil,
+				x: Double(display.frame.origin.x),
+				y: Double(display.frame.origin.y),
+				width: Double(display.frame.width),
+				height: Double(display.frame.height)
 			))
 		}
 	}
@@ -393,7 +401,11 @@ do {
 				appIcon: appIconDataURL(bundleId: bundleId),
 				appName: appName,
 				windowTitle: resolvedWindowTitle,
-				windowId: windowID
+				windowId: windowID,
+				x: Double(bounds.origin.x),
+				y: Double(bounds.origin.y),
+				width: Double(bounds.width),
+				height: Double(bounds.height)
 			))
 		}
 	}

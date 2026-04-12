@@ -13,6 +13,10 @@ declare global {
     appName?: string;
     windowTitle?: string;
     windowId?: number;
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
     // snake_case variants (legacy backend compat)
     source_type?: string;
     app_icon?: string | null;

@@ -56,6 +56,7 @@ import {
 	PixiCursorOverlay,
 	preloadCursorAssets,
 } from "./videoPlayback/cursorRenderer";
+import type { CursorViewportRect } from "./videoPlayback/cursorViewport";
 import { clampFocusToStage as clampFocusToStageUtil } from "./videoPlayback/focusUtils";
 import { layoutVideoContent as layoutVideoContentUtil } from "./videoPlayback/layoutUtils";
 import { clamp01 } from "./videoPlayback/mathUtils";
@@ -251,7 +252,7 @@ const VideoPlayback = memo(
 			const videoSizeRef = useRef({ width: 0, height: 0 });
 			const baseScaleRef = useRef(1);
 			const baseOffsetRef = useRef({ x: 0, y: 0 });
-			const baseMaskRef = useRef({ x: 0, y: 0, width: 0, height: 0 });
+			const baseMaskRef = useRef<CursorViewportRect>({ x: 0, y: 0, width: 0, height: 0 });
 			const cropBoundsRef = useRef({ startX: 0, endX: 0, startY: 0, endY: 0 });
 			const maskGraphicsRef = useRef<Graphics | null>(null);
 			const isPlayingRef = useRef(isPlaying);

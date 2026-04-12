@@ -30,6 +30,7 @@ import {
 	DEFAULT_CURSOR_CONFIG,
 	preloadCursorAssets,
 } from "@/components/video-editor/videoPlayback/cursorRenderer";
+import type { CursorViewportRect } from "@/components/video-editor/videoPlayback/cursorViewport";
 
 interface FrameRenderConfig {
 	width: number;
@@ -104,7 +105,13 @@ export class FrameRenderer {
 	private config: FrameRenderConfig;
 	private animationState: AnimationState;
 	private motionBlurState: MotionBlurState;
-	private layoutCache: any = null;
+	private layoutCache: {
+		stageSize: { width: number; height: number };
+		videoSize: { width: number; height: number };
+		baseScale: number;
+		baseOffset: { x: number; y: number };
+		maskRect: CursorViewportRect;
+	} | null = null;
 	private currentVideoTime = 0;
 	private lastMotionVector = { x: 0, y: 0 };
 	private cursorOverlay: PixiCursorOverlay | null = null;
@@ -409,6 +416,10 @@ export class FrameRenderer {
 
 		// Apply layout
 		this.updateLayout();
+		const layoutCache = this.layoutCache;
+		if (!layoutCache) {
+			throw new Error("Renderer layout unavailable");
+		}
 
 		const timeMs = this.currentVideoTime * 1000;
 
@@ -416,7 +427,7 @@ export class FrameRenderer {
 			this.cursorOverlay.update(
 				this.config.cursorTelemetry ?? [],
 				timeMs,
-				this.layoutCache.maskRect,
+				layoutCache.maskRect,
 				this.config.showCursor ?? true,
 				false,
 			);
@@ -435,8 +446,8 @@ export class FrameRenderer {
 			cameraContainer: this.cameraContainer,
 			blurFilter: this.blurFilter,
 			motionBlurFilter: this.motionBlurFilter,
-			stageSize: this.layoutCache.stageSize,
-			baseMask: this.layoutCache.maskRect,
+			stageSize: layoutCache.stageSize,
+			baseMask: layoutCache.maskRect,
 			zoomScale: this.animationState.scale,
 			zoomProgress: this.animationState.progress,
 			focusX: this.animationState.focusX,
@@ -641,6 +652,7 @@ export class FrameRenderer {
 				y: centerOffsetY,
 				width: croppedDisplayWidth,
 				height: croppedDisplayHeight,
+				sourceCrop: cropRegion,
 			},
 		};
 	}

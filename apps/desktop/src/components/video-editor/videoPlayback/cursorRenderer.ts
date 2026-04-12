@@ -8,6 +8,7 @@ import {
 	resetSpringState,
 	stepSpringValue,
 } from "./motionSmoothing";
+import { type CursorViewportRect, projectCursorPositionToViewport } from "./cursorViewport";
 import { UPLOADED_CURSOR_SAMPLE_SIZE, uploadedCursorAssets } from "./uploadedCursorAssets";
 
 type CursorAssetKey = NonNullable<CursorTelemetryPoint["cursorType"]>;
@@ -19,13 +20,6 @@ type LoadedCursorAsset = {
 	anchorX: number;
 	anchorY: number;
 };
-
-export interface CursorViewportRect {
-	x: number;
-	y: number;
-	width: number;
-	height: number;
-}
 
 /**
  * Configuration for cursor rendering.
@@ -662,6 +656,15 @@ export class PixiCursorOverlay {
 			return;
 		}
 
+		const projectedTarget = projectCursorPositionToViewport(target, viewport.sourceCrop);
+		if (!projectedTarget.visible) {
+			this.container.visible = false;
+			this.lastRenderedPoint = null;
+			this.lastRenderedTimeMs = null;
+			this.cursorMotionBlurFilter.velocity = { x: 0, y: 0 };
+			return;
+		}
+
 		const sameFrameTime =
 			this.lastRenderedTimeMs !== null && Math.abs(this.lastRenderedTimeMs - timeMs) < 0.0001;
 		const hasTimeDiscontinuity =
@@ -670,10 +673,10 @@ export class PixiCursorOverlay {
 
 		if (freeze || hasTimeDiscontinuity) {
 			if (!sameFrameTime || !this.lastRenderedPoint) {
-				this.state.snapTo(target.cx, target.cy, timeMs);
+				this.state.snapTo(projectedTarget.cx, projectedTarget.cy, timeMs);
 			}
 		} else {
-			this.state.update(target.cx, target.cy, timeMs);
+			this.state.update(projectedTarget.cx, projectedTarget.cy, timeMs);
 		}
 		this.container.visible = true;
 
@@ -798,7 +801,10 @@ export function drawCursorOnCanvas(
 	const target = interpolateCursorPosition(samples, timeMs);
 	if (!target) return;
 
-	smoothedState.update(target.cx, target.cy, timeMs);
+	const projectedTarget = projectCursorPositionToViewport(target, viewport.sourceCrop);
+	if (!projectedTarget.visible) return;
+
+	smoothedState.update(projectedTarget.cx, projectedTarget.cy, timeMs);
 
 	const px = viewport.x + smoothedState.x * viewport.width;
 	const py = viewport.y + smoothedState.y * viewport.height;

@@ -20,6 +20,10 @@ interface DesktopSource {
 	appName?: string;
 	windowTitle?: string;
 	windowId?: number;
+	x?: number;
+	y?: number;
+	width?: number;
+	height?: number;
 }
 
 interface SourceGridProps {
@@ -45,6 +49,10 @@ function mapSources(rawSources: ProcessedDesktopSource[]): DesktopSource[] {
 			appName: metadata.appName,
 			windowTitle: metadata.windowTitle,
 			windowId: source.windowId ?? source.window_id,
+			x: source.x,
+			y: source.y,
+			width: source.width,
+			height: source.height,
 		};
 	});
 }

@@ -353,6 +353,10 @@ fn fallback_sources() -> Vec<SelectedSource> {
         app_name: None,
         window_title: None,
         window_id: None,
+        x: None,
+        y: None,
+        width: None,
+        height: None,
     }]
 }
 
@@ -437,6 +441,10 @@ fn fallback_macos_sources() -> Result<Vec<SelectedSource>, String> {
             app_name: None,
             window_title: None,
             window_id: None,
+            x: None,
+            y: None,
+            width: None,
+            height: None,
         });
     }
 
@@ -511,6 +519,10 @@ mod tests {
             app_name: None,
             window_title: None,
             window_id: None,
+            x: None,
+            y: None,
+            width: None,
+            height: None,
         }
     }
 

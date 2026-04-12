@@ -30,6 +30,10 @@ fn test_full_recording_lifecycle_state_transitions() {
             app_name: None,
             window_title: None,
             window_id: None,
+            x: None,
+            y: None,
+            width: None,
+            height: None,
         });
     }
 
@@ -217,6 +221,10 @@ fn test_full_app_state_serialization_pipeline() {
         app_name: None,
         window_title: None,
         window_id: None,
+        x: None,
+        y: None,
+        width: None,
+        height: None,
     });
 
     state.current_video_path = Some("/Videos/recording.mov".to_string());
@@ -383,6 +391,10 @@ fn test_source_list_caching_workflow() {
             app_name: Some("Terminal".to_string()),
             window_title: Some("bash".to_string()),
             window_id: Some(1),
+            x: None,
+            y: None,
+            width: None,
+            height: None,
         },
         SelectedSource {
             id: "window:2:0".to_string(),
@@ -395,6 +407,10 @@ fn test_source_list_caching_workflow() {
             app_name: Some("Google Chrome".to_string()),
             window_title: Some("GitHub".to_string()),
             window_id: Some(2),
+            x: None,
+            y: None,
+            width: None,
+            height: None,
         },
     ];
 
@@ -429,6 +445,10 @@ fn test_source_list_caching_workflow() {
             app_name: Some("Visual Studio Code".to_string()),
             window_title: None,
             window_id: Some(3),
+            x: None,
+            y: None,
+            width: None,
+            height: None,
         }];
     }
 

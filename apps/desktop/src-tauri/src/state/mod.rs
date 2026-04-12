@@ -25,6 +25,14 @@ pub struct SelectedSource {
     pub window_title: Option<String>,
     #[serde(default)]
     pub window_id: Option<u64>,
+    #[serde(default)]
+    pub x: Option<f64>,
+    #[serde(default)]
+    pub y: Option<f64>,
+    #[serde(default)]
+    pub width: Option<f64>,
+    #[serde(default)]
+    pub height: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -227,6 +235,10 @@ mod tests {
             app_name: Some("Terminal".to_string()),
             window_title: Some("bash".to_string()),
             window_id: Some(123),
+            x: Some(10.0),
+            y: Some(20.0),
+            width: Some(800.0),
+            height: Some(600.0),
         };
         let json = serde_json::to_string(&source).unwrap();
         assert!(json.contains("\"sourceType\""));
@@ -253,6 +265,10 @@ mod tests {
             app_name: None,
             window_title: None,
             window_id: None,
+            x: None,
+            y: None,
+            width: None,
+            height: None,
         };
         let json = serde_json::to_string(&source).unwrap();
         assert!(json.contains("\"id\":\"screen:1:0\""));
@@ -296,6 +312,10 @@ mod tests {
         assert!(source.app_name.is_none());
         assert!(source.window_title.is_none());
         assert!(source.window_id.is_none());
+        assert!(source.x.is_none());
+        assert!(source.y.is_none());
+        assert!(source.width.is_none());
+        assert!(source.height.is_none());
     }
 
     #[test]
@@ -332,6 +352,10 @@ mod tests {
             app_name: Some("MyApp".to_string()),
             window_title: Some("Title".to_string()),
             window_id: Some(42),
+            x: Some(100.0),
+            y: Some(200.0),
+            width: Some(1024.0),
+            height: Some(768.0),
         };
         let json = serde_json::to_string(&original).unwrap();
         let restored: SelectedSource = serde_json::from_str(&json).unwrap();
@@ -345,6 +369,10 @@ mod tests {
         assert_eq!(original.app_name, restored.app_name);
         assert_eq!(original.window_title, restored.window_title);
         assert_eq!(original.window_id, restored.window_id);
+        assert_eq!(original.x, restored.x);
+        assert_eq!(original.y, restored.y);
+        assert_eq!(original.width, restored.width);
+        assert_eq!(original.height, restored.height);
     }
 
     #[test]
@@ -360,6 +388,10 @@ mod tests {
             app_name: None,
             window_title: None,
             window_id: None,
+            x: None,
+            y: None,
+            width: None,
+            height: None,
         };
         let cloned = source.clone();
         assert_eq!(source.id, cloned.id);
@@ -675,6 +707,10 @@ mod tests {
             app_name: None,
             window_title: None,
             window_id: None,
+            x: None,
+            y: None,
+            width: None,
+            height: None,
         });
         assert_eq!(state.selected_source.as_ref().unwrap().id, "screen:0:0");
     }
@@ -784,6 +820,10 @@ mod tests {
             app_name: Some("Finder".to_string()),
             window_title: None,
             window_id: Some(1),
+            x: None,
+            y: None,
+            width: None,
+            height: None,
         });
         assert_eq!(state.cached_window_sources.len(), 1);
         assert_eq!(state.cached_window_sources[0].name, "Finder");
@@ -845,6 +885,10 @@ mod tests {
                 app_name: None,
                 window_title: None,
                 window_id: None,
+                x: None,
+                y: None,
+                width: None,
+                height: None,
             },
             SelectedSource {
                 id: "window:1:0".to_string(),
@@ -857,6 +901,10 @@ mod tests {
                 app_name: Some("Chrome".to_string()),
                 window_title: Some("Google".to_string()),
                 window_id: Some(1),
+                x: None,
+                y: None,
+                width: None,
+                height: None,
             },
         ];
         let json = serde_json::to_string(&sources).unwrap();
