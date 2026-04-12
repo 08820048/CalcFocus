@@ -47,6 +47,22 @@ struct CursorCaptureBounds {
 }
 
 #[cfg(target_os = "macos")]
+#[derive(Clone, Copy)]
+struct CursorSamplePosition {
+    x: f64,
+    y: f64,
+}
+
+#[cfg(target_os = "macos")]
+const MACOS_CURSOR_SAMPLE_INTERVAL_MS: u64 = 33;
+
+#[cfg(target_os = "macos")]
+const MACOS_CURSOR_KEEPALIVE_INTERVAL_MS: f64 = 250.0;
+
+#[cfg(target_os = "macos")]
+const MACOS_CURSOR_POSITION_EPSILON: f64 = 0.0005;
+
+#[cfg(target_os = "macos")]
 #[link(name = "CoreGraphics", kind = "framework")]
 unsafe extern "C" {
     fn CGMainDisplayID() -> CGDirectDisplayID;
@@ -223,6 +239,28 @@ fn clamp_unit(value: f64) -> f64 {
 }
 
 #[cfg(target_os = "macos")]
+fn should_store_macos_cursor_sample(
+    last_position: Option<CursorSamplePosition>,
+    last_timestamp_ms: Option<f64>,
+    position: CursorSamplePosition,
+    timestamp_ms: f64,
+) -> bool {
+    let Some(last_position) = last_position else {
+        return true;
+    };
+
+    let has_moved = (position.x - last_position.x).abs() > MACOS_CURSOR_POSITION_EPSILON
+        || (position.y - last_position.y).abs() > MACOS_CURSOR_POSITION_EPSILON;
+    let keepalive_due = last_timestamp_ms
+        .map(|last_timestamp_ms| {
+            timestamp_ms - last_timestamp_ms >= MACOS_CURSOR_KEEPALIVE_INTERVAL_MS
+        })
+        .unwrap_or(true);
+
+    has_moved || keepalive_due
+}
+
+#[cfg(target_os = "macos")]
 fn spawn_macos_cursor_sampler(
     stop: Arc<AtomicBool>,
     samples: Arc<Mutex<Vec<CursorTelemetryPoint>>>,
@@ -232,6 +270,8 @@ fn spawn_macos_cursor_sampler(
 
     Ok(std::thread::spawn(move || {
         let started_at = Instant::now();
+        let mut last_position: Option<CursorSamplePosition> = None;
+        let mut last_timestamp_ms: Option<f64> = None;
 
         loop {
             if stop.load(Ordering::Relaxed) {
@@ -239,20 +279,37 @@ fn spawn_macos_cursor_sampler(
             }
 
             if let Some(location) = current_cursor_location() {
-                let point = CursorTelemetryPoint {
+                let timestamp_ms = started_at.elapsed().as_secs_f64() * 1000.0;
+                let position = CursorSamplePosition {
                     x: clamp_unit((location.x - bounds.x) / bounds.width),
                     y: clamp_unit((location.y - bounds.y) / bounds.height),
-                    timestamp: started_at.elapsed().as_secs_f64() * 1000.0,
+                };
+                if !should_store_macos_cursor_sample(
+                    last_position,
+                    last_timestamp_ms,
+                    position,
+                    timestamp_ms,
+                ) {
+                    std::thread::sleep(Duration::from_millis(MACOS_CURSOR_SAMPLE_INTERVAL_MS));
+                    continue;
+                }
+
+                let point = CursorTelemetryPoint {
+                    x: position.x,
+                    y: position.y,
+                    timestamp: timestamp_ms,
                     cursor_type: Some("arrow".to_string()),
                     click_type: None,
                 };
 
                 if let Ok(mut guard) = samples.lock() {
                     guard.push(point);
+                    last_position = Some(position);
+                    last_timestamp_ms = Some(timestamp_ms);
                 }
             }
 
-            std::thread::sleep(Duration::from_millis(33));
+            std::thread::sleep(Duration::from_millis(MACOS_CURSOR_SAMPLE_INTERVAL_MS));
         }
     }))
 }
@@ -488,6 +545,38 @@ mod tests {
     fn test_parse_macos_source_display_id_ignores_window_id() {
         assert_eq!(parse_macos_source_display_id("screen:42:0"), Some(42));
         assert_eq!(parse_macos_source_display_id("window:123:0"), None);
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_should_store_macos_cursor_sample_skips_static_samples_until_keepalive() {
+        let position = CursorSamplePosition { x: 0.4, y: 0.5 };
+        assert!(should_store_macos_cursor_sample(None, None, position, 0.0));
+        assert!(!should_store_macos_cursor_sample(
+            Some(position),
+            Some(100.0),
+            position,
+            120.0,
+        ));
+        assert!(should_store_macos_cursor_sample(
+            Some(position),
+            Some(100.0),
+            position,
+            360.0,
+        ));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_should_store_macos_cursor_sample_keeps_movement() {
+        let last_position = CursorSamplePosition { x: 0.4, y: 0.5 };
+        let next_position = CursorSamplePosition { x: 0.41, y: 0.5 };
+        assert!(should_store_macos_cursor_sample(
+            Some(last_position),
+            Some(100.0),
+            next_position,
+            120.0,
+        ));
     }
 
     #[tokio::test]
