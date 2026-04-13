@@ -316,7 +316,7 @@ mod tests {
     #[tokio::test]
     async fn test_read_local_file_existing_file() {
         let dir = std::env::temp_dir();
-        let path = dir.join("open_recorder_test_read.txt");
+        let path = dir.join("calcfocus_test_read.txt");
         tokio::fs::write(&path, b"hello world").await.unwrap();
 
         let result = read_local_file(path.to_string_lossy().to_string()).await;
@@ -335,7 +335,7 @@ mod tests {
     #[tokio::test]
     async fn test_read_local_file_empty_file() {
         let dir = std::env::temp_dir();
-        let path = dir.join("open_recorder_test_empty.txt");
+        let path = dir.join("calcfocus_test_empty.txt");
         tokio::fs::write(&path, b"").await.unwrap();
 
         let result = read_local_file(path.to_string_lossy().to_string()).await;
@@ -348,7 +348,7 @@ mod tests {
     #[tokio::test]
     async fn test_read_local_file_binary_content() {
         let dir = std::env::temp_dir();
-        let path = dir.join("open_recorder_test_binary.bin");
+        let path = dir.join("calcfocus_test_binary.bin");
         let data: Vec<u8> = (0..=255).collect();
         tokio::fs::write(&path, &data).await.unwrap();
 

@@ -17,23 +17,23 @@ const outputDir = path.join(nativeRoot, 'bin', archTag);
 const helpers = [
   {
     source: 'ScreenCaptureKitRecorder.swift',
-    output: 'openscreen-screencapturekit-helper',
+    output: 'calcfocus-screencapturekit-helper',
   },
   {
     source: 'ScreenCaptureKitWindowList.swift',
-    output: 'openscreen-window-list',
+    output: 'calcfocus-window-list',
   },
   {
     source: 'SystemCursorAssets.swift',
-    output: 'openscreen-system-cursors',
+    output: 'calcfocus-system-cursors',
   },
   {
     source: 'NativeCursorMonitor.swift',
-    output: 'openscreen-native-cursor-monitor',
+    output: 'calcfocus-native-cursor-monitor',
   },
   {
     source: 'ScreenSelectionFlash.swift',
-    output: 'openscreen-screen-selection-flash',
+    output: 'calcfocus-screen-selection-flash',
   },
 ];
 

@@ -3,7 +3,7 @@
  *
  * Compiles Swift helpers on macOS and copies them to src-tauri/binaries/
  * with Tauri's triple-suffixed naming convention:
- *   e.g., openscreen-screencapturekit-helper-aarch64-apple-darwin
+ *   e.g., calcfocus-screencapturekit-helper-aarch64-apple-darwin
  */
 
 import { spawnSync } from 'node:child_process';
@@ -96,27 +96,27 @@ if (process.platform === 'darwin') {
   const helpers = [
     {
       source: 'ScreenCaptureKitRecorder.swift',
-      output: 'openscreen-screencapturekit-helper',
+      output: 'calcfocus-screencapturekit-helper',
     },
     {
       source: 'ScreenCaptureKitWindowList.swift',
-      output: 'openscreen-window-list',
+      output: 'calcfocus-window-list',
     },
     {
       source: 'SystemCursorAssets.swift',
-      output: 'openscreen-system-cursors',
+      output: 'calcfocus-system-cursors',
     },
     {
       source: 'NativeCursorMonitor.swift',
-      output: 'openscreen-native-cursor-monitor',
+      output: 'calcfocus-native-cursor-monitor',
     },
     {
       source: 'ScreenSelectionFlash.swift',
-      output: 'openscreen-screen-selection-flash',
+      output: 'calcfocus-screen-selection-flash',
     },
     {
       source: 'AreaSelector.swift',
-      output: 'openscreen-area-selector',
+      output: 'calcfocus-area-selector',
     },
   ];
 

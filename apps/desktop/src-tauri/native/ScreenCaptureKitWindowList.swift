@@ -163,7 +163,7 @@ func availableDisplays() throws -> [DisplayInfo] {
 	let countStatus = CGGetOnlineDisplayList(0, nil, &displayCount)
 	guard countStatus == .success else {
 		throw NSError(
-			domain: "OpenRecorderSourceList",
+			domain: "CalcFocusSourceList",
 			code: Int(countStatus.rawValue),
 			userInfo: [NSLocalizedDescriptionKey: "Unable to enumerate online displays"]
 		)
@@ -177,7 +177,7 @@ func availableDisplays() throws -> [DisplayInfo] {
 	let listStatus = CGGetOnlineDisplayList(displayCount, &displayIDs, &displayCount)
 	guard listStatus == .success else {
 		throw NSError(
-			domain: "OpenRecorderSourceList",
+			domain: "CalcFocusSourceList",
 			code: Int(listStatus.rawValue),
 			userInfo: [NSLocalizedDescriptionKey: "Unable to read online display list"]
 		)
@@ -297,12 +297,13 @@ let excludedWindowTitles: Set<String> = [
 ]
 
 let ownAppNames: Set<String> = [
-	"open recorder",
-	"open-recorder",
+	"calcfocus",
+	"calcfocus dev",
 ]
 
 let ownBundleIds: Set<String> = [
-	"dev.openrecorder.app",
+	"com.calcfocus.desktop",
+	"com.calcfocus.desktop.dev",
 ]
 
 let commandArguments = Array(CommandLine.arguments.dropFirst())

@@ -6,7 +6,7 @@ use super::sidecar::SidecarProcess;
 /// Emits `cursor-state-changed` events to the frontend.
 #[cfg(target_os = "macos")]
 pub async fn start_cursor_monitor(app: AppHandle) -> Result<(), String> {
-    let sidecar_path = super::sidecar::get_sidecar_path("openscreen-native-cursor-monitor")?;
+    let sidecar_path = super::sidecar::get_sidecar_path("calcfocus-native-cursor-monitor")?;
 
     let sidecar_str = sidecar_path.to_string_lossy().to_string();
     let mut process = SidecarProcess::spawn(&sidecar_str, &[]).await?;

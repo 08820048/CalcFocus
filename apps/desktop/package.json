@@ -1,8 +1,8 @@
 {
-	"name": "@fluxlocus/desktop",
+	"name": "@calcfocus/desktop",
 	"productName": "CalcFocus",
 	"description": "A free, creator-focused screen recorder with auto-zoom, cursor effects, backgrounds, annotations, and more - built for polished videos out of the box.",
-	"author": "imbhargav5",
+	"author": "CalcFocus contributors",
 	"homepage": "https://github.com/08820048/CalcFocus",
 	"repository": {
 		"type": "git",

@@ -1,4 +1,4 @@
-# Open Recorder Release Process
+# CalcFocus Release Process
 
 This reference explains how the repository release scripts work and how to use them.
 
@@ -34,7 +34,7 @@ Extra flags can still be passed after `--`:
 
 ```bash
 pnpm release:patch -- --notes "Bug fixes and stability improvements"
-pnpm release:minor -- --name "Open Recorder v1.4.0" --yes
+pnpm release:minor -- --name "CalcFocus v1.4.0" --yes
 pnpm release:major -- --latest false
 ```
 
@@ -76,7 +76,7 @@ The local dispatcher does the following:
    - `apps/desktop/package.json`
    - `apps/desktop/src-tauri/Cargo.toml`
    - `apps/desktop/src-tauri/tauri.conf.json`
-   - `apps/desktop/src-tauri/Cargo.lock` for the `open-recorder` package entry
+   - `apps/desktop/src-tauri/Cargo.lock` for the `calcfocus` package entry
 8. Writes `.github/release-plan.json` with:
    - `tagName`
    - `releaseName`

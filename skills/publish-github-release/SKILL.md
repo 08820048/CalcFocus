@@ -1,12 +1,12 @@
 ---
 name: publish-github-release
-description: Prepare an Open Recorder GitHub release by choosing a patch, minor, or major version bump, dispatching the release PR workflow, and guiding the user through merging that PR so the actual release can publish. Use when the user asks to cut, ship, dispatch, or publish a GitHub release, or to bump the app version for a release.
+description: Prepare an CalcFocus GitHub release by choosing a patch, minor, or major version bump, dispatching the release PR workflow, and guiding the user through merging that PR so the actual release can publish. Use when the user asks to cut, ship, dispatch, or publish a GitHub release, or to bump the app version for a release.
 compatibility: Requires this repository, git, the GitHub CLI with working auth, network access, and permission to dispatch GitHub Actions workflows.
 ---
 
 # Publish GitHub Release
 
-Use this skill when the user wants to publish an Open Recorder release from this repository.
+Use this skill when the user wants to publish an CalcFocus release from this repository.
 
 ## Quick start
 
@@ -48,7 +48,7 @@ You can pass extra flags through pnpm with `--`:
 
 ```bash
 pnpm release:patch -- --notes "Bug fixes and stability improvements"
-pnpm release:minor -- --name "Open Recorder v1.4.0" --yes
+pnpm release:minor -- --name "CalcFocus v1.4.0" --yes
 pnpm release:major -- --latest false
 ```
 

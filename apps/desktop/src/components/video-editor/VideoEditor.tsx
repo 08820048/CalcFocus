@@ -811,7 +811,7 @@ export default function VideoEditor() {
 			const projectSnapshot = JSON.stringify(projectData);
 			const savedPath = await backend.saveProjectFile(
 				JSON.stringify(projectData),
-				`${fileNameBase}.openrecorder`,
+				`${fileNameBase}.calcfocus`,
 				forceSaveAs ? undefined : (currentProjectPath ?? undefined),
 			);
 

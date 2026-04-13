@@ -31,7 +31,8 @@ import zhSettings from "@/i18n/locales/zh/settings.json";
 import zhShortcuts from "@/i18n/locales/zh/shortcuts.json";
 import zhTimeline from "@/i18n/locales/zh/timeline.json";
 
-const LOCALE_STORAGE_KEY = "fluxlocus.locale";
+const LOCALE_STORAGE_KEY = "calcfocus.locale";
+const LEGACY_LOCALE_STORAGE_KEYS = ["fluxlocus.locale"];
 
 type LocaleBundle = Record<I18nNamespace, Record<string, unknown>>;
 
@@ -84,9 +85,11 @@ function getInitialLocale(): AppLocale {
 		return DEFAULT_LOCALE;
 	}
 
-	const storedLocale = window.localStorage.getItem(LOCALE_STORAGE_KEY);
-	if (storedLocale && isSupportedLocale(storedLocale)) {
-		return storedLocale;
+	for (const key of [LOCALE_STORAGE_KEY, ...LEGACY_LOCALE_STORAGE_KEYS]) {
+		const storedLocale = window.localStorage.getItem(key);
+		if (storedLocale && isSupportedLocale(storedLocale)) {
+			return storedLocale;
+		}
 	}
 
 	return normalizeLocale(window.navigator.language);
@@ -147,6 +150,9 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 		setLocaleState(nextLocale);
 		if (typeof window !== "undefined") {
 			window.localStorage.setItem(LOCALE_STORAGE_KEY, nextLocale);
+			for (const key of LEGACY_LOCALE_STORAGE_KEYS) {
+				window.localStorage.removeItem(key);
+			}
 		}
 	}, []);
 

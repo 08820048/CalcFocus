@@ -140,7 +140,7 @@ mod tests {
     }
 
     #[test]
-    fn test_recordings_dir_default_ends_with_open_recorder() {
+    fn test_recordings_dir_default_ends_with_calcfocus() {
         let state = AppState::default();
         let dir = if let Some(ref custom) = state.custom_recordings_dir {
             PathBuf::from(custom)
@@ -163,7 +163,7 @@ mod tests {
     #[tokio::test]
     async fn test_shortcuts_file_roundtrip() {
         let dir = std::env::temp_dir();
-        let shortcuts_path = dir.join("open_recorder_test_shortcuts.json");
+        let shortcuts_path = dir.join("calcfocus_test_shortcuts.json");
 
         let shortcuts = ShortcutConfig {
             start_stop_recording: Some("CmdOrCtrl+Shift+R".to_string()),
@@ -239,7 +239,7 @@ mod tests {
     #[tokio::test]
     async fn test_settings_file_write_and_read() {
         let dir = std::env::temp_dir();
-        let settings_path = dir.join("open_recorder_test_settings.json");
+        let settings_path = dir.join("calcfocus_test_settings.json");
 
         let path_str = "/my/recordings";
         let settings = serde_json::json!({ "recordingsDirectory": path_str });
@@ -257,7 +257,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_config_dir_creation() {
-        let dir = std::env::temp_dir().join("open_recorder_test_config");
+        let dir = std::env::temp_dir().join("calcfocus_test_config");
         let _ = tokio::fs::remove_dir_all(&dir).await;
 
         tokio::fs::create_dir_all(&dir).await.unwrap();

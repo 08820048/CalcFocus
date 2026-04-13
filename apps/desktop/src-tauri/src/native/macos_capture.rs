@@ -179,7 +179,7 @@ pub async fn start_capture(
     options: &serde_json::Value,
     output_path: &str,
 ) -> Result<(), String> {
-    let sidecar_path = super::sidecar::get_sidecar_path("openscreen-screencapturekit-helper")?;
+    let sidecar_path = super::sidecar::get_sidecar_path("calcfocus-screencapturekit-helper")?;
 
     let source_id = read_string(source, &["id"]).unwrap_or_default();
     let display_id = read_string(source, &["displayId", "display_id"])
@@ -782,7 +782,7 @@ mod tests {
             use std::os::unix::fs::PermissionsExt;
 
             let dir = std::env::temp_dir();
-            let script_path = dir.join("open_recorder_test_mock_sidecar.sh");
+            let script_path = dir.join("calcfocus_test_mock_sidecar.sh");
 
             // Create a mock sidecar that prints "Recording started" then waits for stdin
             let script = "#!/bin/bash\necho \"Recording started\"\nread line\nexit 0\n";
@@ -816,7 +816,7 @@ mod tests {
             use std::os::unix::fs::PermissionsExt;
 
             let dir = std::env::temp_dir();
-            let script_path = dir.join("open_recorder_test_mock_hang.sh");
+            let script_path = dir.join("calcfocus_test_mock_hang.sh");
 
             // Create a sidecar that hangs forever (never prints the expected pattern)
             let script = "#!/bin/bash\necho \"Initializing...\"\nsleep 300\n";
@@ -846,7 +846,7 @@ mod tests {
             use std::os::unix::fs::PermissionsExt;
 
             let dir = std::env::temp_dir();
-            let script_path = dir.join("open_recorder_test_mock_stderr.sh");
+            let script_path = dir.join("calcfocus_test_mock_stderr.sh");
 
             // Sidecar that writes to stderr then exits
             let script = "#!/bin/bash\necho \"Error: permission denied\" >&2\nexit 1\n";

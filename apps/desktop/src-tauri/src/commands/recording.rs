@@ -8,7 +8,7 @@ use crate::state::AppState;
 pub async fn select_screen_area() -> Result<Option<serde_json::Value>, String> {
     #[cfg(target_os = "macos")]
     {
-        let sidecar_path = crate::native::sidecar::get_sidecar_path("openscreen-area-selector")?;
+        let sidecar_path = crate::native::sidecar::get_sidecar_path("calcfocus-area-selector")?;
         let output = tokio::process::Command::new(&sidecar_path)
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
@@ -339,7 +339,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_recording_creates_directory() {
-        let dir = std::env::temp_dir().join("open_recorder_test_rec_dir");
+        let dir = std::env::temp_dir().join("calcfocus_test_rec_dir");
         let _ = tokio::fs::remove_dir_all(&dir).await;
 
         tokio::fs::create_dir_all(&dir).await.unwrap();
@@ -351,16 +351,16 @@ mod tests {
     #[tokio::test]
     async fn test_recording_creates_nested_directory() {
         let dir = std::env::temp_dir()
-            .join("open_recorder_test_nested")
+            .join("calcfocus_test_nested")
             .join("recordings")
             .join("2024");
         let _ =
-            tokio::fs::remove_dir_all(std::env::temp_dir().join("open_recorder_test_nested")).await;
+            tokio::fs::remove_dir_all(std::env::temp_dir().join("calcfocus_test_nested")).await;
 
         tokio::fs::create_dir_all(&dir).await.unwrap();
         assert!(dir.exists());
 
         let _ =
-            tokio::fs::remove_dir_all(std::env::temp_dir().join("open_recorder_test_nested")).await;
+            tokio::fs::remove_dir_all(std::env::temp_dir().join("calcfocus_test_nested")).await;
     }
 }

@@ -17,7 +17,8 @@ import type {
 	UsePermissionsResult,
 } from "../../hooks/usePermissions";
 
-const ONBOARDING_COMPLETE_KEY = "fluxlocus-onboarding-v1";
+const ONBOARDING_COMPLETE_KEY = "calcfocus-onboarding-v1";
+const LEGACY_ONBOARDING_COMPLETE_KEYS = ["fluxlocus-onboarding-v1"];
 const ONBOARDING_WINDOW_WIDTH = 480;
 const ONBOARDING_WINDOW_HEIGHT = 360;
 const HUD_WIDTH = 780;
@@ -28,6 +29,22 @@ type OnboardingStep = "welcome" | "screen_recording" | "microphone" | "camera" |
 interface PermissionOnboardingProps {
 	permissionsHook: UsePermissionsResult;
 	onComplete: () => void;
+}
+
+function isStorageFlagEnabled(primaryKey: string, legacyKeys: string[]) {
+	for (const key of [primaryKey, ...legacyKeys]) {
+		if (localStorage.getItem(key) === "true") {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+function clearStorageFlags(primaryKey: string, legacyKeys: string[]) {
+	for (const key of [primaryKey, ...legacyKeys]) {
+		localStorage.removeItem(key);
+	}
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -138,6 +155,9 @@ export function PermissionOnboarding({ permissionsHook, onComplete }: Permission
 	const handleComplete = useCallback(async () => {
 		try {
 			localStorage.setItem(ONBOARDING_COMPLETE_KEY, "true");
+			for (const key of LEGACY_ONBOARDING_COMPLETE_KEYS) {
+				localStorage.removeItem(key);
+			}
 		} catch {
 			// localStorage may be unavailable in some contexts
 		}
@@ -399,7 +419,7 @@ function PermissionSummary({ permissions }: { permissions: PermissionState }) {
 
 export function isOnboardingComplete(): boolean {
 	try {
-		return localStorage.getItem(ONBOARDING_COMPLETE_KEY) === "true";
+		return isStorageFlagEnabled(ONBOARDING_COMPLETE_KEY, LEGACY_ONBOARDING_COMPLETE_KEYS);
 	} catch {
 		return false;
 	}
@@ -407,7 +427,7 @@ export function isOnboardingComplete(): boolean {
 
 export function resetOnboarding(): void {
 	try {
-		localStorage.removeItem(ONBOARDING_COMPLETE_KEY);
+		clearStorageFlags(ONBOARDING_COMPLETE_KEY, LEGACY_ONBOARDING_COMPLETE_KEYS);
 	} catch {
 		// ignore
 	}

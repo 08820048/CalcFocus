@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const appRoot = path.resolve(__dirname, '..');
-const sourceIconPath = path.join(appRoot, 'branding', 'source-assets', 'open-recorder-brand-image.png');
+const sourceIconPath = path.join(appRoot, 'branding', 'source-assets', 'calcfocus-brand-image.png');
 const tauriIconsDir = path.join(appRoot, 'src-tauri', 'icons');
 const generatedPngIconsDir = path.join(appRoot, '.tmp', 'generated-icon-pngs');
 
@@ -94,7 +94,7 @@ async function syncGeneratedAssets() {
     copyJobs.push(
       copyWithParents(
         path.join(generatedPngIconsDir, `${size}x${size}.png`),
-        path.join(appRoot, 'public', 'app-icons', `open-recorder-${size}.png`),
+        path.join(appRoot, 'public', 'app-icons', `calcfocus-${size}.png`),
       ),
     );
   }
@@ -142,7 +142,7 @@ async function syncGeneratedAssets() {
   copyJobs.push(
     copyWithParents(
       sourceIconPath,
-      path.join(appRoot, 'public', 'openscreen.png'),
+      path.join(appRoot, 'public', 'calcfocus.png'),
     ),
   );
 
@@ -156,7 +156,7 @@ async function main() {
   runCustomPngIconBuilder();
   await syncGeneratedAssets();
   await cleanupUnusedTauriAssets();
-  console.log('Brand icons regenerated from branding/source-assets/open-recorder-brand-image.png');
+  console.log('Brand icons regenerated from branding/source-assets/calcfocus-brand-image.png');
 }
 
 main().catch((error) => {

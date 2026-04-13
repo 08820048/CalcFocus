@@ -1,11 +1,11 @@
-//! Integration tests for the Open Recorder Rust backend.
+//! Integration tests for the CalcFocus Rust backend.
 //!
 //! These tests validate cross-module interactions, concurrent access patterns,
 //! and end-to-end workflows that span multiple modules.
 
 use std::sync::{Arc, Mutex};
 
-use open_recorder_lib::state::{
+use calcfocus_lib::state::{
     AppState, CursorTelemetryPoint, FacecamSettings, RecordingSession, SelectedSource,
     ShortcutConfig,
 };
@@ -479,7 +479,7 @@ fn test_project_state_machine() {
     // User saves (first time, gets a path)
     {
         let mut s = state.lock().unwrap();
-        s.current_project_path = Some("/tmp/my_project.openrecorder".to_string());
+        s.current_project_path = Some("/tmp/my_project.calcfocus".to_string());
         s.has_unsaved_changes = false;
     }
 
@@ -505,7 +505,7 @@ fn test_project_state_machine() {
         let s = state.lock().unwrap();
         assert_eq!(
             s.current_project_path.as_deref(),
-            Some("/tmp/my_project.openrecorder")
+            Some("/tmp/my_project.calcfocus")
         );
         assert!(!s.has_unsaved_changes);
     }
@@ -515,7 +515,7 @@ fn test_project_state_machine() {
 
 #[tokio::test]
 async fn test_video_file_store_and_read_roundtrip() {
-    let dir = std::env::temp_dir().join("open_recorder_integration_test");
+    let dir = std::env::temp_dir().join("calcfocus_integration_test");
     let _ = tokio::fs::remove_dir_all(&dir).await;
     tokio::fs::create_dir_all(&dir).await.unwrap();
 
@@ -542,7 +542,7 @@ async fn test_video_file_store_and_read_roundtrip() {
 
 #[tokio::test]
 async fn test_settings_and_shortcuts_persistence_roundtrip() {
-    let dir = std::env::temp_dir().join("open_recorder_settings_test");
+    let dir = std::env::temp_dir().join("calcfocus_settings_test");
     let _ = tokio::fs::remove_dir_all(&dir).await;
     tokio::fs::create_dir_all(&dir).await.unwrap();
 

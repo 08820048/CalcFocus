@@ -7,14 +7,18 @@ export interface CustomFont {
   importUrl: string; // Google Fonts @import URL
 }
 
-const STORAGE_KEY = 'open_recorder_custom_fonts';
-const LEGACY_STORAGE_KEY = 'openscreen_custom_fonts';
+const STORAGE_KEY = 'calcfocus_custom_fonts';
+// Migrate older localStorage keys forward without dropping saved user fonts.
+const LEGACY_STORAGE_KEYS = ['open_recorder_custom_fonts', 'openscreen_custom_fonts'];
 const loadedFonts = new Set<string>();
 
 // Load custom fonts from localStorage
 export function getCustomFonts(): CustomFont[] {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY);
+    const stored =
+      localStorage.getItem(STORAGE_KEY) ??
+      LEGACY_STORAGE_KEYS.map((key) => localStorage.getItem(key)).find(Boolean) ??
+      null;
     return stored ? JSON.parse(stored) : [];
   } catch (error) {
     console.error('Failed to load custom fonts from storage:', error);
@@ -26,7 +30,9 @@ export function getCustomFonts(): CustomFont[] {
 export function saveCustomFonts(fonts: CustomFont[]): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(fonts));
-    localStorage.removeItem(LEGACY_STORAGE_KEY);
+    for (const key of LEGACY_STORAGE_KEYS) {
+      localStorage.removeItem(key);
+    }
   } catch (error) {
     console.error('Failed to save custom fonts to storage:', error);
   }

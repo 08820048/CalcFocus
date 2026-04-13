@@ -1,6 +1,6 @@
 {
   "productName": "CalcFocus Dev",
-  "identifier": "com.fluxlocus.app.dev",
+  "identifier": "com.calcfocus.desktop.dev",
   "app": {
     "windows": [
       {

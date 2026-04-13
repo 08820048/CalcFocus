@@ -98,7 +98,7 @@ pub async fn get_sources(
         let mut sources = Vec::new();
 
         if with_thumbnails {
-            match crate::native::sidecar::get_sidecar_path("openscreen-window-list") {
+            match crate::native::sidecar::get_sidecar_path("calcfocus-window-list") {
                 Ok(sidecar_path) => {
                     let timeout_duration = Duration::from_millis(
                         opts.as_ref()
@@ -160,7 +160,7 @@ pub async fn get_sources(
 
             if wants_windows {
                 let sidecar_path =
-                    crate::native::sidecar::get_sidecar_path("openscreen-window-list")?;
+                    crate::native::sidecar::get_sidecar_path("calcfocus-window-list")?;
                 match fetch_macos_sources_via_sidecar(
                     &sidecar_path,
                     false,
@@ -478,7 +478,7 @@ fn flash_selected_screen_impl(source: &SelectedSource) -> Result<(), String> {
     };
 
     let sidecar_path =
-        crate::native::sidecar::get_sidecar_path("openscreen-screen-selection-flash")?;
+        crate::native::sidecar::get_sidecar_path("calcfocus-screen-selection-flash")?;
 
     std::process::Command::new(sidecar_path)
         .arg("--display-id")

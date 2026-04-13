@@ -4,6 +4,15 @@ use tauri_plugin_dialog::DialogExt;
 
 use crate::state::AppState;
 
+const PRIMARY_PROJECT_EXTENSION: &str = "calcfocus";
+// Keep older project extensions readable so existing user files still open.
+const PROJECT_FILE_EXTENSIONS: &[&str] = &[
+    PRIMARY_PROJECT_EXTENSION,
+    "fluxlocus",
+    "openrecorder",
+    "openscreen",
+];
+
 #[tauri::command]
 pub async fn save_exported_video(
     app: AppHandle,
@@ -90,14 +99,15 @@ pub async fn save_project_file(
         Some(existing)
     } else {
         // Show save dialog
-        let file_name = suggested_name.unwrap_or_else(|| "Untitled.fluxlocus".to_string());
+        let file_name =
+            suggested_name.unwrap_or_else(|| format!("Untitled.{}", PRIMARY_PROJECT_EXTENSION));
 
         let (tx, rx) = tokio::sync::oneshot::channel();
 
         app.dialog()
             .file()
             .set_file_name(&file_name)
-            .add_filter("CalcFocus Project", &["fluxlocus"])
+            .add_filter("CalcFocus Project", PROJECT_FILE_EXTENSIONS)
             .save_file(move |path| {
                 let _ = tx.send(path);
             });
@@ -132,7 +142,7 @@ pub async fn load_project_file(
 
     app.dialog()
         .file()
-        .add_filter("CalcFocus Project", &["fluxlocus"])
+        .add_filter("CalcFocus Project", PROJECT_FILE_EXTENSIONS)
         .pick_file(move |path| {
             let _ = tx.send(path);
         });
@@ -201,7 +211,7 @@ mod tests {
     #[tokio::test]
     async fn test_project_file_write_and_read() {
         let dir = std::env::temp_dir();
-        let path = dir.join("open_recorder_test_project.openrecorder");
+        let path = dir.join("calcfocus_test_project.calcfocus");
 
         let project_data = serde_json::json!({
             "version": 1,
@@ -222,7 +232,7 @@ mod tests {
     #[tokio::test]
     async fn test_project_file_invalid_json_returns_error() {
         let dir = std::env::temp_dir();
-        let path = dir.join("open_recorder_test_bad_project.openrecorder");
+        let path = dir.join("calcfocus_test_bad_project.calcfocus");
         tokio::fs::write(&path, "not valid json {{{").await.unwrap();
 
         let read_data = tokio::fs::read_to_string(&path).await.unwrap();
@@ -234,22 +244,24 @@ mod tests {
 
     #[tokio::test]
     async fn test_project_file_nonexistent_path() {
-        let result = tokio::fs::read_to_string("/nonexistent/project.openrecorder").await;
+        let result = tokio::fs::read_to_string("/nonexistent/project.calcfocus").await;
         assert!(result.is_err());
     }
 
     #[test]
     fn test_default_project_name() {
         let suggested: Option<String> = None;
-        let file_name = suggested.unwrap_or_else(|| "Untitled.openrecorder".to_string());
-        assert_eq!(file_name, "Untitled.openrecorder");
+        let file_name =
+            suggested.unwrap_or_else(|| format!("Untitled.{}", PRIMARY_PROJECT_EXTENSION));
+        assert_eq!(file_name, "Untitled.calcfocus");
     }
 
     #[test]
     fn test_custom_project_name() {
-        let suggested = Some("My Project.openrecorder".to_string());
-        let file_name = suggested.unwrap_or_else(|| "Untitled.openrecorder".to_string());
-        assert_eq!(file_name, "My Project.openrecorder");
+        let suggested = Some("My Project.calcfocus".to_string());
+        let file_name =
+            suggested.unwrap_or_else(|| format!("Untitled.{}", PRIMARY_PROJECT_EXTENSION));
+        assert_eq!(file_name, "My Project.calcfocus");
     }
 
     // ==================== Project File State Management ====================
@@ -259,26 +271,26 @@ mod tests {
         let state = std::sync::Mutex::new(AppState::default());
         {
             let mut s = state.lock().unwrap();
-            s.current_project_path = Some("/tmp/project.openrecorder".to_string());
+            s.current_project_path = Some("/tmp/project.calcfocus".to_string());
             s.has_unsaved_changes = false;
         }
         let s = state.lock().unwrap();
         assert_eq!(
             s.current_project_path.as_deref(),
-            Some("/tmp/project.openrecorder")
+            Some("/tmp/project.calcfocus")
         );
         assert!(!s.has_unsaved_changes);
     }
 
     #[test]
     fn test_existing_path_skips_dialog() {
-        let existing_path = Some("/existing/path.openrecorder".to_string());
+        let existing_path = Some("/existing/path.calcfocus".to_string());
         let path_str = if let Some(existing) = existing_path {
             Some(existing)
         } else {
             None
         };
-        assert_eq!(path_str.as_deref(), Some("/existing/path.openrecorder"));
+        assert_eq!(path_str.as_deref(), Some("/existing/path.calcfocus"));
     }
 
     #[test]
@@ -297,7 +309,7 @@ mod tests {
     #[tokio::test]
     async fn test_load_current_project_with_valid_file() {
         let dir = std::env::temp_dir();
-        let path = dir.join("open_recorder_test_load_current.openrecorder");
+        let path = dir.join("calcfocus_test_load_current.calcfocus");
         let project = serde_json::json!({"version": 2, "data": "test"});
         tokio::fs::write(&path, serde_json::to_string(&project).unwrap())
             .await
@@ -322,7 +334,7 @@ mod tests {
 
     #[test]
     fn test_load_current_nonexistent_path() {
-        assert!(!std::path::Path::new("/nonexistent/project.openrecorder").exists());
+        assert!(!std::path::Path::new("/nonexistent/project.calcfocus").exists());
     }
 
     // ==================== Project File Roundtrip ====================
@@ -330,7 +342,7 @@ mod tests {
     #[tokio::test]
     async fn test_project_file_full_roundtrip() {
         let dir = std::env::temp_dir();
-        let path = dir.join("open_recorder_test_roundtrip.openrecorder");
+        let path = dir.join("calcfocus_test_roundtrip.calcfocus");
 
         let original = serde_json::json!({
             "version": 1,

@@ -177,7 +177,7 @@ function syncVersionFiles(nextVersion) {
 	updateJsonVersion(resolve(tauriRoot, "tauri.conf.json"), nextVersion, 2);
 	updateTextVersion(
 		resolve(tauriRoot, "Cargo.lock"),
-		/(\[\[package\]\]\s+name = "fluxlocus"\s+version = ")\d+\.\d+\.\d+(")/m,
+		/(\[\[package\]\]\s+name = "calcfocus"\s+version = ")\d+\.\d+\.\d+(")/m,
 		`$1${nextVersion}$2`,
 	);
 	updateJsonVersion(desktopPackageJsonPath, nextVersion, "\t");

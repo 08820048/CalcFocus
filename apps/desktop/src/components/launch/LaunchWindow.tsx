@@ -53,7 +53,8 @@ const COUNTDOWN_OPTIONS = [0, 5, 10, 15] as const;
 const HUD_WIDTH = 780;
 const HUD_HEIGHT = 155;
 const HUD_EXPANDED_HEIGHT = 420;
-const HIDE_HUD_FROM_RECORDING_STORAGE_KEY = "fluxlocus:hide-hud-from-recording";
+const HIDE_HUD_FROM_RECORDING_STORAGE_KEY = "calcfocus:hide-hud-from-recording";
+const LEGACY_HIDE_HUD_FROM_RECORDING_STORAGE_KEYS = ["fluxlocus:hide-hud-from-recording"];
 
 type View = "onboarding" | "choice" | "screenshot" | "recording";
 type ScreenshotMode = "screen" | "window" | "area";
@@ -65,7 +66,15 @@ function getInitialHideHudFromRecording() {
 	}
 
 	try {
-		return window.localStorage.getItem(HIDE_HUD_FROM_RECORDING_STORAGE_KEY) === "true";
+		for (const key of [
+			HIDE_HUD_FROM_RECORDING_STORAGE_KEY,
+			...LEGACY_HIDE_HUD_FROM_RECORDING_STORAGE_KEYS,
+		]) {
+			if (window.localStorage.getItem(key) === "true") {
+				return true;
+			}
+		}
+		return false;
 	} catch {
 		return false;
 	}
@@ -292,6 +301,9 @@ export function LaunchWindow() {
 				HIDE_HUD_FROM_RECORDING_STORAGE_KEY,
 				String(hideHudFromRecording),
 			);
+			for (const key of LEGACY_HIDE_HUD_FROM_RECORDING_STORAGE_KEYS) {
+				window.localStorage.removeItem(key);
+			}
 		} catch {
 			// Preference persistence is best-effort.
 		}

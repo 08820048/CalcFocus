@@ -339,7 +339,7 @@ fn spawn_macos_cursor_sampler(
             .or_else(|| parse_macos_window_id(&selected.id))
     });
     let sidecar_path: Option<PathBuf> = tracked_window_id
-        .and_then(|_| crate::native::sidecar::get_sidecar_path("openscreen-window-list").ok());
+        .and_then(|_| crate::native::sidecar::get_sidecar_path("calcfocus-window-list").ok());
     let initial_bounds = tracked_window_id
         .and_then(|window_id| {
             sidecar_path
@@ -546,7 +546,7 @@ pub async fn get_system_cursor_assets(
             "x86_64-apple-darwin"
         };
 
-        let sidecar_name = format!("openscreen-system-cursors-{}", triple);
+        let sidecar_name = format!("calcfocus-system-cursors-{}", triple);
         let sidecar_path = bin_dir.join(&sidecar_name);
 
         if sidecar_path.exists() {
@@ -731,8 +731,8 @@ mod tests {
     #[tokio::test]
     async fn test_get_cursor_telemetry_valid_json_file() {
         let dir = std::env::temp_dir();
-        let video_path = dir.join("open_recorder_test_cursor.mov");
-        let telemetry_path = dir.join("open_recorder_test_cursor.cursor.json");
+        let video_path = dir.join("calcfocus_test_cursor.mov");
+        let telemetry_path = dir.join("calcfocus_test_cursor.cursor.json");
 
         let telemetry_data = serde_json::json!({
             "samples": [{"x": 100, "y": 200, "timestamp": 0}],
@@ -757,8 +757,8 @@ mod tests {
     #[tokio::test]
     async fn test_get_cursor_telemetry_invalid_json_returns_error() {
         let dir = std::env::temp_dir();
-        let video_path = dir.join("open_recorder_test_bad_cursor.mov");
-        let telemetry_path = dir.join("open_recorder_test_bad_cursor.cursor.json");
+        let video_path = dir.join("calcfocus_test_bad_cursor.mov");
+        let telemetry_path = dir.join("calcfocus_test_bad_cursor.cursor.json");
 
         tokio::fs::write(&telemetry_path, "not valid json {{{")
             .await
@@ -773,8 +773,8 @@ mod tests {
     #[tokio::test]
     async fn test_write_cursor_telemetry_sidecar_persists_samples() {
         let dir = std::env::temp_dir();
-        let video_path = dir.join("open_recorder_test_write_cursor.mov");
-        let telemetry_path = dir.join("open_recorder_test_write_cursor.cursor.json");
+        let video_path = dir.join("calcfocus_test_write_cursor.mov");
+        let telemetry_path = dir.join("calcfocus_test_write_cursor.cursor.json");
 
         let samples = vec![CursorTelemetryPoint {
             x: 320.0,

@@ -36,7 +36,8 @@ const FACECAM_TARGET_HEIGHT = 720;
 const FACECAM_TARGET_FRAME_RATE = 30;
 const FACECAM_BITRATE = 8_000_000;
 const MAC_NATIVE_CAPTURE_START_FAILURE = "Failed to start native ScreenCaptureKit recording";
-const COUNTDOWN_DELAY_STORAGE_KEY = "fluxlocus:recording-countdown-delay";
+const COUNTDOWN_DELAY_STORAGE_KEY = "calcfocus:recording-countdown-delay";
+const LEGACY_COUNTDOWN_DELAY_STORAGE_KEYS = ["fluxlocus:recording-countdown-delay"];
 const DEFAULT_COUNTDOWN_DELAY = 0;
 
 type FacecamCaptureResult = {
@@ -123,18 +124,22 @@ function getInitialCountdownDelay() {
 		return DEFAULT_COUNTDOWN_DELAY;
 	}
 
-	let storedDelay: string | null = null;
 	try {
-		storedDelay = window.localStorage.getItem(COUNTDOWN_DELAY_STORAGE_KEY);
+		for (const key of [COUNTDOWN_DELAY_STORAGE_KEY, ...LEGACY_COUNTDOWN_DELAY_STORAGE_KEYS]) {
+			const storedDelay = window.localStorage.getItem(key);
+			if (!storedDelay) {
+				continue;
+			}
+
+			const parsedDelay = Number.parseInt(storedDelay, 10);
+			return Number.isFinite(parsedDelay) && parsedDelay >= 0
+				? parsedDelay
+				: DEFAULT_COUNTDOWN_DELAY;
+		}
 	} catch {
 		return DEFAULT_COUNTDOWN_DELAY;
 	}
-	if (!storedDelay) {
-		return DEFAULT_COUNTDOWN_DELAY;
-	}
-
-	const parsedDelay = Number.parseInt(storedDelay, 10);
-	return Number.isFinite(parsedDelay) && parsedDelay >= 0 ? parsedDelay : DEFAULT_COUNTDOWN_DELAY;
+	return DEFAULT_COUNTDOWN_DELAY;
 }
 
 function getSelectedSourceName(source: unknown) {
@@ -262,6 +267,9 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		setCountdownDelayState(nextDelay);
 		try {
 			window.localStorage.setItem(COUNTDOWN_DELAY_STORAGE_KEY, String(nextDelay));
+			for (const key of LEGACY_COUNTDOWN_DELAY_STORAGE_KEYS) {
+				window.localStorage.removeItem(key);
+			}
 		} catch {
 			// Persistence is best-effort; recording should still work if storage is unavailable.
 		}

@@ -29,19 +29,19 @@ describe("editorWindowParams", () => {
 	it("round-trips a project query", () => {
 		const query = buildEditorWindowQuery({
 			mode: "project",
-			projectPath: "C:\\Users\\demo\\Videos\\My Edit.openrecorder",
+			projectPath: "C:\\Users\\demo\\Videos\\My Edit.calcfocus",
 		});
 
 		expect(parseEditorWindowLaunchParams(query)).toEqual({
 			mode: "project",
-			projectPath: "C:/Users/demo/Videos/My Edit.openrecorder",
+			projectPath: "C:/Users/demo/Videos/My Edit.calcfocus",
 		});
 	});
 
 	it("builds a centered editor title from project/video and source names", () => {
 		expect(
 			buildVideoEditorNavbarTitle({
-				projectPath: "/Users/demo/Edits/Launch Clip.openrecorder",
+				projectPath: "/Users/demo/Edits/Launch Clip.calcfocus",
 				sourceName: "Safari",
 			}),
 		).toBe("Launch Clip | Safari");

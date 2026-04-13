@@ -3,7 +3,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { isOnboardingComplete, resetOnboarding } from "./PermissionOnboarding";
 
-const STORAGE_KEY = "fluxlocus-onboarding-v1";
+const STORAGE_KEY = "calcfocus-onboarding-v1";
 
 function installMockLocalStorage() {
 	const store = new Map<string, string>();

@@ -37,19 +37,19 @@ fn compile_sidecars() {
     let helpers = [
         (
             "ScreenCaptureKitRecorder.swift",
-            "openscreen-screencapturekit-helper",
+            "calcfocus-screencapturekit-helper",
         ),
-        ("ScreenCaptureKitWindowList.swift", "openscreen-window-list"),
-        ("SystemCursorAssets.swift", "openscreen-system-cursors"),
+        ("ScreenCaptureKitWindowList.swift", "calcfocus-window-list"),
+        ("SystemCursorAssets.swift", "calcfocus-system-cursors"),
         (
             "NativeCursorMonitor.swift",
-            "openscreen-native-cursor-monitor",
+            "calcfocus-native-cursor-monitor",
         ),
         (
             "ScreenSelectionFlash.swift",
-            "openscreen-screen-selection-flash",
+            "calcfocus-screen-selection-flash",
         ),
-        ("AreaSelector.swift", "openscreen-area-selector"),
+        ("AreaSelector.swift", "calcfocus-area-selector"),
     ];
 
     println!("cargo:rerun-if-changed={}", native_dir.display());

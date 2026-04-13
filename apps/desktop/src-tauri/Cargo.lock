@@ -1162,7 +1162,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "fluxlocus"
+name = "calcfocus"
 version = "1.0.0"
 dependencies = [
  "block",

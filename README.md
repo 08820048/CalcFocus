@@ -1,7 +1,7 @@
-# Open Recorder
+# CalcFocus
 
 <p align="center">
-  <img src="./branding/source-assets/open-recorder-brand-image.png" width="220" alt="Open Recorder logo">
+  <img src="./branding/source-assets/calcfocus-brand-image.png" width="220" alt="CalcFocus logo">
 </p>
 
 <p align="center">
@@ -10,18 +10,18 @@
 </p>
 
 ### Create polished, pro-grade screen recordings and screenshots.
-[Open Recorder](https://github.com/08820048/CalcFocus) is an **open-source screen recorder, screenshot tool, and editor** for creating **polished walkthroughs, demos, tutorials, and product videos**. Contribution encouraged.
+[CalcFocus](https://github.com/08820048/CalcFocus) is an **open-source screen recorder, screenshot tool, and editor** for creating **polished walkthroughs, demos, tutorials, and product videos**. Contribution encouraged.
 
 <p align="center">
-  <img src="./open-recorder-demo.gif" width="750" alt="Open Recorder demo video">
+  <img src="./calcfocus-demo.gif" width="750" alt="CalcFocus demo video">
 </p>
 
 ---
-## What is Open Recorder?
+## What is CalcFocus?
 
-Open Recorder lets you record your screen and capture screenshots, automatically transforming recordings into polished videos. It handles the heavy lifting of zooming into important actions and smoothing out jittery cursor movement so your demos look professional by default. Screenshots can be styled with custom backgrounds, padding, rounded corners, and shadows before saving or copying to clipboard.
+CalcFocus lets you record your screen and capture screenshots, automatically transforming recordings into polished videos. It handles the heavy lifting of zooming into important actions and smoothing out jittery cursor movement so your demos look professional by default. Screenshots can be styled with custom backgrounds, padding, rounded corners, and shadows before saving or copying to clipboard.
 
-Open Recorder runs on:
+CalcFocus runs on:
 
 - **macOS**
 - **Windows**
@@ -61,7 +61,7 @@ Linux currently uses the browser capture path, which means the OS cursor cannot 
 
 ### Cursor Loops
 <p>
-  <img src="./CursorLoop.gif" width="450" alt="Open Recorder demo video">
+  <img src="./CursorLoop.gif" width="450" alt="CalcFocus demo video">
 </p>
 
 - Cursor returns to original position in a freeze-frame at end of video/GIF (off by default)
@@ -72,7 +72,7 @@ Linux currently uses the browser capture path, which means the OS cursor cannot 
 - Speed-up / slow-down regions
 - Annotations
 - Zoom spans
-- Project save + reopen (`.openrecorder` files, with `.openscreen` backward compatibility)
+- Project save + reopen (`.calcfocus` files, with legacy project-file compatibility)
 
 ### Frame Styling
 
@@ -105,11 +105,11 @@ Linux currently uses the browser capture path, which means the OS cursor cannot 
 # Screenshots
 
 <p align="center">
-  <img src="https://i.postimg.cc/d0t09ypT/Screenshot-2026-03-09-at-8-10-08-pm.png" width="700" alt="Open Recorder editor screenshot">
+  <img src="https://i.postimg.cc/d0t09ypT/Screenshot-2026-03-09-at-8-10-08-pm.png" width="700" alt="CalcFocus editor screenshot">
 </p>
 
 <p align="center">
-  <img src="https://i.postimg.cc/YSgdbvFj/Screenshot-2026-03-09-at-8-49-14-pm.png" width="700" alt="Open Recorder recording interface screenshot">
+  <img src="https://i.postimg.cc/YSgdbvFj/Screenshot-2026-03-09-at-8-49-14-pm.png" width="700" alt="CalcFocus recording interface screenshot">
 </p>
 
 ---
@@ -124,13 +124,13 @@ https://github.com/08820048/CalcFocus/releases
 
 ## Homebrew (Cask)
 
-Open Recorder is distributed as a GUI app, so Homebrew support is done via cask.
+CalcFocus is distributed as a GUI app, so Homebrew support is done via cask.
 
 For users:
 
 ```bash
-brew tap imbhargav5/tap
-brew install --cask open-recorder
+brew tap 08820048/homebrew-tap
+brew install --cask calcfocus
 ```
 
 ---
@@ -139,12 +139,12 @@ brew install --cask open-recorder
 
 ```bash
 git clone https://github.com/08820048/CalcFocus.git
-cd open-recorder
+cd CalcFocus
 pnpm install
 pnpm dev
 ```
 
-`pnpm dev` launches the desktop workspace app from `apps/desktop` using the root compatibility alias, and still uses the separate `Open Recorder Dev` app identity so it can coexist with the production app.
+`pnpm dev` launches the desktop workspace app from `apps/desktop` using the root compatibility alias, and still uses the separate `CalcFocus Dev` app identity so it can coexist with the production app.
 
 If you want to run the production identity from source instead, use:
 
@@ -218,7 +218,7 @@ Inside GitHub Actions, `.github/workflows/release-pr.yml` then:
 2. Reads `apps/desktop/package.json` and the latest local `v*` tag.
 3. Uses whichever version is newer as the base version.
 4. Computes the next patch, minor, or major version.
-5. Syncs `apps/desktop/package.json`, `apps/desktop/src-tauri/Cargo.toml`, `apps/desktop/src-tauri/tauri.conf.json`, and the `fluxlocus` entry inside `apps/desktop/src-tauri/Cargo.lock`.
+5. Syncs `apps/desktop/package.json`, `apps/desktop/src-tauri/Cargo.toml`, `apps/desktop/src-tauri/tauri.conf.json`, and the `calcfocus` entry inside `apps/desktop/src-tauri/Cargo.lock`.
 6. Writes `.github/release-plan.json` with the release title, notes, and latest flag.
 7. Opens or updates the release PR.
 
@@ -245,7 +245,7 @@ Local source builds are not signed or notarized by default. macOS may quarantine
 Remove the quarantine flag with:
 
 ```bash
-xattr -rd com.apple.quarantine "/Applications/Open Recorder.app"
+xattr -rd com.apple.quarantine "/Applications/CalcFocus.app"
 ```
 
 ---
@@ -254,7 +254,7 @@ xattr -rd com.apple.quarantine "/Applications/Open Recorder.app"
 
 ## Screenshot
 
-1. Launch Open Recorder
+1. Launch CalcFocus
 2. Choose **Screenshot** from the HUD overlay
 3. Select a capture mode: **Screen**, **Window**, or **Area**
 4. Click **Take Screenshot**
@@ -267,7 +267,7 @@ xattr -rd com.apple.quarantine "/Applications/Open Recorder.app"
 
 ## Record
 
-1. Launch Open Recorder
+1. Launch CalcFocus
 2. Select a screen or window
 3. Choose audio recording options
 4. Start recording
@@ -287,7 +287,7 @@ Inside the editor you can:
 - Add annotations
 - Style the frame
 
-Save your work anytime as an `.openrecorder` project.
+Save your work anytime as an `.calcfocus` project.
 
 ---
 
@@ -337,7 +337,7 @@ System audio capture depends on platform support.
 
 # How It Works
 
-Open Recorder is a **desktop video editor with a renderer-driven motion pipeline and platform-specific capture layer**.
+CalcFocus is a **desktop video editor with a renderer-driven motion pipeline and platform-specific capture layer**.
 
 **Capture**
 - Tauri orchestrates recording
@@ -359,17 +359,17 @@ Open Recorder is a **desktop video editor with a renderer-driven motion pipeline
 - Encoded to MP4 or GIF
 
 **Projects**
-- `.openrecorder` files store the source video path and editor state
+- `.calcfocus` files store the source video path and editor state
 
 ---
 
 # Performance
 
-Open Recorder is an opensource, blazing fast ScreenStudio alternative. Built with **Tauri and Rust**, it is highly performant but very small in size compared to its competitors. It adds auto-zoom, cursor animations, and more to your screen recordings — all without the overhead of traditional Electron-based tools.
+CalcFocus is an opensource, blazing fast ScreenStudio alternative. Built with **Tauri and Rust**, it is highly performant but very small in size compared to its competitors. It adds auto-zoom, cursor animations, and more to your screen recordings — all without the overhead of traditional Electron-based tools.
 
 ### Lightweight Native Architecture
 
-Unlike Electron apps that bundle an entire Chromium browser, Open Recorder uses **Tauri** — a Rust-based framework that leverages the operating system's native webview. This means:
+Unlike Electron apps that bundle an entire Chromium browser, CalcFocus uses **Tauri** — a Rust-based framework that leverages the operating system's native webview. This means:
 
 - **Dramatically smaller binary size** — the app ships without a bundled browser engine, keeping the installer compact compared to Electron alternatives
 - **Lower baseline memory usage** — no separate Chromium process tree consuming hundreds of megabytes at idle
@@ -377,7 +377,7 @@ Unlike Electron apps that bundle an entire Chromium browser, Open Recorder uses 
 
 ### Native Platform Capture — No Browser Bottleneck
 
-Open Recorder bypasses slow browser-based capture APIs wherever possible by using **platform-specific native capture**:
+CalcFocus bypasses slow browser-based capture APIs wherever possible by using **platform-specific native capture**:
 
 - **macOS**: Uses Apple's **ScreenCaptureKit** framework directly via a native Swift sidecar, delivering hardware-optimized screen capture with cursor telemetry at minimal CPU cost
 - **Windows**: Uses the native **Windows.Graphics.Capture (WGC)** API through a dedicated sidecar for display and app-window capture, plus native **WASAPI** for system and microphone audio
@@ -387,7 +387,7 @@ These native capture paths run outside the main application process as lightweig
 
 ### Streaming Decoder — Single-Pass Frame Processing
 
-The export pipeline uses a **streaming forward-pass decoder** built on the WebCodecs `VideoDecoder` API and `web-demuxer`. Instead of seeking to each frame individually (which is extremely slow with compressed video), Open Recorder decodes frames in a single continuous pass:
+The export pipeline uses a **streaming forward-pass decoder** built on the WebCodecs `VideoDecoder` API and `web-demuxer`. Instead of seeking to each frame individually (which is extremely slow with compressed video), CalcFocus decodes frames in a single continuous pass:
 
 - Frames flow through the decoder in order — no costly random seeks into the compressed bitstream
 - Trimmed regions are decoded (necessary for P-frame and B-frame reference chains) but their output is discarded immediately, avoiding unnecessary rendering work
@@ -432,7 +432,7 @@ The production build is tuned for minimal bundle size:
 
 ### Resource Management
 
-Open Recorder is designed for long recording and editing sessions without degradation:
+CalcFocus is designed for long recording and editing sessions without degradation:
 
 - Explicit cleanup of PixiJS textures, decoder instances, and audio processors prevents memory leaks
 - Streaming decoder reuses a single `VideoDecoder` instance across the export rather than creating and destroying decoders per segment
@@ -474,7 +474,10 @@ Pull requests are welcome.
 
 # License
 
-Open Recorder is licensed under the **MIT License**.
+CalcFocus is licensed under the **MIT License**.
+
+Third-party notices for bundled upstream code and assets are documented in
+[THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md).
 
 ---
 
@@ -483,5 +486,6 @@ Open Recorder is licensed under the **MIT License**.
 ## Acknowledgements
 
 Thanks to [Recordly](https://github.com/AdrianMPC/recordly) and [OpenScreen](https://github.com/siddharthvaddem/openscreen).
+See [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md) for bundled-license details.
 
 ---

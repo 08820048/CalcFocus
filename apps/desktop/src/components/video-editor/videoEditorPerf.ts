@@ -1,4 +1,4 @@
-const VIDEO_EDITOR_PERF_PREFIX = "fluxlocus.video-editor";
+const VIDEO_EDITOR_PERF_PREFIX = "calcfocus.video-editor";
 
 export function markVideoEditorTiming(stage: string) {
 	if (!import.meta.env.DEV) {

@@ -49,12 +49,12 @@ const _print = (() => {
 
 const provider = new BasicTracerProvider({
 	resource: resourceFromAttributes({
-		"service.name": "fluxlocus-ui",
+		"service.name": "calcfocus-ui",
 	}),
 	spanProcessors: [new SimpleSpanProcessor(new ConsoleSpanExporter())],
 });
 
-const tracer: Tracer = provider.getTracer("fluxlocus-ui", "1.0.0");
+const tracer: Tracer = provider.getTracer("calcfocus-ui", "1.0.0");
 
 // Also register globally so any code can use `trace.getTracer()`
 trace.setGlobalTracerProvider(provider);

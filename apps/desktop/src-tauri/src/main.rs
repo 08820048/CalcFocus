@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    fluxlocus_lib::run()
+    calcfocus_lib::run()
 }

@@ -76,7 +76,7 @@ describe("loadInitialVideoEditorState", () => {
 			loadInitialVideoEditorState({
 				loadCurrentProjectFile: async () => ({
 					data: { ignored: true },
-					filePath: "/Users/demo/ignored.openrecorder",
+					filePath: "/Users/demo/ignored.calcfocus",
 				}),
 				getCurrentVideoPath: async () => "file:///Users/demo/ignored-video.mp4",
 				getCurrentRecordingSession: async () => ({
@@ -106,12 +106,12 @@ describe("loadInitialVideoEditorState", () => {
 						JSON.stringify({ version: 3, videoPath: "file:///demo.mov", editor: {} }),
 					),
 				search:
-					"?windowType=editor&editorMode=project&projectPath=file%3A%2F%2F%2FUsers%2Fdemo%2Fedit.openrecorder",
+					"?windowType=editor&editorMode=project&projectPath=file%3A%2F%2F%2FUsers%2Fdemo%2Fedit.calcfocus",
 			}),
 		).resolves.toEqual({
 			kind: "project",
 			data: { version: 3, videoPath: "file:///demo.mov", editor: {} },
-			filePath: "/Users/demo/edit.openrecorder",
+			filePath: "/Users/demo/edit.calcfocus",
 		});
 	});
 });
