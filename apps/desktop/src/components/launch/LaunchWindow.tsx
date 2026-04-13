@@ -14,11 +14,14 @@ import {
 	MoreVertical,
 	Pause,
 	Play,
+	RefreshCw,
 	Square,
 	Timer,
+	TriangleAlert,
 	Video,
 	X,
 } from "lucide-react";
+import { APP_UPDATER_CHECK_EVENT, APP_UPDATER_STATUS_EVENT } from "@/components/AppUpdaterDialog";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BsRecordCircle } from "react-icons/bs";
 import {
@@ -59,6 +62,7 @@ const LEGACY_HIDE_HUD_FROM_RECORDING_STORAGE_KEYS = ["fluxlocus:hide-hud-from-re
 type View = "onboarding" | "choice" | "screenshot" | "recording";
 type ScreenshotMode = "screen" | "window" | "area";
 type HudToolbarLayout = "normal" | "expanded";
+type ManualUpdateCheckState = "idle" | "checking" | "up-to-date" | "error";
 
 function getInitialHideHudFromRecording() {
 	if (typeof window === "undefined") {
@@ -150,20 +154,24 @@ function DeviceRow({
 	icon,
 	label,
 	selected,
+	disabled,
 	onSelect,
 }: {
 	icon: React.ReactNode;
 	label: string;
 	selected: boolean;
+	disabled?: boolean;
 	onSelect: () => void;
 }) {
 	return (
 		<button
 			type="button"
 			onClick={onSelect}
+			disabled={disabled}
 			className={cn(
 				"flex h-9 w-full items-center gap-2 rounded-xl px-2.5 text-left text-xs text-white/70 transition-colors hover:bg-white/[0.08] hover:text-white",
 				selected && "bg-[#09cf67]/14 text-[#8cf0ba]",
+				disabled && "cursor-default opacity-60 hover:bg-transparent hover:text-white/70",
 				styles.tauriNoDrag,
 			)}
 		>
@@ -290,10 +298,70 @@ export function LaunchWindow() {
 	const [cameraPopoverOpen, setCameraPopoverOpen] = useState(false);
 	const [countdownPopoverOpen, setCountdownPopoverOpen] = useState(false);
 	const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+	const [manualUpdateCheckState, setManualUpdateCheckState] =
+		useState<ManualUpdateCheckState>("idle");
 	const [hideHudFromRecording, setHideHudFromRecording] = useState(getInitialHideHudFromRecording);
+	const updateCheckResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	const setMicEnabledRef = useRef(setMicrophoneEnabled);
 	setMicEnabledRef.current = setMicrophoneEnabled;
+
+	const clearUpdateCheckResetTimer = useCallback(() => {
+		if (updateCheckResetTimerRef.current) {
+			clearTimeout(updateCheckResetTimerRef.current);
+			updateCheckResetTimerRef.current = null;
+		}
+	}, []);
+
+	useEffect(() => {
+		const handleUpdateStatus = (event: Event) => {
+			const detail =
+				event instanceof CustomEvent
+					? (event.detail as { status?: string } | undefined)
+					: undefined;
+			const status = detail?.status;
+
+			if (!status) {
+				return;
+			}
+
+			clearUpdateCheckResetTimer();
+
+			if (status === "checking" || status === "busy") {
+				setManualUpdateCheckState("checking");
+				return;
+			}
+
+			if (status === "available") {
+				setManualUpdateCheckState("idle");
+				setMoreMenuOpen(false);
+				return;
+			}
+
+			if (status === "up-to-date") {
+				setManualUpdateCheckState("up-to-date");
+				updateCheckResetTimerRef.current = setTimeout(() => {
+					setManualUpdateCheckState("idle");
+					updateCheckResetTimerRef.current = null;
+				}, 1800);
+				return;
+			}
+
+			if (status === "error" || status === "disabled") {
+				setManualUpdateCheckState("error");
+				updateCheckResetTimerRef.current = setTimeout(() => {
+					setManualUpdateCheckState("idle");
+					updateCheckResetTimerRef.current = null;
+				}, 2400);
+			}
+		};
+
+		window.addEventListener(APP_UPDATER_STATUS_EVENT, handleUpdateStatus as EventListener);
+		return () => {
+			window.removeEventListener(APP_UPDATER_STATUS_EVENT, handleUpdateStatus as EventListener);
+			clearUpdateCheckResetTimer();
+		};
+	}, [clearUpdateCheckResetTimer]);
 
 	useEffect(() => {
 		try {
@@ -591,6 +659,38 @@ export function LaunchWindow() {
 			}),
 		);
 	}, [runPickerFromHud]);
+
+	const checkForUpdatesFromMenu = useCallback(() => {
+		if (manualUpdateCheckState === "checking") {
+			return;
+		}
+
+		window.dispatchEvent(
+			new CustomEvent(APP_UPDATER_CHECK_EVENT, {
+				detail: { showDialog: false },
+			}),
+		);
+	}, [manualUpdateCheckState]);
+
+	const updateCheckMenuLabel =
+		manualUpdateCheckState === "checking"
+			? t("recording.checkingForUpdates", "Checking for updates...")
+			: manualUpdateCheckState === "up-to-date"
+				? t("recording.upToDate", "You're up to date")
+				: manualUpdateCheckState === "error"
+					? t("recording.updateCheckFailed", "Update check failed")
+					: t("recording.checkForUpdates", "Check for updates");
+
+	const updateCheckMenuIcon =
+		manualUpdateCheckState === "checking" ? (
+			<RefreshCw size={15} className="animate-spin" />
+		) : manualUpdateCheckState === "up-to-date" ? (
+			<CheckCircle2 size={15} />
+		) : manualUpdateCheckState === "error" ? (
+			<TriangleAlert size={15} />
+		) : (
+			<RefreshCw size={15} />
+		);
 
 	useEffect(() => {
 		const unlistenVideo = backend.onMenuOpenVideoFile(() => {
@@ -972,6 +1072,13 @@ export function LaunchWindow() {
 							onSelect={() => {
 								void openVideoFile();
 							}}
+						/>
+						<DeviceRow
+							icon={updateCheckMenuIcon}
+							label={updateCheckMenuLabel}
+							selected={false}
+							disabled={manualUpdateCheckState === "checking"}
+							onSelect={checkForUpdatesFromMenu}
 						/>
 						<DeviceRow
 							icon={<EyeOff size={15} />}

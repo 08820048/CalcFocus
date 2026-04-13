@@ -19,6 +19,8 @@ type CheckForUpdateOptions = {
 	showDialog?: boolean;
 };
 
+export type CheckForUpdateResult = "busy" | "disabled" | "available" | "up-to-date" | "error";
+
 export type UseAppUpdaterReturn = {
 	status: UpdateStatus;
 	isDialogOpen: boolean;
@@ -27,7 +29,7 @@ export type UseAppUpdaterReturn = {
 	releaseNotes: string | null;
 	downloadProgress: number;
 	error: string | null;
-	checkForUpdate: (options?: CheckForUpdateOptions) => Promise<void>;
+	checkForUpdate: (options?: CheckForUpdateOptions) => Promise<CheckForUpdateResult>;
 	downloadAndInstall: () => Promise<void>;
 	restartApp: () => Promise<void>;
 	dismiss: () => void;
@@ -86,7 +88,7 @@ export function useAppUpdater({
 				if (showDialog) {
 					setIsDialogOpen(true);
 				}
-				return;
+				return "busy" as const;
 			}
 
 			if (!updatesEnabled) {
@@ -97,7 +99,7 @@ export function useAppUpdater({
 				setError(showDialog ? "Updates are unavailable in development builds." : null);
 				setStatus(showDialog ? "error" : "idle");
 				setIsDialogOpen(showDialog);
-				return;
+				return "disabled" as const;
 			}
 
 			try {
@@ -119,18 +121,21 @@ export function useAppUpdater({
 					setReleaseNotes(update.body ?? null);
 					setStatus("available");
 					setIsDialogOpen(true);
+					return "available" as const;
 				} else {
 					updateRef.current = null;
 					setVersion(null);
 					setReleaseNotes(null);
 					setStatus(showDialog ? "up-to-date" : "idle");
 					setIsDialogOpen(showDialog);
+					return "up-to-date" as const;
 				}
 			} catch (err) {
 				console.error("Update check failed:", err);
 				setError(getErrorMessage(err, "Failed to check for updates"));
 				setStatus("error");
 				setIsDialogOpen(showDialog);
+				return "error" as const;
 			}
 		},
 		[status, updatesEnabled],

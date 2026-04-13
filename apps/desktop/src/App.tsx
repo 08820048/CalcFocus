@@ -90,13 +90,18 @@ export default function App() {
 	}
 
 	const shouldRenderUpdater =
-		windowType === "editor" || windowType === "image-editor" || windowType === "";
+		windowType === "editor" ||
+		windowType === "image-editor" ||
+		windowType === "hud-overlay" ||
+		windowType === "";
+
+	const updaterAutoCheckEnabled = windowType === "editor" || windowType === "";
 
 	return (
 		<>
 			{content}
 			{shouldRenderUpdater ? (
-				<AppUpdaterDialog enableAutoCheck={windowType !== "image-editor"} />
+				<AppUpdaterDialog enableAutoCheck={updaterAutoCheckEnabled} />
 			) : null}
 		</>
 	);
