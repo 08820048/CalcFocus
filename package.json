@@ -1,6 +1,7 @@
 {
 	"name": "calcfocus-workspace",
 	"private": true,
+	"license": "AGPL-3.0-only",
 	"packageManager": "pnpm@10.17.1",
 	"scripts": {
 		"tauri": "pnpm --filter @calcfocus/desktop tauri",

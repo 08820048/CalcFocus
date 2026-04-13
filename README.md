@@ -2,7 +2,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/macOS%20%7C%20Windows%20%7C%20Linux-111827?style=for-the-badge" alt="macOS Windows Linux" />
-  <img src="https://img.shields.io/badge/open%20source-MIT-2563eb?style=for-the-badge" alt="MIT license" />
+  <img src="https://img.shields.io/badge/open%20source-AGPL--3.0-2563eb?style=for-the-badge" alt="AGPL-3.0-only license" />
 </p>
 
 ### Create polished, pro-grade screen recordings and screenshots.
@@ -441,7 +441,9 @@ Please:
 - Test playback, editing, and export flows
 - Avoid large unrelated refactors
 
-See `CONTRIBUTING.md` for guidelines.
+- [Contributing](./CONTRIBUTING.md)
+- [Code of Conduct](./CODE_OF_CONDUCT.md)
+- [Security Policy](./SECURITY.md)
 
 ---
 
@@ -457,7 +459,7 @@ Pull requests are welcome.
 
 # License
 
-CalcFocus is licensed under the **MIT License**.
+CalcFocus is licensed under the **GNU Affero General Public License v3.0 only** (`AGPL-3.0-only`).
 
 Third-party notices for bundled upstream code and assets are documented in
 [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md).

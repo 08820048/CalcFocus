@@ -11,6 +11,7 @@
 	"bugs": {
 		"url": "https://github.com/08820048/CalcFocus/issues"
 	},
+	"license": "AGPL-3.0-only",
 	"private": true,
 	"version": "1.0.0",
 	"packageManager": "pnpm@10.17.1",

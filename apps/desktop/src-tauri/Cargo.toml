@@ -3,6 +3,7 @@ name = "calcfocus"
 version = "1.0.0"
 description = "A free, creator-focused screen recorder"
 authors = ["CalcFocus contributors"]
+license = "AGPL-3.0-only"
 edition = "2021"
 autobins = false
 default-run = "CalcFocus"

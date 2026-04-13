@@ -1,6 +1,7 @@
 ## Third-Party Notices
 
-CalcFocus is distributed under the MIT License. Some parts of the repository
+CalcFocus is distributed under the GNU Affero General Public License v3.0 only
+(`AGPL-3.0-only`). Some parts of the repository
 are based on or adapted from third-party open-source projects that remain
 subject to their original license notices.
 

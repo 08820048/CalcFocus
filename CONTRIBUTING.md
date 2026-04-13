@@ -1,65 +1,64 @@
 # Contribution Guidelines
 
-Thank you for considering contributing to this project! By contributing, you help make this project better for everyone. Please take a moment to review these guidelines to ensure a smooth contribution process.
+Thanks for contributing to CalcFocus.
 
 Areas where help is especially valuable:
 
-- Smooth cursor pipeline for Linux
-- Webcam overlay bubble
-- Localisation support, especially Chinese
-- UI/UX design improvements
-- Export speed improvements
+- Linux capture and cursor pipeline stability
+- Webcam overlay work
+- Localisation, especially Chinese
+- UI/UX refinements
+- Export speed and reliability
 
-## How to Contribute
+## Before You Start
 
-1. **Fork the Repository**
-   - Click the "Fork" button at the top right of this repository to create your own copy.
+- Search existing issues and pull requests before starting work.
+- Open an issue first for large refactors, release-flow changes, or changes to security-sensitive behavior.
+- Keep pull requests focused. Small, reviewable changes are much easier to merge.
 
-2. **Clone Your Fork**
-   - Clone your forked repository to your local machine:
-     ```bash
-   git clone https://github.com/your-username/CalcFocus.git
-     ```
+## Local Setup
 
-3. **Create a New Branch**
-   - Create a branch for your feature or bug fix:
-     ```bash
-     git checkout -b feature/your-feature-name
-     ```
+```bash
+pnpm install
+pnpm dev
+```
 
-4. **Make Changes**
-   - Make your changes.
+Useful commands:
 
-5. **Test Your Changes**
-   - Test your changes thoroughly to ensure they work as expected and do not break existing functionality.
+```bash
+pnpm test
+pnpm lint
+pnpm build
+pnpm --filter @calcfocus/desktop tauri info
+```
 
-6. **Commit Your Changes**
-   - Commit your changes with a clear and concise commit message:
-     ```bash
-     git add .
-     git commit -m "Add a brief description of your changes"
-     ```
+If your change touches recording, editing, export, or desktop packaging, please also do a manual smoke test on the affected flow.
 
-7. **Push Your Changes**
-   - Push your branch to your forked repository:
-     ```bash
-     git push origin feature/your-feature-name
-     ```
+## Pull Requests
 
-8. **Open a Pull Request**
-   - Go to the original repository and open a pull request from your branch. Provide a clear description of your changes and the problem they solve.
+- Fork the repository and work on a dedicated branch.
+- Use clear commit messages that explain the user-facing effect of the change.
+- Include screenshots or short videos for UI changes when possible.
+- Update documentation when behavior, setup, or release expectations change.
+- Mention any manual testing you performed in the PR description.
 
 ## Reporting Issues
 
-If you encounter a bug or have a feature request, please open an issue in the [Issues](https://github.com/08820048/CalcFocus/issues) section of this repository. Provide as much detail as possible to help us address the issue effectively.
+Use the issue templates in GitHub when possible:
 
-## Style Guide
+- Bugs: include reproduction steps, expected behavior, actual behavior, and logs if relevant.
+- Features: explain the problem first, then the proposed solution.
 
-- Write clear, concise, and descriptive commit messages.
-- Include comments where necessary to explain complex code.
+Issue tracker:
+
+- <https://github.com/08820048/CalcFocus/issues>
+
+## Style Notes
+
+- Prefer small, readable changes over broad rewrites.
+- Add comments only when they clarify intent or non-obvious behavior.
+- Avoid unrelated formatting churn in feature or bug-fix PRs.
 
 ## License
 
-By contributing to this project, you agree that your contributions will be licensed under the [MIT License](./LICENSE).
-
-Thank you for your contributions!
+By contributing to this project, you agree that your contributions will be licensed under the repository license, [GNU Affero General Public License v3.0 only](./LICENSE) (`AGPL-3.0-only`).
