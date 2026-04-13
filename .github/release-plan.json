@@ -1,6 +1,6 @@
 {
-  "tagName": "v1.0.2",
-  "releaseName": "CalcFocus v1.0.2",
-  "releaseNotes": "",
+  "tagName": "v1.0.3",
+  "releaseName": "CalcFocus v1.0.3",
+  "releaseNotes": "Fix macOS screen recording onboarding so the permission step clearly requires reopening CalcFocus after enabling Screen Recording in System Settings.",
   "makeLatest": true
 }

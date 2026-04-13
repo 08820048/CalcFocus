@@ -31,6 +31,14 @@ vi.mock("../../lib/backend", () => ({
 	startHudOverlayDrag: tauriMocks.startHudOverlayDrag,
 }));
 
+const processMocks = vi.hoisted(() => ({
+	relaunch: vi.fn(async () => undefined),
+}));
+
+vi.mock("@tauri-apps/plugin-process", () => ({
+	relaunch: processMocks.relaunch,
+}));
+
 vi.mock("@tauri-apps/api/window", () => ({
 	getCurrentWindow: tauriMocks.getCurrentWindow,
 	primaryMonitor: tauriMocks.primaryMonitor,
@@ -154,6 +162,33 @@ afterEach(() => {
 });
 
 describe("PermissionOnboarding interactions", () => {
+	it("refreshes permission state when the app regains focus", async () => {
+		const refreshPermissions = vi.fn(async () => ({
+			screenRecording: "denied" as const,
+			microphone: "not_determined" as const,
+			camera: "not_determined" as const,
+			accessibility: "granted" as const,
+		}));
+
+		const harness = await renderOnboarding(
+			createPermissionsHook({
+				isMacOS: true,
+				permissions: { screenRecording: "denied" },
+				refreshPermissions,
+			}),
+		);
+
+		refreshPermissions.mockClear();
+
+		await act(async () => {
+			window.dispatchEvent(new Event("focus"));
+		});
+
+		expect(refreshPermissions).toHaveBeenCalledTimes(1);
+
+		await harness.unmount();
+	});
+
 	it("starts a real window drag when the card background is pressed", async () => {
 		const harness = await renderOnboarding();
 		tauriMocks.startHudOverlayDrag.mockClear();
@@ -213,6 +248,43 @@ describe("PermissionOnboarding interactions", () => {
 		expect(tauriMocks.minimize).toHaveBeenCalledTimes(1);
 		expect(openPermissionSettings).toHaveBeenCalledWith("screenRecording");
 		expect(refreshPermissions).toHaveBeenCalled();
+
+		await harness.unmount();
+	});
+
+	it("offers a restart action after opening Screen Recording settings on macOS", async () => {
+		const requestScreenRecordingAccess = vi.fn(async () => false);
+		const openPermissionSettings = vi.fn(async () => undefined);
+
+		const harness = await renderOnboarding(
+			createPermissionsHook({
+				isMacOS: true,
+				permissions: { screenRecording: "denied" },
+				requestScreenRecordingAccess,
+				openPermissionSettings,
+			}),
+		);
+		vi.useFakeTimers();
+
+		await click(getButtonByText(harness.container, "Get Started") ?? null);
+		await click(getButtonByText(harness.container, "Open Settings") ?? null);
+
+		await act(async () => {
+			vi.advanceTimersByTime(500);
+			await Promise.resolve();
+		});
+
+		expect(harness.container.textContent).toContain("Restart required");
+		expect(harness.container.textContent).toContain(
+			"Enable Screen Recording in System Settings, then restart CalcFocus to continue.",
+		);
+		expect(harness.container.textContent).not.toContain("Denied");
+		expect(getButtonByText(harness.container, "Restart CalcFocus")).not.toBeNull();
+		expect(getButtonByText(harness.container, "Open Settings")).not.toBeNull();
+
+		await click(getButtonByText(harness.container, "Restart CalcFocus") ?? null);
+
+		expect(processMocks.relaunch).toHaveBeenCalledTimes(1);
 
 		await harness.unmount();
 	});

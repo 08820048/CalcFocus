@@ -8,6 +8,7 @@
 
 import { LogicalSize, PhysicalPosition } from "@tauri-apps/api/dpi";
 import { getCurrentWindow, primaryMonitor } from "@tauri-apps/api/window";
+import { relaunch } from "@tauri-apps/plugin-process";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { HiShieldCheck } from "react-icons/hi2";
 import { MdCheck, MdClose, MdMic, MdScreenShare, MdVideocam } from "react-icons/md";
@@ -115,6 +116,8 @@ export function PermissionOnboarding({ permissionsHook, onComplete }: Permission
 
 	const [step, setStep] = useState<OnboardingStep>("welcome");
 	const [isRequesting, setIsRequesting] = useState(false);
+	const [isRestarting, setIsRestarting] = useState(false);
+	const [screenRecordingSettingsOpened, setScreenRecordingSettingsOpened] = useState(false);
 	const resizedRef = useRef(false);
 
 	// Build the step list — skip macOS-only steps on other platforms
@@ -122,6 +125,8 @@ export function PermissionOnboarding({ permissionsHook, onComplete }: Permission
 		? ["welcome", "screen_recording", "microphone", "camera", "done"]
 		: ["welcome", "microphone", "camera", "done"];
 	const currentIndex = steps.indexOf(step);
+	const screenRecordingRestartRequired =
+		isMacOS && step === "screen_recording" && screenRecordingSettingsOpened;
 
 	// Resize the HUD window when onboarding appears
 	useEffect(() => {
@@ -144,6 +149,28 @@ export function PermissionOnboarding({ permissionsHook, onComplete }: Permission
 			});
 		};
 	}, [isMacOS]);
+
+	useEffect(() => {
+		const refreshPermissionState = () => {
+			void refreshPermissions().catch((error) => {
+				console.error("Failed to refresh permissions after window activation:", error);
+			});
+		};
+
+		const handleVisibilityChange = () => {
+			if (document.visibilityState === "visible") {
+				refreshPermissionState();
+			}
+		};
+
+		window.addEventListener("focus", refreshPermissionState);
+		document.addEventListener("visibilitychange", handleVisibilityChange);
+
+		return () => {
+			window.removeEventListener("focus", refreshPermissionState);
+			document.removeEventListener("visibilitychange", handleVisibilityChange);
+		};
+	}, [refreshPermissions]);
 
 	// Restore the HUD window to its normal size and re-position to bottom-center
 	const restoreWindowSize = useCallback(async () => {
@@ -207,6 +234,16 @@ export function PermissionOnboarding({ permissionsHook, onComplete }: Permission
 		onComplete();
 	}, [onComplete, restoreWindowSize]);
 
+	const handleRestartApp = useCallback(async () => {
+		setIsRestarting(true);
+		try {
+			await relaunch();
+		} catch (error) {
+			console.error("Failed to restart after Screen Recording permission change:", error);
+			setIsRestarting(false);
+		}
+	}, []);
+
 	const advanceStep = useCallback(() => {
 		const nextIndex = currentIndex + 1;
 		if (nextIndex < steps.length) {
@@ -221,6 +258,7 @@ export function PermissionOnboarding({ permissionsHook, onComplete }: Permission
 				case "screen_recording": {
 					const granted = await requestScreenRecordingAccess();
 					if (!granted) {
+						setScreenRecordingSettingsOpened(true);
 						await moveWindowOutOfTheWayForSystemSettings();
 						await openPermissionSettings("screenRecording");
 					}
@@ -348,11 +386,31 @@ export function PermissionOnboarding({ permissionsHook, onComplete }: Permission
 		title: string,
 		description: string,
 		status: PermissionStatus,
-		_permKey: keyof PermissionState,
+		permKey: keyof PermissionState,
 		required: boolean,
 	) => {
 		const isGranted = status === "granted";
 		const isDenied = status === "denied" || status === "restricted";
+		const isScreenRecordingStep = permKey === "screenRecording";
+		const showRestartAction = isScreenRecordingStep && screenRecordingRestartRequired && !isGranted;
+		const showOpenSettingsSecondaryAction = showRestartAction && isDenied;
+		const effectiveStatusLabel = showRestartAction ? "Restart required" : statusLabel(status);
+		const effectiveStatusIcon = showRestartAction ? (
+			<div className="h-3 w-3 rounded-full bg-amber-300 shadow-[0_0_0_4px_rgba(252,211,77,0.16)]" />
+		) : (
+			statusIcon(status)
+		);
+		const effectiveStatusClass = showRestartAction
+			? "text-amber-300"
+			: isGranted
+				? "text-emerald-400"
+				: isDenied
+					? "text-red-400"
+					: "text-white/50";
+		const helperText =
+			showRestartAction && isMacOS
+				? "Enable Screen Recording in System Settings, then restart CalcFocus to continue."
+				: null;
 
 		return (
 			<div className="flex flex-col items-center gap-4 text-center">
@@ -371,15 +429,16 @@ export function PermissionOnboarding({ permissionsHook, onComplete }: Permission
 					<p className="mt-1.5 text-xs text-white/55 leading-relaxed max-w-[320px]">
 						{description}
 					</p>
+					{helperText && (
+						<p className="mt-2 text-[11px] leading-relaxed max-w-[320px] text-amber-300/80">
+							{helperText}
+						</p>
+					)}
 				</div>
 
 				<div className="flex items-center gap-2 text-xs">
-					{statusIcon(status)}
-					<span
-						className={isGranted ? "text-emerald-400" : isDenied ? "text-red-400" : "text-white/50"}
-					>
-						{statusLabel(status)}
-					</span>
+					{effectiveStatusIcon}
+					<span className={effectiveStatusClass}>{effectiveStatusLabel}</span>
 				</div>
 
 				<div className="flex items-center gap-3">
@@ -394,22 +453,41 @@ export function PermissionOnboarding({ permissionsHook, onComplete }: Permission
 					) : (
 						<>
 							<button
-								onClick={() => void handleGrantPermission()}
-								disabled={isRequesting}
+								onClick={() =>
+									void (showRestartAction ? handleRestartApp() : handleGrantPermission())
+								}
+								disabled={isRequesting || isRestarting}
 								data-no-window-drag="true"
 								className={`px-5 py-2 rounded-full bg-blue-500 hover:bg-blue-400 disabled:opacity-50 text-white text-sm font-medium transition-colors cursor-pointer disabled:cursor-not-allowed ${styles.tauriNoDrag}`}
 							>
-								{isRequesting ? (
+								{isRestarting ? (
+									<span className="flex items-center gap-2">
+										<div className="h-3 w-3 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+										Restarting...
+									</span>
+								) : isRequesting ? (
 									<span className="flex items-center gap-2">
 										<div className="h-3 w-3 rounded-full border-2 border-white/30 border-t-white animate-spin" />
 										Requesting...
 									</span>
+								) : showRestartAction ? (
+									"Restart CalcFocus"
 								) : isDenied ? (
 									"Open Settings"
 								) : (
 									"Grant Permission"
 								)}
 							</button>
+							{showOpenSettingsSecondaryAction && (
+								<button
+									onClick={() => void handleGrantPermission()}
+									disabled={isRequesting || isRestarting}
+									data-no-window-drag="true"
+									className={`px-4 py-2 rounded-full text-white/50 hover:text-white/80 text-sm transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 ${styles.tauriNoDrag}`}
+								>
+									Open Settings
+								</button>
+							)}
 							{!required && (
 								<button
 									onClick={advanceStep}

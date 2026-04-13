@@ -54,7 +54,7 @@ const provider = new BasicTracerProvider({
 	spanProcessors: [new SimpleSpanProcessor(new ConsoleSpanExporter())],
 });
 
-const tracer: Tracer = provider.getTracer("calcfocus-ui", "1.0.2");
+const tracer: Tracer = provider.getTracer("calcfocus-ui", "1.0.3");
 
 // Also register globally so any code can use `trace.getTracer()`
 trace.setGlobalTracerProvider(provider);
