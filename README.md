@@ -1,10 +1,6 @@
 # CalcFocus
 
 <p align="center">
-  <img src="./branding/source-assets/calcfocus-brand-image.png" width="220" alt="CalcFocus logo">
-</p>
-
-<p align="center">
   <img src="https://img.shields.io/badge/macOS%20%7C%20Windows%20%7C%20Linux-111827?style=for-the-badge" alt="macOS Windows Linux" />
   <img src="https://img.shields.io/badge/open%20source-MIT-2563eb?style=for-the-badge" alt="MIT license" />
 </p>
@@ -12,9 +8,12 @@
 ### Create polished, pro-grade screen recordings and screenshots.
 [CalcFocus](https://github.com/08820048/CalcFocus) is an **open-source screen recorder, screenshot tool, and editor** for creating **polished walkthroughs, demos, tutorials, and product videos**. Contribution encouraged.
 
-<p align="center">
-  <img src="./calcfocus-demo.gif" width="750" alt="CalcFocus demo video">
-</p>
+Highlights:
+
+- Record screen, window, or area and jump straight into editing
+- Generate zoom suggestions from cursor movement and polish cursor playback
+- Edit with trims, speed regions, annotations, zoom spans, and styled backgrounds
+- Export to MP4 or GIF and reopen saved `.calcfocus` projects later
 
 ---
 ## What is CalcFocus?
@@ -60,10 +59,6 @@ Linux currently uses the browser capture path, which means the OS cursor cannot 
 - macOS-style cursor assets
 
 ### Cursor Loops
-<p>
-  <img src="./CursorLoop.gif" width="450" alt="CalcFocus demo video">
-</p>
-
 - Cursor returns to original position in a freeze-frame at end of video/GIF (off by default)
 
 ### Editing Tools
@@ -99,18 +94,6 @@ Linux currently uses the browser capture path, which means the OS cursor cannot 
 - GIF export
 - Aspect ratio controls
 - Quality settings
-
----
-
-# Screenshots
-
-<p align="center">
-  <img src="https://i.postimg.cc/d0t09ypT/Screenshot-2026-03-09-at-8-10-08-pm.png" width="700" alt="CalcFocus editor screenshot">
-</p>
-
-<p align="center">
-  <img src="https://i.postimg.cc/YSgdbvFj/Screenshot-2026-03-09-at-8-49-14-pm.png" width="700" alt="CalcFocus recording interface screenshot">
-</p>
 
 ---
 
