@@ -1,7 +1,15 @@
 .tauriDrag {
 	-webkit-app-region: drag;
+	cursor: grab;
+	touch-action: none;
+	user-select: none;
+}
+
+.tauriDrag:active {
+	cursor: grabbing;
 }
 
 .tauriNoDrag {
 	-webkit-app-region: no-drag;
+	user-select: auto;
 }

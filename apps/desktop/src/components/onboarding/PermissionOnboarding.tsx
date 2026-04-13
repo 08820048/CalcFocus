@@ -16,6 +16,7 @@ import type {
 	PermissionStatus,
 	UsePermissionsResult,
 } from "../../hooks/usePermissions";
+import * as backend from "../../lib/backend";
 import styles from "./PermissionOnboarding.module.css";
 
 const ONBOARDING_COMPLETE_KEY = "calcfocus-onboarding-v1";
@@ -24,6 +25,7 @@ const ONBOARDING_WINDOW_WIDTH = 480;
 const ONBOARDING_WINDOW_HEIGHT = 360;
 const HUD_WIDTH = 780;
 const HUD_HEIGHT = 155;
+const PERMISSION_STATE_REFRESH_DELAY_MS = 500;
 
 type OnboardingStep = "welcome" | "screen_recording" | "microphone" | "camera" | "done";
 
@@ -166,6 +168,32 @@ export function PermissionOnboarding({ permissionsHook, onComplete }: Permission
 		}
 	}, [isMacOS]);
 
+	const moveWindowOutOfTheWayForSystemSettings = useCallback(async () => {
+		if (!isMacOS) return;
+
+		const win = getCurrentWindow();
+		await win.setAlwaysOnTop(false).catch(() => {
+			// Ignore best-effort window layering changes.
+		});
+		await win.minimize().catch((error) => {
+			console.error("Failed to minimize onboarding window before opening System Settings:", error);
+		});
+	}, [isMacOS]);
+
+	const handleCardPointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+		const target = event.target instanceof Element ? event.target : null;
+		if (target?.closest("[data-no-window-drag='true']")) {
+			return;
+		}
+
+		event.preventDefault();
+		event.stopPropagation();
+
+		void backend.startHudOverlayDrag().catch((error) => {
+			console.error("Failed to start onboarding window drag:", error);
+		});
+	}, []);
+
 	const handleComplete = useCallback(async () => {
 		try {
 			localStorage.setItem(ONBOARDING_COMPLETE_KEY, "true");
@@ -193,6 +221,7 @@ export function PermissionOnboarding({ permissionsHook, onComplete }: Permission
 				case "screen_recording": {
 					const granted = await requestScreenRecordingAccess();
 					if (!granted) {
+						await moveWindowOutOfTheWayForSystemSettings();
 						await openPermissionSettings("screenRecording");
 					}
 					break;
@@ -200,6 +229,7 @@ export function PermissionOnboarding({ permissionsHook, onComplete }: Permission
 				case "microphone": {
 					const granted = await requestMicrophoneAccess();
 					if (!granted) {
+						await moveWindowOutOfTheWayForSystemSettings();
 						await openPermissionSettings("microphone");
 					}
 					break;
@@ -207,19 +237,21 @@ export function PermissionOnboarding({ permissionsHook, onComplete }: Permission
 				case "camera": {
 					const granted = await requestCameraAccess();
 					if (!granted) {
+						await moveWindowOutOfTheWayForSystemSettings();
 						await openPermissionSettings("camera");
 					}
 					break;
 				}
 			}
 			// Small delay to let the OS update TCC state
-			await new Promise((r) => setTimeout(r, 500));
+			await new Promise((r) => setTimeout(r, PERMISSION_STATE_REFRESH_DELAY_MS));
 			await refreshPermissions();
 		} finally {
 			setIsRequesting(false);
 		}
 	}, [
 		step,
+		moveWindowOutOfTheWayForSystemSettings,
 		requestScreenRecordingAccess,
 		requestMicrophoneAccess,
 		requestCameraAccess,
@@ -248,6 +280,7 @@ export function PermissionOnboarding({ permissionsHook, onComplete }: Permission
 						</div>
 						<button
 							onClick={advanceStep}
+							data-no-window-drag="true"
 							className={`mt-1 px-6 py-2 rounded-full bg-blue-500 hover:bg-blue-400 text-white text-sm font-medium transition-colors cursor-pointer ${styles.tauriNoDrag}`}
 						>
 							Get Started
@@ -300,6 +333,7 @@ export function PermissionOnboarding({ permissionsHook, onComplete }: Permission
 						<PermissionSummary permissions={permissions} />
 						<button
 							onClick={() => void handleComplete()}
+							data-no-window-drag="true"
 							className={`mt-1 px-6 py-2 rounded-full bg-blue-500 hover:bg-blue-400 text-white text-sm font-medium transition-colors cursor-pointer ${styles.tauriNoDrag}`}
 						>
 							Start Recording
@@ -352,6 +386,7 @@ export function PermissionOnboarding({ permissionsHook, onComplete }: Permission
 					{isGranted ? (
 						<button
 							onClick={advanceStep}
+							data-no-window-drag="true"
 							className={`px-5 py-2 rounded-full bg-blue-500 hover:bg-blue-400 text-white text-sm font-medium transition-colors cursor-pointer ${styles.tauriNoDrag}`}
 						>
 							Continue
@@ -361,6 +396,7 @@ export function PermissionOnboarding({ permissionsHook, onComplete }: Permission
 							<button
 								onClick={() => void handleGrantPermission()}
 								disabled={isRequesting}
+								data-no-window-drag="true"
 								className={`px-5 py-2 rounded-full bg-blue-500 hover:bg-blue-400 disabled:opacity-50 text-white text-sm font-medium transition-colors cursor-pointer disabled:cursor-not-allowed ${styles.tauriNoDrag}`}
 							>
 								{isRequesting ? (
@@ -377,6 +413,7 @@ export function PermissionOnboarding({ permissionsHook, onComplete }: Permission
 							{!required && (
 								<button
 									onClick={advanceStep}
+									data-no-window-drag="true"
 									className={`px-4 py-2 rounded-full text-white/50 hover:text-white/80 text-sm transition-colors cursor-pointer ${styles.tauriNoDrag}`}
 								>
 									Skip
@@ -392,6 +429,8 @@ export function PermissionOnboarding({ permissionsHook, onComplete }: Permission
 	return (
 		<div className="w-full h-full flex items-center justify-center">
 			<div
+				data-window-drag-surface="true"
+				onPointerDown={handleCardPointerDown}
 				className={`flex flex-col items-center gap-5 w-full max-w-[440px] px-6 py-6 rounded-[22px] ${styles.tauriDrag}`}
 				style={{
 					background: "linear-gradient(135deg, rgba(28,28,36,0.97) 0%, rgba(18,18,26,0.96) 100%)",

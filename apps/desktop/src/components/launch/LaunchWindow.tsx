@@ -21,7 +21,6 @@ import {
 	Video,
 	X,
 } from "lucide-react";
-import { APP_UPDATER_CHECK_EVENT, APP_UPDATER_STATUS_EVENT } from "@/components/AppUpdaterDialog";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BsRecordCircle } from "react-icons/bs";
 import {
@@ -34,6 +33,7 @@ import {
 	MdVolumeUp,
 } from "react-icons/md";
 import { RxDragHandleDots2 } from "react-icons/rx";
+import { APP_UPDATER_CHECK_EVENT, APP_UPDATER_STATUS_EVENT } from "@/components/AppUpdaterDialog";
 import { buildEditorWindowQuery } from "@/components/video-editor/editorWindowParams";
 import { useI18n, useScopedT } from "@/contexts/I18nContext";
 import * as backend from "@/lib/backend";
@@ -44,7 +44,11 @@ import { useMicrophoneDevices } from "../../hooks/useMicrophoneDevices";
 import { usePermissions } from "../../hooks/usePermissions";
 import { useScreenRecorder } from "../../hooks/useScreenRecorder";
 import { microphoneMachine } from "../../machines/microphoneMachine";
-import { isOnboardingComplete, PermissionOnboarding } from "../onboarding/PermissionOnboarding";
+import {
+	isOnboardingComplete,
+	PermissionOnboarding,
+	resetOnboarding,
+} from "../onboarding/PermissionOnboarding";
 import { AudioLevelMeter } from "../ui/audio-level-meter";
 import { Button } from "../ui/button";
 import { ContentClamp } from "../ui/content-clamp";
@@ -63,6 +67,7 @@ type View = "onboarding" | "choice" | "screenshot" | "recording";
 type ScreenshotMode = "screen" | "window" | "area";
 type HudToolbarLayout = "normal" | "expanded";
 type ManualUpdateCheckState = "idle" | "checking" | "up-to-date" | "error";
+const SHOW_DEV_ONBOARDING_RESET = import.meta.env.DEV;
 
 function getInitialHideHudFromRecording() {
 	if (typeof window === "undefined") {
@@ -863,6 +868,14 @@ export function LaunchWindow() {
 		setHideHudFromRecording((current) => !current);
 	};
 
+	const reopenOnboardingFromMenu = () => {
+		resetOnboarding();
+		setCameraPopoverOpen(false);
+		setCountdownPopoverOpen(false);
+		setMoreMenuOpen(false);
+		setView("onboarding");
+	};
+
 	const handleToolbarMinimize = () => {
 		micSend({ type: "CLOSE_POPOVER" });
 		setCameraPopoverOpen(false);
@@ -1086,6 +1099,14 @@ export function LaunchWindow() {
 							selected={hideHudFromRecording}
 							onSelect={toggleHideHudFromRecordingFromMenu}
 						/>
+						{SHOW_DEV_ONBOARDING_RESET && (
+							<DeviceRow
+								icon={<RefreshCw size={15} />}
+								label={t("recording.testPermissionsOnboarding", "Test permissions onboarding")}
+								selected={false}
+								onSelect={reopenOnboardingFromMenu}
+							/>
+						)}
 					</div>
 				</>
 			)}
