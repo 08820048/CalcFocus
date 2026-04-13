@@ -12,7 +12,7 @@
 		"url": "https://github.com/08820048/CalcFocus/issues"
 	},
 	"private": true,
-	"version": "0.0.20",
+	"version": "1.0.0",
 	"packageManager": "pnpm@10.17.1",
 	"type": "module",
 	"scripts": {

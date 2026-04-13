@@ -1163,7 +1163,7 @@ dependencies = [
 
 [[package]]
 name = "fluxlocus"
-version = "0.0.20"
+version = "1.0.0"
 dependencies = [
  "block",
  "cocoa",

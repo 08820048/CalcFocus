@@ -137,9 +137,8 @@ function bumpVersion(baseVersion, releaseType) {
 	}
 }
 
-function currentPackageVersion() {
-	const packageJson = JSON.parse(readFileSync(desktopPackageJsonPath, "utf8"));
-	return packageJson.version;
+function readDesktopPackageJson() {
+	return JSON.parse(readFileSync(desktopPackageJsonPath, "utf8"));
 }
 
 function latestSemverTagVersion() {
@@ -178,7 +177,7 @@ function syncVersionFiles(nextVersion) {
 	updateJsonVersion(resolve(tauriRoot, "tauri.conf.json"), nextVersion, 2);
 	updateTextVersion(
 		resolve(tauriRoot, "Cargo.lock"),
-		/(\[\[package\]\]\s+name = "open-recorder"\s+version = ")\d+\.\d+\.\d+(")/m,
+		/(\[\[package\]\]\s+name = "fluxlocus"\s+version = ")\d+\.\d+\.\d+(")/m,
 		`$1${nextVersion}$2`,
 	);
 	updateJsonVersion(desktopPackageJsonPath, nextVersion, "\t");
@@ -266,12 +265,14 @@ function buildPrBody({
 }
 
 const args = parseArgs(process.argv.slice(2));
-const packageVersion = currentPackageVersion();
+const desktopPackage = readDesktopPackageJson();
+const packageVersion = desktopPackage.version;
+const productName = desktopPackage.productName || "CalcFocus";
 const latestTagVersion = latestSemverTagVersion();
 const { baseVersion, versionSource } = determineBaseVersion(packageVersion, latestTagVersion);
 const nextVersion = bumpVersion(baseVersion, args.releaseType);
 const tagName = `v${nextVersion}`;
-const releaseName = args.name || `Open Recorder v${nextVersion}`;
+const releaseName = args.name || `${productName} v${nextVersion}`;
 const makeLatest = args.latest === "true";
 const releaseNotes = args.notes;
 const branchName = `release/${tagName}`;

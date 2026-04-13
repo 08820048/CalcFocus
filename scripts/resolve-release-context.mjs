@@ -115,9 +115,8 @@ function appendGithubOutput(filePath, name, value) {
 	appendFileSync(filePath, `${name}=${stringValue}\n`);
 }
 
-function currentPackageVersion() {
-	const packageJson = JSON.parse(readFileSync(desktopPackageJsonPath, "utf8"));
-	return packageJson.version;
+function readDesktopPackageJson() {
+	return JSON.parse(readFileSync(desktopPackageJsonPath, "utf8"));
 }
 
 function previousPackageVersion(beforeSha) {
@@ -144,20 +143,22 @@ function readReleasePlan() {
 }
 
 const args = parseArgs(process.argv.slice(2));
-const currentVersion = currentPackageVersion();
+const desktopPackage = readDesktopPackageJson();
+const currentVersion = desktopPackage.version;
+const productName = desktopPackage.productName || "CalcFocus";
 const defaultTagName = `v${currentVersion}`;
 const releasePlan = readReleasePlan();
 
 let shouldRelease = false;
 let tagName = defaultTagName;
-let releaseName = `Open Recorder ${defaultTagName}`;
+let releaseName = `${productName} ${defaultTagName}`;
 let releaseNotes = "";
 let makeLatest = "true";
 
 if (args.eventName === "workflow_dispatch") {
 	shouldRelease = true;
 	tagName = args.tagName || defaultTagName;
-	releaseName = args.releaseName || `Open Recorder ${tagName}`;
+	releaseName = args.releaseName || `${productName} ${tagName}`;
 	releaseNotes = args.releaseNotes;
 	makeLatest = args.makeLatest || "true";
 } else if (args.eventName === "push") {
@@ -170,7 +171,7 @@ if (args.eventName === "workflow_dispatch") {
 		}
 
 		tagName = releasePlan.tagName;
-		releaseName = releasePlan.releaseName || `Open Recorder ${tagName}`;
+		releaseName = releasePlan.releaseName || `${productName} ${tagName}`;
 		releaseNotes = releasePlan.releaseNotes || "";
 		makeLatest = String(releasePlan.makeLatest ?? true);
 	}

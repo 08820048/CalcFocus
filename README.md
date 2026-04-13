@@ -10,7 +10,7 @@
 </p>
 
 ### Create polished, pro-grade screen recordings and screenshots.
-[Open Recorder](https://github.com/imbhargav5/open-recorder) is an **open-source screen recorder, screenshot tool, and editor** for creating **polished walkthroughs, demos, tutorials, and product videos**. Contribution encouraged.
+[Open Recorder](https://github.com/08820048/CalcFocus) is an **open-source screen recorder, screenshot tool, and editor** for creating **polished walkthroughs, demos, tutorials, and product videos**. Contribution encouraged.
 
 <p align="center">
   <img src="./open-recorder-demo.gif" width="750" alt="Open Recorder demo video">
@@ -120,7 +120,7 @@ Linux currently uses the browser capture path, which means the OS cursor cannot 
 
 Prebuilt releases are available here:
 
-https://github.com/imbhargav5/open-recorder/releases
+https://github.com/08820048/CalcFocus/releases
 
 ## Homebrew (Cask)
 
@@ -138,7 +138,7 @@ brew install --cask open-recorder
 ## Build from source
 
 ```bash
-git clone https://github.com/imbhargav5/open-recorder.git
+git clone https://github.com/08820048/CalcFocus.git
 cd open-recorder
 pnpm install
 pnpm dev
@@ -154,14 +154,19 @@ pnpm dev:prod
 
 ---
 
-## Signed macOS releases in GitHub Actions
+## Desktop releases in GitHub Actions
 
 The repository release flow uses two GitHub Actions workflows:
 
 - `.github/workflows/release-pr.yml` computes the next version and opens or updates a release PR.
 - `.github/workflows/release.yml` runs after that PR is merged to `main`, then builds and publishes the signed release artifacts.
 
-The release workflows use Tauri to produce signed and notarized macOS DMGs, Windows NSIS installers, and Linux AppImages when these GitHub repository secrets are configured:
+The release workflows always need the Tauri updater signing secrets, and they optionally use Apple signing secrets when you want fully signed and notarized macOS releases:
+
+- `TAURI_SIGNING_PRIVATE_KEY`: Tauri updater signing private key
+- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`: password for the signing key (optional)
+
+Add the Apple secrets below only after you have a paid Apple Developer account and a `Developer ID Application` certificate:
 
 - `APPLE_CERTIFICATE`: base64-encoded `Developer ID Application` `.p12` certificate export
 - `APPLE_CERTIFICATE_PASSWORD`: password used when exporting the `.p12`
@@ -169,8 +174,6 @@ The release workflows use Tauri to produce signed and notarized macOS DMGs, Wind
 - `APPLE_ID`: Apple Developer account email
 - `APPLE_APP_SPECIFIC_PASSWORD`: app-specific password for notarization
 - `APPLE_TEAM_ID`: your Apple Developer team ID
-- `TAURI_SIGNING_PRIVATE_KEY`: Tauri updater signing private key
-- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`: password for the signing key (optional)
 
 This repo now includes two helper scripts:
 
@@ -182,7 +185,7 @@ pnpm release:minor
 pnpm release:major
 ```
 
-`release:setup-macos-signing` detects the local `Developer ID Application` identity, exports a `.p12`, and uploads the GitHub secrets.
+`release:setup-macos-signing` detects the local `Developer ID Application` identity, exports a `.p12`, and uploads the GitHub Apple signing secrets.
 
 `release:dispatch` uses an interactive selector to choose patch, minor, or major, then dispatches `.github/workflows/release-pr.yml`.
 
@@ -198,7 +201,7 @@ All three scripts call the same dispatcher under the hood and still support extr
 
 ```bash
 pnpm release:patch -- --notes "Bug fixes and stability improvements"
-pnpm release:minor -- --name "Open Recorder v1.4.0" --yes
+pnpm release:minor -- --name "CalcFocus v1.4.0" --yes
 pnpm release:major -- --latest false
 ```
 
@@ -215,7 +218,7 @@ Inside GitHub Actions, `.github/workflows/release-pr.yml` then:
 2. Reads `apps/desktop/package.json` and the latest local `v*` tag.
 3. Uses whichever version is newer as the base version.
 4. Computes the next patch, minor, or major version.
-5. Syncs `apps/desktop/package.json`, `apps/desktop/src-tauri/Cargo.toml`, `apps/desktop/src-tauri/tauri.conf.json`, and the `open-recorder` entry inside `apps/desktop/src-tauri/Cargo.lock`.
+5. Syncs `apps/desktop/package.json`, `apps/desktop/src-tauri/Cargo.toml`, `apps/desktop/src-tauri/tauri.conf.json`, and the `fluxlocus` entry inside `apps/desktop/src-tauri/Cargo.lock`.
 6. Writes `.github/release-plan.json` with the release title, notes, and latest flag.
 7. Opens or updates the release PR.
 
@@ -226,6 +229,8 @@ After that PR is merged, `.github/workflows/release.yml` automatically:
 3. Builds macOS arm64, macOS x64, Windows x64, and Linux x64 artifacts.
 4. Generates `latest.json` for the updater.
 5. Creates or updates the GitHub release.
+
+Without Apple signing secrets, the workflow can still produce updater-signed artifacts for development and internal testing. The extra Apple secrets are only what upgrades the macOS build into a notarized public release.
 
 There is also a project skill at `skills/publish-github-release/` that captures this release flow for compatible agents.
 
@@ -461,7 +466,7 @@ See `CONTRIBUTING.md` for guidelines.
 
 Bug reports and feature requests:
 
-https://github.com/imbhargav5/open-recorder/issues
+https://github.com/08820048/CalcFocus/issues
 
 Pull requests are welcome.
 
