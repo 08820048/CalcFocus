@@ -16,6 +16,7 @@ import type {
 	PermissionStatus,
 	UsePermissionsResult,
 } from "../../hooks/usePermissions";
+import styles from "./PermissionOnboarding.module.css";
 
 const ONBOARDING_COMPLETE_KEY = "calcfocus-onboarding-v1";
 const LEGACY_ONBOARDING_COMPLETE_KEYS = ["fluxlocus-onboarding-v1"];
@@ -129,12 +130,25 @@ export function PermissionOnboarding({ permissionsHook, onComplete }: Permission
 		void (async () => {
 			await win.setSize(new LogicalSize(ONBOARDING_WINDOW_WIDTH, ONBOARDING_WINDOW_HEIGHT));
 			await win.center();
+			if (isMacOS) {
+				// Let system permission prompts and System Settings stay accessible while onboarding is active.
+				await win.setAlwaysOnTop(false);
+			}
 		})();
-	}, []);
+		return () => {
+			if (!isMacOS) return;
+			void win.setAlwaysOnTop(true).catch(() => {
+				// Ignore teardown races when the window is already closing.
+			});
+		};
+	}, [isMacOS]);
 
 	// Restore the HUD window to its normal size and re-position to bottom-center
 	const restoreWindowSize = useCallback(async () => {
 		const win = getCurrentWindow();
+		if (isMacOS) {
+			await win.setAlwaysOnTop(true);
+		}
 		await win.setSize(new LogicalSize(HUD_WIDTH, HUD_HEIGHT));
 
 		try {
@@ -150,7 +164,7 @@ export function PermissionOnboarding({ permissionsHook, onComplete }: Permission
 		} catch {
 			await win.center();
 		}
-	}, []);
+	}, [isMacOS]);
 
 	const handleComplete = useCallback(async () => {
 		try {
@@ -234,7 +248,7 @@ export function PermissionOnboarding({ permissionsHook, onComplete }: Permission
 						</div>
 						<button
 							onClick={advanceStep}
-							className="mt-1 px-6 py-2 rounded-full bg-blue-500 hover:bg-blue-400 text-white text-sm font-medium transition-colors cursor-pointer"
+							className={`mt-1 px-6 py-2 rounded-full bg-blue-500 hover:bg-blue-400 text-white text-sm font-medium transition-colors cursor-pointer ${styles.tauriNoDrag}`}
 						>
 							Get Started
 						</button>
@@ -286,7 +300,7 @@ export function PermissionOnboarding({ permissionsHook, onComplete }: Permission
 						<PermissionSummary permissions={permissions} />
 						<button
 							onClick={() => void handleComplete()}
-							className="mt-1 px-6 py-2 rounded-full bg-blue-500 hover:bg-blue-400 text-white text-sm font-medium transition-colors cursor-pointer"
+							className={`mt-1 px-6 py-2 rounded-full bg-blue-500 hover:bg-blue-400 text-white text-sm font-medium transition-colors cursor-pointer ${styles.tauriNoDrag}`}
 						>
 							Start Recording
 						</button>
@@ -338,7 +352,7 @@ export function PermissionOnboarding({ permissionsHook, onComplete }: Permission
 					{isGranted ? (
 						<button
 							onClick={advanceStep}
-							className="px-5 py-2 rounded-full bg-blue-500 hover:bg-blue-400 text-white text-sm font-medium transition-colors cursor-pointer"
+							className={`px-5 py-2 rounded-full bg-blue-500 hover:bg-blue-400 text-white text-sm font-medium transition-colors cursor-pointer ${styles.tauriNoDrag}`}
 						>
 							Continue
 						</button>
@@ -347,7 +361,7 @@ export function PermissionOnboarding({ permissionsHook, onComplete }: Permission
 							<button
 								onClick={() => void handleGrantPermission()}
 								disabled={isRequesting}
-								className="px-5 py-2 rounded-full bg-blue-500 hover:bg-blue-400 disabled:opacity-50 text-white text-sm font-medium transition-colors cursor-pointer disabled:cursor-not-allowed"
+								className={`px-5 py-2 rounded-full bg-blue-500 hover:bg-blue-400 disabled:opacity-50 text-white text-sm font-medium transition-colors cursor-pointer disabled:cursor-not-allowed ${styles.tauriNoDrag}`}
 							>
 								{isRequesting ? (
 									<span className="flex items-center gap-2">
@@ -363,7 +377,7 @@ export function PermissionOnboarding({ permissionsHook, onComplete }: Permission
 							{!required && (
 								<button
 									onClick={advanceStep}
-									className="px-4 py-2 rounded-full text-white/50 hover:text-white/80 text-sm transition-colors cursor-pointer"
+									className={`px-4 py-2 rounded-full text-white/50 hover:text-white/80 text-sm transition-colors cursor-pointer ${styles.tauriNoDrag}`}
 								>
 									Skip
 								</button>
@@ -378,7 +392,7 @@ export function PermissionOnboarding({ permissionsHook, onComplete }: Permission
 	return (
 		<div className="w-full h-full flex items-center justify-center">
 			<div
-				className="flex flex-col items-center gap-5 w-full max-w-[440px] px-6 py-6 rounded-[22px]"
+				className={`flex flex-col items-center gap-5 w-full max-w-[440px] px-6 py-6 rounded-[22px] ${styles.tauriDrag}`}
 				style={{
 					background: "linear-gradient(135deg, rgba(28,28,36,0.97) 0%, rgba(18,18,26,0.96) 100%)",
 					backdropFilter: "blur(16px) saturate(140%)",

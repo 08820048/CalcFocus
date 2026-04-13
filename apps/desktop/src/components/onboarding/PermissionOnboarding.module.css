@@ -1,0 +1,7 @@
+.tauriDrag {
+	-webkit-app-region: drag;
+}
+
+.tauriNoDrag {
+	-webkit-app-region: no-drag;
+}

@@ -402,6 +402,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "calcfocus"
+version = "1.0.1"
+dependencies = [
+ "block",
+ "cocoa",
+ "dirs 5.0.1",
+ "objc",
+ "open",
+ "percent-encoding",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-clipboard-manager",
+ "tauri-plugin-dialog",
+ "tauri-plugin-fs",
+ "tauri-plugin-global-shortcut",
+ "tauri-plugin-notification",
+ "tauri-plugin-os",
+ "tauri-plugin-process",
+ "tauri-plugin-shell",
+ "tauri-plugin-updater",
+ "tokio",
+ "uuid",
+ "x11rb",
+]
+
+[[package]]
 name = "camino"
 version = "1.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1159,34 +1187,6 @@ checksum = "843fba2746e448b37e26a819579957415c8cef339bf08564fe8b7ddbd959573c"
 dependencies = [
  "crc32fast",
  "miniz_oxide",
-]
-
-[[package]]
-name = "calcfocus"
-version = "1.0.0"
-dependencies = [
- "block",
- "cocoa",
- "dirs 5.0.1",
- "objc",
- "open",
- "percent-encoding",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-clipboard-manager",
- "tauri-plugin-dialog",
- "tauri-plugin-fs",
- "tauri-plugin-global-shortcut",
- "tauri-plugin-notification",
- "tauri-plugin-os",
- "tauri-plugin-process",
- "tauri-plugin-shell",
- "tauri-plugin-updater",
- "tokio",
- "uuid",
- "x11rb",
 ]
 
 [[package]]
