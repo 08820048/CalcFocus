@@ -167,13 +167,15 @@ if (args.eventName === "workflow_dispatch") {
 
 	if (releasePlan?.tagName) {
 		if (releasePlan.tagName !== defaultTagName) {
-			die(`release-plan tag ${releasePlan.tagName} does not match package version ${defaultTagName}`);
+			console.warn(
+				`Warning: ignoring stale release-plan tag ${releasePlan.tagName}; expected ${defaultTagName}.`,
+			);
+		} else {
+			tagName = releasePlan.tagName;
+			releaseName = releasePlan.releaseName || `${productName} ${tagName}`;
+			releaseNotes = releasePlan.releaseNotes || "";
+			makeLatest = String(releasePlan.makeLatest ?? true);
 		}
-
-		tagName = releasePlan.tagName;
-		releaseName = releasePlan.releaseName || `${productName} ${tagName}`;
-		releaseNotes = releasePlan.releaseNotes || "";
-		makeLatest = String(releasePlan.makeLatest ?? true);
 	}
 } else {
 	die(`Unsupported event name: ${args.eventName}`);
