@@ -55,21 +55,25 @@ enum ScreenCaptureAccessStatus: String {
 	case denied
 }
 
+final class ScreenCaptureProbeBox: @unchecked Sendable {
+	var succeeded = false
+}
+
 func canCaptureMainDisplay() -> Bool {
 	let semaphore = DispatchSemaphore(value: 0)
-	var probeSucceeded = false
+	let probe = ScreenCaptureProbeBox()
 
 	Task.detached(priority: .userInitiated) {
 		defer { semaphore.signal() }
 		do {
 			_ = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
-			probeSucceeded = true
+			probe.succeeded = true
 		} catch {
-			probeSucceeded = false
+			probe.succeeded = false
 		}
 	}
 
-	return semaphore.wait(timeout: .now() + 2.0) == .success && probeSucceeded
+	return semaphore.wait(timeout: .now() + 2.0) == .success && probe.succeeded
 }
 
 @discardableResult
