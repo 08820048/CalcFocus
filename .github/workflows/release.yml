@@ -143,8 +143,38 @@ jobs:
 
       - name: Build Tauri app
         # GitHub's macOS arm64 runners intermittently fail in create-dmg's
-        # Finder/AppleScript phase. The updater only needs the .app.tar.gz.
+        # Finder/AppleScript phase, so build the app bundle first and create a
+        # plain installable DMG ourselves in the next step.
         run: pnpm --filter @calcfocus/desktop tauri build --target aarch64-apple-darwin --bundles app
+
+      - name: Build macOS arm64 DMG
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          VERSION="${{ needs.resolve-release.outputs.tag_name }}"
+          VERSION="${VERSION#v}"
+          APP_PATH="apps/desktop/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/CalcFocus.app"
+          DMG_DIR="apps/desktop/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg"
+          DMG_PATH="${DMG_DIR}/CalcFocus_${VERSION}_aarch64.dmg"
+          STAGE_DIR="$(mktemp -d)"
+
+          cleanup() {
+            rm -rf "$STAGE_DIR"
+          }
+          trap cleanup EXIT
+
+          mkdir -p "$DMG_DIR"
+          ditto "$APP_PATH" "$STAGE_DIR/CalcFocus.app"
+          ln -s /Applications "$STAGE_DIR/Applications"
+
+          rm -f "$DMG_PATH"
+          hdiutil create \
+            -volname "CalcFocus" \
+            -srcfolder "$STAGE_DIR" \
+            -ov \
+            -format UDZO \
+            "$DMG_PATH"
 
       - name: Upload macOS arm64 artifact
         uses: actions/upload-artifact@v4
