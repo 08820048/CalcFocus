@@ -399,10 +399,8 @@ async fn write_cursor_telemetry_sidecar(
     timestamp_adjustment_ms: Option<f64>,
 ) -> Result<(), String> {
     let telemetry_path = telemetry_path_for_video(video_path);
-    let payload = cursor_telemetry_payload(apply_timestamp_adjustment(
-        samples,
-        timestamp_adjustment_ms,
-    ));
+    let payload =
+        cursor_telemetry_payload(apply_timestamp_adjustment(samples, timestamp_adjustment_ms));
     let serialized = serde_json::to_vec_pretty(&payload).map_err(|error| error.to_string())?;
     tokio::fs::write(&telemetry_path, serialized)
         .await
@@ -478,7 +476,7 @@ pub async fn stop_cursor_telemetry_capture(
                 &Vec::<CursorTelemetryPoint>::new(),
                 timestamp_adjustment_ms,
             )
-                .await?;
+            .await?;
         }
         return Ok(());
     };
@@ -784,12 +782,9 @@ mod tests {
             click_type: None,
         }];
 
-        let result = write_cursor_telemetry_sidecar(
-            video_path.to_string_lossy().as_ref(),
-            &samples,
-            None,
-        )
-        .await;
+        let result =
+            write_cursor_telemetry_sidecar(video_path.to_string_lossy().as_ref(), &samples, None)
+                .await;
         assert!(result.is_ok());
 
         let written = tokio::fs::read_to_string(&telemetry_path).await.unwrap();

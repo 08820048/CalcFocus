@@ -4,6 +4,14 @@ use tauri::AppHandle;
 use block::ConcreteBlock;
 
 #[cfg(target_os = "macos")]
+use core_foundation::{
+    base::TCFType,
+    boolean::CFBoolean,
+    dictionary::{CFDictionary, CFDictionaryRef},
+    string::{CFString, CFStringRef},
+};
+
+#[cfg(target_os = "macos")]
 #[allow(unused_imports)]
 use objc::{sel, sel_impl};
 
@@ -82,25 +90,40 @@ pub async fn open_screen_recording_preferences() -> Result<(), String> {
 
 // ─── Accessibility ──────────────────────────────────────────────────────────
 
+#[cfg(target_os = "macos")]
+#[link(name = "ApplicationServices", kind = "framework")]
+unsafe extern "C" {
+    fn AXIsProcessTrusted() -> bool;
+    fn AXIsProcessTrustedWithOptions(options: CFDictionaryRef) -> bool;
+    static kAXTrustedCheckOptionPrompt: CFStringRef;
+}
+
+#[cfg(target_os = "macos")]
+fn preflight_accessibility_access() -> bool {
+    unsafe { AXIsProcessTrusted() }
+}
+
+#[cfg(target_os = "macos")]
+fn request_accessibility_access() -> bool {
+    unsafe {
+        let prompt_key = CFString::wrap_under_get_rule(kAXTrustedCheckOptionPrompt);
+        let options: CFDictionary<CFString, CFBoolean> =
+            CFDictionary::from_CFType_pairs(&[(prompt_key, CFBoolean::true_value())]);
+
+        AXIsProcessTrustedWithOptions(options.as_concrete_TypeRef())
+    }
+}
+
 #[tauri::command]
 pub async fn get_accessibility_permission_status() -> Result<String, String> {
     #[cfg(target_os = "macos")]
     {
-        // Use the macOS accessibility API to check status
-        let output = tokio::process::Command::new("osascript")
-            .args([
-                "-e",
-                "tell application \"System Events\" to return (exists process 1)",
-            ])
-            .output()
-            .await
-            .map_err(|e| e.to_string())?;
-
-        if output.status.success() {
-            Ok("granted".to_string())
+        Ok(if preflight_accessibility_access() {
+            "granted"
         } else {
-            Ok("denied".to_string())
+            "denied"
         }
+        .to_string())
     }
 
     #[cfg(not(target_os = "macos"))]
@@ -110,17 +133,15 @@ pub async fn get_accessibility_permission_status() -> Result<String, String> {
 }
 
 #[tauri::command]
-pub async fn request_accessibility_permission() -> Result<bool, String> {
+pub async fn request_accessibility_permission(app: AppHandle) -> Result<bool, String> {
     #[cfg(target_os = "macos")]
     {
-        // Opening accessibility preferences prompts the user
-        open::that("x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
-            .map_err(|e| e.to_string())?;
-        Ok(true)
+        run_on_main_thread(&app, request_accessibility_access)
     }
 
     #[cfg(not(target_os = "macos"))]
     {
+        let _ = app;
         Ok(true)
     }
 }

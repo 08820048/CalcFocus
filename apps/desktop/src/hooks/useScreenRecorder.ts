@@ -402,28 +402,30 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 
 	const buildRecordingTarget = useCallback(
 		(options: { preferMp4?: boolean } = {}): RecordingTarget => {
-			const preferred = options.preferMp4 && isMacOS
-				? [
-						"video/mp4;codecs=avc1.42E01E",
-						'video/mp4;codecs="avc1.42E01E"',
-						"video/mp4;codecs=h264",
-						'video/mp4;codecs="h264"',
-						"video/mp4",
-						"video/webm;codecs=av1",
-						"video/webm;codecs=h264",
-						"video/webm;codecs=vp9",
-						"video/webm;codecs=vp8",
-						"video/webm",
-					]
-				: [
-						"video/webm;codecs=av1",
-						"video/webm;codecs=h264",
-						"video/webm;codecs=vp9",
-						"video/webm;codecs=vp8",
-						"video/webm",
-					];
+			const preferred =
+				options.preferMp4 && isMacOS
+					? [
+							"video/mp4;codecs=avc1.42E01E",
+							'video/mp4;codecs="avc1.42E01E"',
+							"video/mp4;codecs=h264",
+							'video/mp4;codecs="h264"',
+							"video/mp4",
+							"video/webm;codecs=av1",
+							"video/webm;codecs=h264",
+							"video/webm;codecs=vp9",
+							"video/webm;codecs=vp8",
+							"video/webm",
+						]
+					: [
+							"video/webm;codecs=av1",
+							"video/webm;codecs=h264",
+							"video/webm;codecs=vp9",
+							"video/webm;codecs=vp8",
+							"video/webm",
+						];
 
-			const mimeType = preferred.find((type) => MediaRecorder.isTypeSupported(type)) ?? "video/webm";
+			const mimeType =
+				preferred.find((type) => MediaRecorder.isTypeSupported(type)) ?? "video/webm";
 
 			return {
 				mimeType,
@@ -492,8 +494,8 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 						await backend.openScreenRecordingPreferences();
 						alert(
 							options.startup
-								? "CalcFocus needs Screen Recording permission before you start. System Settings has been opened. After enabling it, quit and reopen CalcFocus."
-								: "Screen Recording permission is still missing. System Settings has been opened again. Enable it, then quit and reopen CalcFocus before recording.",
+								? "CalcFocus needs Screen Recording permission before you start. System Settings has been opened. After enabling it, return to CalcFocus and try again. If macOS still doesn't update the permission immediately, restart CalcFocus once."
+								: "Screen Recording permission is still missing. System Settings has been opened again. Enable it, return to CalcFocus, and try recording again. If macOS still doesn't update the permission immediately, restart CalcFocus once.",
 						);
 						return false;
 					}
@@ -508,8 +510,8 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 					await backend.openAccessibilityPreferences();
 					alert(
 						options.startup
-							? "CalcFocus also needs Accessibility permission for cursor tracking. System Settings has been opened. After enabling it, quit and reopen CalcFocus."
-							: "Accessibility permission is still missing. System Settings has been opened again. Enable it, then quit and reopen CalcFocus before recording.",
+							? "CalcFocus also needs Accessibility permission for cursor tracking. System Settings has been opened. After enabling it, return to CalcFocus and try again. If macOS still doesn't update the permission immediately, restart CalcFocus once."
+							: "Accessibility permission is still missing. System Settings has been opened again. Enable it, return to CalcFocus, and try recording again. If macOS still doesn't update the permission immediately, restart CalcFocus once.",
 					);
 					return false;
 				}

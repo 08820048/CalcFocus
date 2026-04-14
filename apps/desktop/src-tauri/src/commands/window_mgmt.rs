@@ -83,22 +83,18 @@ pub async fn open_source_selector(app: AppHandle, tab: Option<String>) -> Result
     let tab_param = tab.unwrap_or_default();
     let url = format!("index.html?windowType=source-selector&tab={}", tab_param);
 
-    WebviewWindowBuilder::new(
-        &app,
-        "source-selector",
-        WebviewUrl::App(url.into()),
-    )
-    .title("Select Source")
-    .inner_size(660.0, 820.0)
-    .min_inner_size(400.0, 300.0)
-    .resizable(true)
-    .decorations(false)
-    .transparent(true)
-    .always_on_top(true)
-    .skip_taskbar(true)
-    .center()
-    .build()
-    .map_err(|e: tauri::Error| e.to_string())?;
+    WebviewWindowBuilder::new(&app, "source-selector", WebviewUrl::App(url.into()))
+        .title("Select Source")
+        .inner_size(660.0, 820.0)
+        .min_inner_size(400.0, 300.0)
+        .resizable(true)
+        .decorations(false)
+        .transparent(true)
+        .always_on_top(true)
+        .skip_taskbar(true)
+        .center()
+        .build()
+        .map_err(|e: tauri::Error| e.to_string())?;
 
     Ok(())
 }

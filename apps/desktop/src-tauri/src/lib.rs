@@ -32,8 +32,7 @@ fn compute_hud_position(
     monitor_y: i32,
     scale: f64,
 ) -> (i32, i32) {
-    let logical_x =
-        monitor_x as f64 + (monitor_width as f64 / scale - HUD_WIDTH) / 2.0;
+    let logical_x = monitor_x as f64 + (monitor_width as f64 / scale - HUD_WIDTH) / 2.0;
     let logical_y =
         monitor_y as f64 + (monitor_height as f64 / scale - HUD_HEIGHT) - HUD_BOTTOM_MARGIN;
     ((logical_x * scale) as i32, (logical_y * scale) as i32)

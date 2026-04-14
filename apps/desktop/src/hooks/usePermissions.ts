@@ -10,7 +10,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as backend from "@/lib/backend";
 
-export type PermissionStatus = "granted" | "denied" | "not_determined" | "restricted" | "unknown" | "checking";
+export type PermissionStatus =
+	| "granted"
+	| "denied"
+	| "not_determined"
+	| "restricted"
+	| "unknown"
+	| "checking";
 
 export interface PermissionState {
 	screenRecording: PermissionStatus;
@@ -25,6 +31,8 @@ export interface UsePermissionsResult {
 	isChecking: boolean;
 	/** Re-check all permission statuses from the OS */
 	refreshPermissions: () => Promise<PermissionState>;
+	/** Request accessibility permission (macOS-specific) */
+	requestAccessibilityAccess: () => Promise<boolean>;
 	/** Request microphone permission via getUserMedia (triggers OS prompt if not_determined) */
 	requestMicrophoneAccess: () => Promise<boolean>;
 	/** Request camera permission via getUserMedia (triggers OS prompt if not_determined) */
@@ -141,6 +149,16 @@ export function usePermissions(): UsePermissionsResult {
 		return requestBrowserMediaAccess({ audio: false, video: true }, "camera");
 	}, [isMacOS, refreshPermissions, requestBrowserMediaAccess]);
 
+	const requestAccessibilityAccess = useCallback(async (): Promise<boolean> => {
+		if (!isMacOS) {
+			return true;
+		}
+
+		const granted = await backend.requestAccessibilityPermission().catch(() => false);
+		const state = await refreshPermissions();
+		return granted || state.accessibility === "granted";
+	}, [isMacOS, refreshPermissions]);
+
 	const requestScreenRecordingAccess = useCallback(async (): Promise<boolean> => {
 		const granted = await backend.requestScreenRecordingPermission().catch(() => false);
 		if (granted) {
@@ -194,6 +212,7 @@ export function usePermissions(): UsePermissionsResult {
 		isMacOS,
 		isChecking,
 		refreshPermissions,
+		requestAccessibilityAccess,
 		requestMicrophoneAccess,
 		requestCameraAccess,
 		requestScreenRecordingAccess,

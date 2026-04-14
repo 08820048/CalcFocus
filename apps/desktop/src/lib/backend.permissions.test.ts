@@ -144,4 +144,13 @@ describe("permission backend wrappers", () => {
 			expect(invoke).toHaveBeenCalledWith("open_accessibility_preferences");
 		});
 	});
+
+	describe("requestAccessibilityPermission", () => {
+		it("invokes the correct command and returns a boolean", async () => {
+			invoke.mockResolvedValue(true);
+			const result = await backend.requestAccessibilityPermission();
+			expect(invoke).toHaveBeenCalledWith("request_accessibility_permission");
+			expect(result).toBe(true);
+		});
+	});
 });

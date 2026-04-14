@@ -15,6 +15,7 @@ vi.mock("@/lib/backend", () => ({
 	getCameraPermissionStatus: vi.fn(),
 	getAccessibilityPermissionStatus: vi.fn(),
 	requestScreenRecordingPermission: vi.fn(),
+	requestAccessibilityPermission: vi.fn(),
 	requestMicrophonePermission: vi.fn(),
 	requestCameraPermission: vi.fn(),
 	openScreenRecordingPreferences: vi.fn(),
@@ -69,12 +70,9 @@ async function mountHook(): Promise<HookHarnessResult> {
 
 // ─── Setup / Teardown ────────────────────────────────────────────────────────
 
-function setupMediaDevicesMock(
-	getUserMediaImpl?: () => Promise<MediaStream>,
-) {
+function setupMediaDevicesMock(getUserMediaImpl?: () => Promise<MediaStream>) {
 	const stop = vi.fn();
-	const defaultImpl = async () =>
-		({ getTracks: () => [{ stop }] }) as unknown as MediaStream;
+	const defaultImpl = async () => ({ getTracks: () => [{ stop }] }) as unknown as MediaStream;
 
 	Object.defineProperty(navigator, "mediaDevices", {
 		configurable: true,
@@ -426,6 +424,59 @@ describe("usePermissions", () => {
 			await flushEffects();
 
 			expect(granted).toBe(false);
+
+			await hook.unmount();
+		});
+	});
+
+	// ==================== requestAccessibilityAccess ====================
+
+	describe("requestAccessibilityAccess", () => {
+		it("uses the native accessibility request path on macOS", async () => {
+			backend.getPlatform.mockResolvedValue("darwin");
+			backend.getScreenRecordingPermissionStatus.mockResolvedValue("granted");
+			backend.getMicrophonePermissionStatus.mockResolvedValue("granted");
+			backend.getCameraPermissionStatus.mockResolvedValue("granted");
+			backend.getAccessibilityPermissionStatus.mockResolvedValue("denied");
+			backend.requestAccessibilityPermission.mockResolvedValue(true);
+
+			const hook = await mountHook();
+			expect(hook.getCurrent().permissions.accessibility).toBe("denied");
+
+			backend.getAccessibilityPermissionStatus.mockResolvedValue("granted");
+
+			let granted!: boolean;
+			await act(async () => {
+				granted = await hook.getCurrent().requestAccessibilityAccess();
+			});
+			await flushEffects();
+
+			expect(backend.requestAccessibilityPermission).toHaveBeenCalled();
+			expect(granted).toBe(true);
+			expect(hook.getCurrent().permissions.accessibility).toBe("granted");
+
+			await hook.unmount();
+		});
+
+		it("returns false when accessibility remains denied after prompting", async () => {
+			backend.getPlatform.mockResolvedValue("darwin");
+			backend.getScreenRecordingPermissionStatus.mockResolvedValue("granted");
+			backend.getMicrophonePermissionStatus.mockResolvedValue("granted");
+			backend.getCameraPermissionStatus.mockResolvedValue("granted");
+			backend.getAccessibilityPermissionStatus.mockResolvedValue("denied");
+			backend.requestAccessibilityPermission.mockResolvedValue(false);
+
+			const hook = await mountHook();
+
+			let granted!: boolean;
+			await act(async () => {
+				granted = await hook.getCurrent().requestAccessibilityAccess();
+			});
+			await flushEffects();
+
+			expect(backend.requestAccessibilityPermission).toHaveBeenCalled();
+			expect(granted).toBe(false);
+			expect(hook.getCurrent().permissions.accessibility).toBe("denied");
 
 			await hook.unmount();
 		});

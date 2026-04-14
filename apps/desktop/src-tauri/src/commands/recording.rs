@@ -354,13 +354,11 @@ mod tests {
             .join("calcfocus_test_nested")
             .join("recordings")
             .join("2024");
-        let _ =
-            tokio::fs::remove_dir_all(std::env::temp_dir().join("calcfocus_test_nested")).await;
+        let _ = tokio::fs::remove_dir_all(std::env::temp_dir().join("calcfocus_test_nested")).await;
 
         tokio::fs::create_dir_all(&dir).await.unwrap();
         assert!(dir.exists());
 
-        let _ =
-            tokio::fs::remove_dir_all(std::env::temp_dir().join("calcfocus_test_nested")).await;
+        let _ = tokio::fs::remove_dir_all(std::env::temp_dir().join("calcfocus_test_nested")).await;
     }
 }

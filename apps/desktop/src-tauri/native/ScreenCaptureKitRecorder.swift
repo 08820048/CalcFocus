@@ -55,9 +55,30 @@ enum ScreenCaptureAccessStatus: String {
 	case denied
 }
 
+func canCaptureMainDisplay() -> Bool {
+	let semaphore = DispatchSemaphore(value: 0)
+	var probeSucceeded = false
+
+	Task.detached(priority: .userInitiated) {
+		defer { semaphore.signal() }
+		do {
+			_ = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+			probeSucceeded = true
+		} catch {
+			probeSucceeded = false
+		}
+	}
+
+	return semaphore.wait(timeout: .now() + 2.0) == .success && probeSucceeded
+}
+
 @discardableResult
 func preflightScreenCaptureAccess() -> ScreenCaptureAccessStatus {
-	CGPreflightScreenCaptureAccess() ? .granted : .denied
+	guard CGPreflightScreenCaptureAccess() else {
+		return .denied
+	}
+
+	return canCaptureMainDisplay() ? .granted : .denied
 }
 
 @discardableResult

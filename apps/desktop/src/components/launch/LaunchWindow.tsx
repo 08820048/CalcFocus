@@ -599,7 +599,7 @@ export function LaunchWindow() {
 					alert(
 						t(
 							"screenshot.permissionAlert",
-							"CalcFocus needs Screen Recording permission to show live screen and window previews. System Settings has been opened. After enabling it, quit and reopen CalcFocus.",
+							"CalcFocus needs Screen Recording permission to show live screen and window previews. System Settings has been opened. After enabling it, return to CalcFocus and try again. If macOS still doesn't update the permission immediately, restart CalcFocus once.",
 						),
 					);
 					return;

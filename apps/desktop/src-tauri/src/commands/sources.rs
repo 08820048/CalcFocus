@@ -363,14 +363,12 @@ fn fallback_sources() -> Vec<SelectedSource> {
 fn default_selected_source() -> Option<SelectedSource> {
     #[cfg(target_os = "macos")]
     {
-        fallback_macos_sources()
-            .ok()
-            .and_then(|sources| {
-                sources
-                    .into_iter()
-                    .find(|source| source.name == "Main Display")
-                    .or_else(|| fallback_sources().into_iter().next())
-            })
+        fallback_macos_sources().ok().and_then(|sources| {
+            sources
+                .into_iter()
+                .find(|source| source.name == "Main Display")
+                .or_else(|| fallback_sources().into_iter().next())
+        })
     }
 
     #[cfg(not(target_os = "macos"))]

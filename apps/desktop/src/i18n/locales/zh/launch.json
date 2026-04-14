@@ -18,7 +18,7 @@
 		"captureArea": "截取区域",
 		"take": "开始截图",
 		"capturing": "截图中...",
-		"permissionAlert": "CalcFocus 需要“屏幕录制”权限来显示实时屏幕和窗口预览。系统设置已打开。开启权限后，请退出并重新打开 CalcFocus。"
+		"permissionAlert": "CalcFocus 需要“屏幕录制”权限来显示实时屏幕和窗口预览。系统设置已打开。开启权限后，请返回 CalcFocus 再试一次；如果 macOS 没有立即刷新权限状态，再重启一次 CalcFocus。"
 	},
 	"recording": {
 		"record": "录制",
