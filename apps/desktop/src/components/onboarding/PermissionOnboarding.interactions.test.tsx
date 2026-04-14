@@ -275,7 +275,7 @@ describe("PermissionOnboarding interactions", () => {
 		});
 
 		expect(harness.container.textContent).toContain(
-			"Enable Screen Recording in System Settings, then return to CalcFocus. We'll detect the change automatically.",
+			"Enable Screen Recording in System Settings, then quit and reopen CalcFocus.",
 		);
 		expect(harness.container.textContent).toContain("Denied");
 		expect(getButtonByText(harness.container, "Open Settings")).not.toBeNull();
@@ -323,7 +323,7 @@ describe("PermissionOnboarding interactions", () => {
 		expect(requestAccessibilityAccess).toHaveBeenCalledTimes(1);
 		expect(openPermissionSettings).toHaveBeenCalledWith("accessibility");
 		expect(harness.container.textContent).toContain(
-			"Enable Accessibility in System Settings, then return to CalcFocus. We'll detect the change automatically.",
+			"Enable Accessibility in System Settings, then quit and reopen CalcFocus.",
 		);
 
 		await harness.unmount();

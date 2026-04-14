@@ -433,7 +433,7 @@ export function PermissionOnboarding({ permissionsHook, onComplete }: Permission
 				(permKey === "accessibility" && accessibilitySettingsOpened));
 		const helperText =
 			showSettingsReturnHint && isMacOS
-				? `Enable ${title} in System Settings, then return to CalcFocus. We'll detect the change automatically.`
+				? `Enable ${title} in System Settings, then quit and reopen CalcFocus.`
 				: null;
 
 		return (
