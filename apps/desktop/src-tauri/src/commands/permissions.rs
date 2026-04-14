@@ -15,15 +15,6 @@ use core_foundation::{
 #[allow(unused_imports)]
 use objc::{sel, sel_impl};
 
-// ─── Screen Capture (CoreGraphics) ──────────────────────────────────────────
-
-#[cfg(target_os = "macos")]
-#[link(name = "CoreGraphics", kind = "framework")]
-unsafe extern "C" {
-    fn CGPreflightScreenCaptureAccess() -> bool;
-    fn CGRequestScreenCaptureAccess() -> bool;
-}
-
 #[cfg(target_os = "macos")]
 fn run_on_main_thread<R: Send + 'static>(
     app: &AppHandle,
@@ -40,20 +31,52 @@ fn run_on_main_thread<R: Send + 'static>(
 }
 
 #[cfg(target_os = "macos")]
-fn preflight_screen_capture_access() -> bool {
-    unsafe { CGPreflightScreenCaptureAccess() }
+fn parse_binary_permission_status(status: &str) -> Result<bool, String> {
+    match status.trim() {
+        "granted" => Ok(true),
+        "denied" => Ok(false),
+        other => Err(format!("Unexpected permission status '{other}'")),
+    }
 }
 
 #[cfg(target_os = "macos")]
-fn request_screen_capture_access() -> bool {
-    unsafe { CGRequestScreenCaptureAccess() }
+fn run_screen_capture_helper(args: &[&str]) -> Result<bool, String> {
+    let sidecar_path =
+        crate::native::sidecar::get_sidecar_path("calcfocus-screencapturekit-helper")?;
+
+    let output = std::process::Command::new(&sidecar_path)
+        .args(args)
+        .output()
+        .map_err(|error| {
+            format!(
+                "Failed to run screen capture helper '{}': {error}",
+                sidecar_path.display()
+            )
+        })?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        return Err(if stderr.is_empty() {
+            format!(
+                "Screen capture helper exited with code {}",
+                output.status.code().unwrap_or(-1)
+            )
+        } else {
+            stderr
+        });
+    }
+
+    parse_binary_permission_status(&String::from_utf8_lossy(&output.stdout))
 }
 
 #[tauri::command]
 pub async fn get_screen_recording_permission_status(app: AppHandle) -> Result<String, String> {
     #[cfg(target_os = "macos")]
     {
-        let granted = run_on_main_thread(&app, preflight_screen_capture_access)?;
+        let _ = app;
+        // Query the same helper binary that performs the actual ScreenCaptureKit
+        // recording so onboarding reflects the real TCC identity used at runtime.
+        let granted = run_screen_capture_helper(&["--preflight-screen-capture-access"])?;
         Ok(if granted { "granted" } else { "denied" }.to_string())
     }
 
@@ -68,7 +91,8 @@ pub async fn get_screen_recording_permission_status(app: AppHandle) -> Result<St
 pub async fn request_screen_recording_permission(app: AppHandle) -> Result<bool, String> {
     #[cfg(target_os = "macos")]
     {
-        run_on_main_thread(&app, request_screen_capture_access)
+        let _ = app;
+        run_screen_capture_helper(&["--request-screen-capture-access"])
     }
 
     #[cfg(not(target_os = "macos"))]
@@ -338,6 +362,27 @@ mod tests {
         }
     }
 
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_parse_binary_permission_status_granted() {
+        assert_eq!(parse_binary_permission_status("granted").unwrap(), true);
+        assert_eq!(parse_binary_permission_status(" granted\n").unwrap(), true);
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_parse_binary_permission_status_denied() {
+        assert_eq!(parse_binary_permission_status("denied").unwrap(), false);
+        assert_eq!(parse_binary_permission_status(" denied\n").unwrap(), false);
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_parse_binary_permission_status_rejects_unknown_value() {
+        let error = parse_binary_permission_status("unknown").unwrap_err();
+        assert!(error.contains("Unexpected permission status"));
+    }
+
     // ==================== AV Authorization Status Mapping ====================
 
     #[cfg(target_os = "macos")]
@@ -444,12 +489,9 @@ mod tests {
         }
 
         #[test]
-        fn test_preflight_returns_bool() {
-            // We can't test the actual FFI call in unit tests,
-            // but we can verify the function exists and has the right type
-            let result: bool = preflight_screen_capture_access();
-            // Just verify it returns without crashing
-            let _ = result;
+        fn test_screen_recording_helper_status_values_are_binary() {
+            assert!(parse_binary_permission_status("granted").is_ok());
+            assert!(parse_binary_permission_status("denied").is_ok());
         }
     }
 }

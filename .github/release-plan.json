@@ -1,6 +1,6 @@
 {
-  "tagName": "v1.0.4",
-  "releaseName": "CalcFocus v1.0.4",
-  "releaseNotes": "Fix macOS startup permission detection so Screen Recording and Accessibility grants are recognized correctly during onboarding.",
+  "tagName": "v1.0.5",
+  "releaseName": "CalcFocus v1.0.5",
+  "releaseNotes": "Fix macOS Screen Recording onboarding so the permission check and prompt use the same native helper identity as the actual recorder.",
   "makeLatest": true
 }
