@@ -284,12 +284,9 @@ export function PermissionOnboarding({ permissionsHook, onComplete }: Permission
 					break;
 				}
 				case "accessibility": {
-					// Same behavior as screen recording: after the first settings hop,
-					// let subsequent taps re-check status instead of reopening settings.
-					if (accessibilitySettingsOpened) {
-						break;
-					}
-
+					// Keep re-checking accessibility on every tap because
+					// AXIsProcessTrustedWithOptions can update after the user
+					// changes the toggle in System Settings.
 					const granted = await requestAccessibilityAccess();
 					if (!granted) {
 						setAccessibilitySettingsOpened(true);
