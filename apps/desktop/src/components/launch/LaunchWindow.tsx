@@ -307,6 +307,7 @@ export function LaunchWindow() {
 		useState<ManualUpdateCheckState>("idle");
 	const [hideHudFromRecording, setHideHudFromRecording] = useState(getInitialHideHudFromRecording);
 	const updateCheckResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const hasOpenedScreenRecordingSettingsRef = useRef(false);
 
 	const setMicEnabledRef = useRef(setMicrophoneEnabled);
 	setMicEnabledRef.current = setMicrophoneEnabled;
@@ -593,9 +594,12 @@ export function LaunchWindow() {
 			if (screenStatus !== "granted") {
 				const granted = await backend.requestScreenRecordingPermission().catch(() => false);
 				if (!granted) {
-					await backend.openScreenRecordingPreferences().catch(() => {
-						// Ignore preference-opening failures and keep showing the permission alert.
-					});
+					if (!hasOpenedScreenRecordingSettingsRef.current) {
+						await backend.openScreenRecordingPreferences().catch(() => {
+							// Ignore preference-opening failures and keep showing the permission alert.
+						});
+						hasOpenedScreenRecordingSettingsRef.current = true;
+					}
 					alert(
 						t(
 							"screenshot.permissionAlert",
@@ -604,6 +608,8 @@ export function LaunchWindow() {
 					);
 					return;
 				}
+			} else {
+				hasOpenedScreenRecordingSettingsRef.current = false;
 			}
 
 			const permissionsReady = await preparePermissions();

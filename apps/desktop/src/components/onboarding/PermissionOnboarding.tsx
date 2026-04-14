@@ -269,6 +269,12 @@ export function PermissionOnboarding({ permissionsHook, onComplete }: Permission
 		try {
 			switch (step) {
 				case "screen_recording": {
+					// If settings was already opened once, treat this action as a re-check
+					// so we don't keep yanking the user back into System Settings.
+					if (screenRecordingSettingsOpened) {
+						break;
+					}
+
 					const granted = await requestScreenRecordingAccess();
 					if (!granted) {
 						setScreenRecordingSettingsOpened(true);
@@ -278,6 +284,12 @@ export function PermissionOnboarding({ permissionsHook, onComplete }: Permission
 					break;
 				}
 				case "accessibility": {
+					// Same behavior as screen recording: after the first settings hop,
+					// let subsequent taps re-check status instead of reopening settings.
+					if (accessibilitySettingsOpened) {
+						break;
+					}
+
 					const granted = await requestAccessibilityAccess();
 					if (!granted) {
 						setAccessibilitySettingsOpened(true);
@@ -431,6 +443,12 @@ export function PermissionOnboarding({ permissionsHook, onComplete }: Permission
 			!isGranted &&
 			((permKey === "screenRecording" && screenRecordingSettingsOpened) ||
 				(permKey === "accessibility" && accessibilitySettingsOpened));
+		const isWaitingForSettingsRefresh =
+			isMacOS &&
+			required &&
+			!isGranted &&
+			((permKey === "screenRecording" && screenRecordingSettingsOpened) ||
+				(permKey === "accessibility" && accessibilitySettingsOpened));
 		const helperText =
 			showSettingsReturnHint && isMacOS
 				? `Enable ${title} in System Settings, then quit and reopen CalcFocus.`
@@ -491,6 +509,8 @@ export function PermissionOnboarding({ permissionsHook, onComplete }: Permission
 										<div className="h-3 w-3 rounded-full border-2 border-white/30 border-t-white animate-spin" />
 										Requesting...
 									</span>
+								) : isWaitingForSettingsRefresh ? (
+									"I've Enabled It"
 								) : isDenied ? (
 									"Open Settings"
 								) : (

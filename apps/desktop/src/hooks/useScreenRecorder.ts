@@ -201,6 +201,8 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 	const cursorTelemetryStartedAtMs = useRef<number | null>(null);
 	const startInFlight = useRef(false);
 	const hasPromptedForReselect = useRef(false);
+	const hasOpenedScreenRecordingSettings = useRef(false);
+	const hasOpenedAccessibilitySettings = useRef(false);
 	const selectedSourceName = useRef<string | undefined>(undefined);
 	const recordingSessionId = useRef<string>("");
 	const recordingFilePath = useRef<string | null>(null);
@@ -491,15 +493,20 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 				} else {
 					const refreshedStatus = await backend.getScreenRecordingPermissionStatus();
 					if (refreshedStatus !== "granted") {
-						await backend.openScreenRecordingPreferences();
+						if (!hasOpenedScreenRecordingSettings.current) {
+							await backend.openScreenRecordingPreferences();
+							hasOpenedScreenRecordingSettings.current = true;
+						}
 						alert(
 							options.startup
 								? "CalcFocus needs Screen Recording permission before you start. System Settings has been opened. After enabling it, return to CalcFocus and try again. If macOS still doesn't update the permission immediately, restart CalcFocus once."
-								: "Screen Recording permission is still missing. System Settings has been opened again. Enable it, return to CalcFocus, and try recording again. If macOS still doesn't update the permission immediately, restart CalcFocus once.",
+								: "Screen Recording permission is still missing. Enable it in System Settings, return to CalcFocus, and try recording again. If macOS still doesn't update the permission immediately, restart CalcFocus once.",
 						);
 						return false;
 					}
 				}
+			} else {
+				hasOpenedScreenRecordingSettings.current = false;
 			}
 
 			// ── Accessibility (required) ─────────────────────────────────────
@@ -507,14 +514,19 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 			if (accessibilityStatus !== "granted") {
 				const granted = await backend.requestAccessibilityPermission();
 				if (!granted) {
-					await backend.openAccessibilityPreferences();
+					if (!hasOpenedAccessibilitySettings.current) {
+						await backend.openAccessibilityPreferences();
+						hasOpenedAccessibilitySettings.current = true;
+					}
 					alert(
 						options.startup
 							? "CalcFocus also needs Accessibility permission for cursor tracking. System Settings has been opened. After enabling it, return to CalcFocus and try again. If macOS still doesn't update the permission immediately, restart CalcFocus once."
-							: "Accessibility permission is still missing. System Settings has been opened again. Enable it, return to CalcFocus, and try recording again. If macOS still doesn't update the permission immediately, restart CalcFocus once.",
+							: "Accessibility permission is still missing. Enable it in System Settings, return to CalcFocus, and try recording again. If macOS still doesn't update the permission immediately, restart CalcFocus once.",
 					);
 					return false;
 				}
+			} else {
+				hasOpenedAccessibilitySettings.current = false;
 			}
 
 			// ── Microphone (check if enabled and not yet granted) ────────────
