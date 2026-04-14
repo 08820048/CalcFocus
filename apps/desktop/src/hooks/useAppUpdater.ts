@@ -1,4 +1,3 @@
-import { getIdentifier } from "@tauri-apps/api/app";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -194,28 +193,10 @@ export function useAppUpdater({
 	}, []);
 
 	useEffect(() => {
-		if (import.meta.env.DEV) {
-			setUpdatesEnabled(false);
-			return;
-		}
-
-		let cancelled = false;
-
-		getIdentifier()
-			.then((identifier) => {
-				if (!cancelled) {
-					setUpdatesEnabled(!identifier.endsWith(".dev"));
-				}
-			})
-			.catch(() => {
-				if (!cancelled) {
-					setUpdatesEnabled(true);
-				}
-			});
-
-		return () => {
-			cancelled = true;
-		};
+		// Only disable updater in Vite dev runtime. Release-like bundles with
+		// custom identifiers (including ".dev" suffixes) should still be able
+		// to check and install updates.
+		setUpdatesEnabled(!import.meta.env.DEV);
 	}, []);
 
 	// Auto-check for updates on mount (after a delay)
