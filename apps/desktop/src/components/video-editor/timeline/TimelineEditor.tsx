@@ -41,7 +41,6 @@ import {
 	isCustomAspectRatio,
 } from "@/utils/aspectRatioUtils";
 import { formatShortcut } from "@/utils/platformUtils";
-import { TutorialHelp } from "../TutorialHelp";
 import type {
 	AnnotationRegion,
 	CursorTelemetryPoint,
@@ -1068,10 +1067,7 @@ function TimelineEditorInner({
 		}
 
 		for (const suggestion of mergedSuggestions) {
-			onZoomSuggested(
-				{ start: suggestion.startMs, end: suggestion.endMs },
-				suggestion.focus,
-			);
+			onZoomSuggested({ start: suggestion.startMs, end: suggestion.endMs }, suggestion.focus);
 		}
 
 		toast.success(
@@ -1568,8 +1564,6 @@ function TimelineEditorInner({
 							</div>
 						</DropdownMenuContent>
 					</DropdownMenu>
-					<div className="w-[1px] h-4 bg-white/10" />
-					<TutorialHelp />
 				</div>
 				<div className="flex-1" />
 				<div className="flex items-center gap-4 text-[10px] text-slate-500 font-medium">

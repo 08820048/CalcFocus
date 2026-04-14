@@ -1,19 +1,19 @@
-import type { ExportConfig, ExportProgress, ExportResult } from "./types";
-import { AudioProcessor } from "./audioEncoder";
-import { StreamingVideoDecoder } from "./streamingDecoder";
-import { FrameRenderer } from "./frameRenderer";
-import { VideoMuxer } from "./muxer";
-import { SyncedVideoProvider } from "./syncedVideoProvider";
 import type {
-	ZoomRegion,
-	CropRegion,
-	TrimRegion,
 	AnnotationRegion,
+	CropRegion,
 	CursorStyle,
-	SpeedRegion,
 	CursorTelemetryPoint,
+	SpeedRegion,
+	TrimRegion,
+	ZoomRegion,
 } from "@/components/video-editor/types";
 import type { FacecamSettings } from "@/lib/recordingSession";
+import { AudioProcessor } from "./audioEncoder";
+import { FrameRenderer } from "./frameRenderer";
+import { VideoMuxer } from "./muxer";
+import { StreamingVideoDecoder } from "./streamingDecoder";
+import { SyncedVideoProvider } from "./syncedVideoProvider";
+import type { ExportConfig, ExportProgress, ExportResult } from "./types";
 
 interface VideoExporterConfig extends ExportConfig {
 	videoUrl: string;
@@ -173,13 +173,16 @@ export class VideoExporter {
 			}
 
 			// Finalize encoding
+			this.reportFinalizingProgress(totalFrames, 10);
 			if (this.encoder && this.encoder.state === "configured") {
 				await this.awaitWithWindowsTimeout(this.encoder.flush(), "encoder flush");
 			}
 
 			// Wait for queued muxing operations to complete
+			this.reportFinalizingProgress(totalFrames, 35);
 			await this.awaitWithWindowsTimeout(this.pendingMuxing, "muxing queued video chunks");
 
+			this.reportFinalizingProgress(totalFrames, hasAudio ? 60 : 85);
 			if (hasAudio && !this.cancelled) {
 				const demuxer = this.streamingDecoder.getDemuxer();
 				if (demuxer) {
@@ -203,7 +206,9 @@ export class VideoExporter {
 			}
 
 			// Finalize muxer and get output blob
+			this.reportFinalizingProgress(totalFrames, 90);
 			const blob = await this.awaitWithWindowsTimeout(this.muxer!.finalize(), "muxer finalization");
+			this.reportFinalizingProgress(totalFrames, 100);
 
 			return { success: true, blob };
 		} catch (error) {
@@ -250,7 +255,7 @@ export class VideoExporter {
 	private async encodeRenderedFrame(timestamp: number, frameDuration: number, frameIndex: number) {
 		const canvas = this.renderer!.getCanvas();
 
-		// @ts-ignore - colorSpace not in TypeScript definitions but works at runtime
+		// @ts-expect-error - colorSpace not in TypeScript definitions but works at runtime
 		const exportFrame = new VideoFrame(canvas, {
 			timestamp,
 			duration: frameDuration,
@@ -291,6 +296,19 @@ export class VideoExporter {
 		}
 	}
 
+	private reportFinalizingProgress(totalFrames: number, renderProgress: number) {
+		if (this.config.onProgress) {
+			this.config.onProgress({
+				currentFrame: totalFrames,
+				totalFrames,
+				percentage: 100,
+				estimatedTimeRemaining: 0,
+				phase: "finalizing",
+				renderProgress: Math.max(0, Math.min(Math.round(renderProgress), 100)),
+			});
+		}
+	}
+
 	private async initializeEncoder(): Promise<void> {
 		this.encodeQueue = 0;
 		this.pendingMuxing = Promise.resolve();
@@ -302,7 +320,10 @@ export class VideoExporter {
 				// Capture decoder config metadata from encoder output
 				if (meta?.decoderConfig?.description && !videoDescription) {
 					const desc = meta.decoderConfig.description;
-					videoDescription = new Uint8Array(desc instanceof ArrayBuffer ? desc : (desc as any));
+					videoDescription =
+						desc instanceof ArrayBuffer
+							? new Uint8Array(desc)
+							: new Uint8Array(desc.buffer, desc.byteOffset, desc.byteLength);
 					this.videoDescription = videoDescription;
 				}
 				// Capture colorSpace from encoder metadata if provided

@@ -6,8 +6,8 @@ import {
 	Download,
 	Film,
 	FolderOpen,
-	HelpCircle,
 	Image,
+	Keyboard,
 	LoaderCircle,
 	Redo2,
 	SlidersHorizontal,
@@ -71,6 +71,7 @@ import {
 	validateProjectData,
 } from "./projectPersistence";
 import { SettingsPanel } from "./SettingsPanel";
+import { TutorialHelp } from "./TutorialHelp";
 import TimelineEditor from "./timeline/TimelineEditor";
 import { normalizeCursorTelemetry } from "./timeline/zoomSuggestionUtils";
 import {
@@ -88,8 +89,8 @@ import {
 	DEFAULT_CURSOR_CLICK_BOUNCE,
 	DEFAULT_CURSOR_MOTION_BLUR,
 	DEFAULT_CURSOR_SIZE,
-	DEFAULT_CURSOR_STYLE,
 	DEFAULT_CURSOR_SMOOTHING,
+	DEFAULT_CURSOR_STYLE,
 	DEFAULT_FIGURE_DATA,
 	DEFAULT_PLAYBACK_SPEED,
 	DEFAULT_ZOOM_DEPTH,
@@ -1009,10 +1010,7 @@ export default function VideoEditor() {
 				if (mounted) {
 					setCursorTelemetry((current) => (current.length === 0 ? current : []));
 
-					if (
-						pendingFreshRecordingAutoZoomPathRef.current === videoPath &&
-						retryAttempts < 12
-					) {
+					if (pendingFreshRecordingAutoZoomPathRef.current === videoPath && retryAttempts < 12) {
 						retryAttempts += 1;
 						pendingTelemetryRetryTimeoutRef.current = window.setTimeout(() => {
 							pendingTelemetryRetryTimeoutRef.current = null;
@@ -2267,10 +2265,7 @@ export default function VideoEditor() {
 				style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
 			>
 				<div
-					className={cn(
-						"absolute flex items-center gap-1",
-						isMac ? "left-[84px]" : "left-4",
-					)}
+					className={cn("absolute flex items-center gap-1", isMac ? "left-[84px]" : "left-4")}
 					style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
 				>
 					<button
@@ -2294,13 +2289,12 @@ export default function VideoEditor() {
 						<Redo2 className="h-3.5 w-3.5" />
 					</button>
 				</div>
-				<span className="text-sm font-semibold tracking-tight text-white">
-					{editorNavbarTitle}
-				</span>
+				<span className="text-sm font-semibold tracking-tight text-white">{editorNavbarTitle}</span>
 				<div
 					className="absolute right-4 flex items-center gap-2"
 					style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
 				>
+					<TutorialHelp />
 					<button
 						type="button"
 						onClick={() => setShowShortcutsDialog(true)}
@@ -2308,7 +2302,7 @@ export default function VideoEditor() {
 						title={t("shortcuts.title", "Keyboard shortcuts")}
 						aria-label={t("shortcuts.title", "Keyboard shortcuts")}
 					>
-						<HelpCircle className="h-4 w-4" />
+						<Keyboard className="h-4 w-4" />
 					</button>
 					<button
 						type="button"

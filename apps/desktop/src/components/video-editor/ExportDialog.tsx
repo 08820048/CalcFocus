@@ -29,9 +29,8 @@ export function ExportDialog({
 	onRetrySave,
 	canRetrySave = false,
 	exportFormat = "mp4",
-	exportedFilePath, // Add this line
+	exportedFilePath,
 }: ExportDialogProps) {
-	console.log("render <ExportDialog>");
 	const t = useScopedT("dialogs");
 	const [showSuccess, setShowSuccess] = useState(false);
 
@@ -64,22 +63,33 @@ export function ExportDialog({
 
 	const formatLabel = exportFormat === "gif" ? "GIF" : t("export.videoFormat", "Video");
 
-	// Determine if we're in the compiling phase (frames done but still exporting)
-	const isCompiling =
-		isExporting && progress && progress.percentage >= 100 && exportFormat === "gif";
 	const isFinalizing = progress?.phase === "finalizing";
-	const renderProgress = progress?.renderProgress;
+	const phaseProgress = progress?.renderProgress;
+	const isGifFinalizing =
+		exportFormat === "gif" &&
+		Boolean(progress) &&
+		(isFinalizing || (isExporting && progress.percentage >= 100));
+	const isVideoFinalizing = exportFormat === "mp4" && isFinalizing;
+	const isFinalizingExport = isGifFinalizing || isVideoFinalizing;
 
 	// Get status message based on phase
 	const getStatusMessage = () => {
 		if (error) return t("export.tryAgain", "Please try again");
-		if (isCompiling || isFinalizing) {
-			if (renderProgress !== undefined && renderProgress > 0) {
+		if (isGifFinalizing) {
+			if (phaseProgress !== undefined && phaseProgress > 0) {
 				return t("export.compilingGifProgress", "Compiling GIF... {{progress}}%", {
-					progress: renderProgress,
+					progress: phaseProgress,
 				});
 			}
 			return t("export.compilingGifLong", "Compiling GIF... This may take a while");
+		}
+		if (isVideoFinalizing) {
+			if (phaseProgress !== undefined && phaseProgress > 0) {
+				return t("export.finalizingVideoProgress", "Finalizing video... {{progress}}%", {
+					progress: phaseProgress,
+				});
+			}
+			return t("export.finalizingVideoLong", "Finalizing video... This may take a while");
 		}
 		return t("export.mayTakeMoment", "This may take a moment...");
 	};
@@ -87,7 +97,8 @@ export function ExportDialog({
 	// Get title based on phase
 	const getTitle = () => {
 		if (error) return t("export.failed", "Export Failed");
-		if (isCompiling || isFinalizing) return t("export.compilingGif", "Compiling GIF");
+		if (isGifFinalizing) return t("export.compilingGif", "Compiling GIF");
+		if (isVideoFinalizing) return t("export.finalizingVideo", "Finalizing Video");
 		return t("export.exporting", "Exporting {{format}}", { format: formatLabel });
 	};
 
@@ -98,9 +109,11 @@ export function ExportDialog({
 			} catch (err) {
 				const errorMessage = String(err);
 				console.error("Error calling revealInFolder:", errorMessage);
-				toast.error(t("export.revealError", "Error revealing in folder: {{message}}", {
-					message: errorMessage,
-				}));
+				toast.error(
+					t("export.revealError", "Error revealing in folder: {{message}}", {
+						message: errorMessage,
+					}),
+				);
 			}
 		}
 	};
@@ -198,14 +211,16 @@ export function ExportDialog({
 						<div className="space-y-2">
 							<div className="flex justify-between text-xs font-medium text-slate-400 uppercase tracking-wider">
 								<span>
-									{isCompiling || isFinalizing
+									{isGifFinalizing
 										? t("export.compiling", "Compiling")
-										: t("export.renderingFrames", "Rendering Frames")}
+										: isVideoFinalizing
+											? t("export.finalizing", "Finalizing")
+											: t("export.renderingFrames", "Rendering Frames")}
 								</span>
 								<span className="font-mono text-slate-200">
-									{isCompiling || isFinalizing ? (
-										renderProgress !== undefined && renderProgress > 0 ? (
-											`${renderProgress}%`
+									{isFinalizingExport ? (
+										phaseProgress !== undefined && phaseProgress > 0 ? (
+											`${phaseProgress}%`
 										) : (
 											<span className="flex items-center gap-2">
 												<Loader2 className="w-3 h-3 animate-spin" />
@@ -218,12 +233,11 @@ export function ExportDialog({
 								</span>
 							</div>
 							<div className="h-2 bg-white/5 rounded-full overflow-hidden border border-white/5">
-								{isCompiling || isFinalizing ? (
-									// Show render progress if available, otherwise animated indeterminate bar
-									renderProgress !== undefined && renderProgress > 0 ? (
+								{isFinalizingExport ? (
+									phaseProgress !== undefined && phaseProgress > 0 ? (
 										<div
 											className="h-full bg-[#09cf67] shadow-[0_0_10px_rgba(9,207,103,0.3)] transition-all duration-300 ease-out"
-											style={{ width: `${renderProgress}%` }}
+											style={{ width: `${phaseProgress}%` }}
 										/>
 									) : (
 										<div className="h-full w-full relative overflow-hidden">
@@ -253,14 +267,14 @@ export function ExportDialog({
 						<div className="grid grid-cols-2 gap-4">
 							<div className="bg-white/5 rounded-xl p-3 border border-white/5">
 								<div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">
-									{isCompiling || isFinalizing
-										? t("export.status", "Status")
-										: t("export.format", "Format")}
+									{isFinalizingExport ? t("export.status", "Status") : t("export.format", "Format")}
 								</div>
 								<div className="text-slate-200 font-medium text-sm">
-									{isCompiling || isFinalizing
+									{isGifFinalizing
 										? t("export.compilingEllipsis", "Compiling...")
-										: formatLabel}
+										: isVideoFinalizing
+											? t("export.finalizingEllipsis", "Finalizing...")
+											: formatLabel}
 								</div>
 							</div>
 							<div className="bg-white/5 rounded-xl p-3 border border-white/5">

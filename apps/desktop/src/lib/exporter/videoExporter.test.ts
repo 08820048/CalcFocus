@@ -145,7 +145,9 @@ describe("VideoExporter audio controls", () => {
 				this.state = "configured";
 			}
 
-			encode() {}
+			encode() {
+				// no-op for tests
+			}
 
 			flush() {
 				return Promise.resolve();
@@ -157,8 +159,13 @@ describe("VideoExporter audio controls", () => {
 		}
 
 		class MockVideoFrame {
-			constructor(_source: unknown, _init: VideoFrameInit) {}
-			close() {}
+			constructor(_source: unknown, _init: VideoFrameInit) {
+				// no-op for tests
+			}
+
+			close() {
+				// no-op for tests
+			}
 		}
 
 		Object.defineProperty(globalThis, "VideoEncoder", {
@@ -256,5 +263,42 @@ describe("VideoExporter audio controls", () => {
 			undefined,
 			{ audioMuted: undefined, audioVolume: 1 },
 		);
+	});
+
+	it("reports finalizing progress after frame rendering completes", async () => {
+		const progressUpdates: Array<Record<string, unknown>> = [];
+		const exporter = new VideoExporter({
+			videoUrl: "asset://video.mp4",
+			width: 1280,
+			height: 720,
+			frameRate: 60,
+			bitrate: 10_000_000,
+			wallpaper: "#000000",
+			zoomRegions: [],
+			showShadow: false,
+			shadowIntensity: 0,
+			backgroundBlur: 0,
+			cropRegion: { x: 0, y: 0, width: 1, height: 1 },
+			onProgress: (progress) => {
+				progressUpdates.push(progress as unknown as Record<string, unknown>);
+			},
+		});
+
+		const result = await exporter.export();
+
+		expect(result.success).toBe(true);
+		expect(
+			progressUpdates.some(
+				(progress) =>
+					progress.phase === "finalizing" &&
+					typeof progress.renderProgress === "number" &&
+					(progress.renderProgress as number) > 0,
+			),
+		).toBe(true);
+		expect(
+			progressUpdates.some(
+				(progress) => progress.phase === "finalizing" && progress.renderProgress === 100,
+			),
+		).toBe(true);
 	});
 });

@@ -1079,17 +1079,19 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 				}
 			}
 
-			if (platform === "linux") {
+			if (platform === "linux" || platform === "darwin") {
 				await startCursorTelemetryCapture(platform);
 			}
 
 			const wantsAudioCapture = microphoneEnabled || systemAudioEnabled;
 			const shouldHideSourceCursor = cursorTelemetryCaptureActive.current;
 
-			try {
-				await backend.hideCursor();
-			} catch {
-				console.warn("Could not hide OS cursor before recording.");
+			if (shouldHideSourceCursor) {
+				try {
+					await backend.hideCursor();
+				} catch {
+					console.warn("Could not hide OS cursor before recording.");
+				}
 			}
 
 			let videoTrack: MediaStreamTrack | undefined;
