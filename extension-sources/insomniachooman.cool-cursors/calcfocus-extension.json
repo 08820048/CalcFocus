@@ -1,0 +1,12 @@
+{
+  "id": "insomniachooman.cool-cursors",
+  "name": "Cool Cursors",
+  "version": "1.0.0",
+  "description": "5 fun cursor packs — Lavender, Parched, Chooper, Among Us, and Turtle. Drop-in replacements for the default cursor style.",
+  "author": "insomniachooman",
+  "license": "MIT",
+  "icon": "icon.png",
+  "main": "index.js",
+  "permissions": ["assets"],
+  "tags": ["cursors", "appearance", "cursor-pack"]
+}
