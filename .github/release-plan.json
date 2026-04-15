@@ -1,6 +1,6 @@
 {
-  "tagName": "v1.0.6",
-  "releaseName": "CalcFocus v1.0.6",
-  "releaseNotes": "Fix macOS Screen Recording onboarding false negatives by matching Recordly's CoreGraphics preflight flow and telling users to reopen the app after granting permission.",
+  "tagName": "v1.0.13",
+  "releaseName": "CalcFocus v1.0.13",
+  "releaseNotes": "Fix update checks from the HUD, simplify the updater dialog, and improve live source previews.",
   "makeLatest": true
 }

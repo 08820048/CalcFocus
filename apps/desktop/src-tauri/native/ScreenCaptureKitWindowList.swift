@@ -2,6 +2,7 @@ import AppKit
 import CoreGraphics
 import Darwin
 import Foundation
+import ScreenCaptureKit
 
 let _ = NSApplication.shared
 
@@ -29,6 +30,16 @@ struct ThumbnailSize {
 struct DisplayInfo {
 	let displayID: CGDirectDisplayID
 	let frame: CGRect
+}
+
+@available(macOS 12.3, *)
+final class ShareableContentResultBox: @unchecked Sendable {
+	var result: Result<SCShareableContent, Error>?
+}
+
+@available(macOS 14.0, *)
+final class ScreenshotResultBox: @unchecked Sendable {
+	var result: Result<CGImage, Error>?
 }
 
 func normalize(_ value: String?) -> String? {
@@ -225,6 +236,94 @@ func displayThumbnail(displayID: CGDirectDisplayID, targetSize: ThumbnailSize) -
 	return dataURL(for: imageFromCGImage(image), targetSize: targetSize, asJPEG: true)
 }
 
+@available(macOS 12.3, *)
+func loadShareableContent() throws -> SCShareableContent {
+	let semaphore = DispatchSemaphore(value: 0)
+	let resultBox = ShareableContentResultBox()
+
+	Task {
+		do {
+			resultBox.result = .success(try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true))
+		} catch {
+			resultBox.result = .failure(error)
+		}
+		semaphore.signal()
+	}
+
+	if semaphore.wait(timeout: .now() + 2.5) == .timedOut {
+		throw NSError(
+			domain: "CalcFocusSourceList",
+			code: 1001,
+			userInfo: [NSLocalizedDescriptionKey: "Timed out loading ScreenCaptureKit shareable content"]
+		)
+	}
+
+	return try resultBox.result!.get()
+}
+
+@available(macOS 14.0, *)
+func captureScreenCaptureKitImage(filter: SCContentFilter, targetSize: ThumbnailSize, isWindow: Bool) -> CGImage? {
+	if screenCaptureKitScreenshotsDisabled {
+		return nil
+	}
+
+	let config = SCStreamConfiguration()
+	config.width = max(1, targetSize.width)
+	config.height = max(1, targetSize.height)
+	config.pixelFormat = kCVPixelFormatType_32BGRA
+	config.queueDepth = 1
+	config.showsCursor = false
+	config.scalesToFit = true
+	config.preservesAspectRatio = true
+	let backgroundColor = CGColor(red: 0.08, green: 0.08, blue: 0.08, alpha: 1)
+	config.backgroundColor = backgroundColor
+
+	if isWindow {
+		config.ignoreShadowsSingleWindow = true
+	} else {
+		config.ignoreShadowsDisplay = true
+	}
+
+	let semaphore = DispatchSemaphore(value: 0)
+	let resultBox = ScreenshotResultBox()
+
+	Task {
+		do {
+			resultBox.result = .success(try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config))
+		} catch {
+			resultBox.result = .failure(error)
+		}
+		semaphore.signal()
+	}
+
+	if semaphore.wait(timeout: .now() + 1.2) == .timedOut {
+		screenCaptureKitScreenshotsDisabled = true
+		return nil
+	}
+
+	return try? resultBox.result!.get()
+}
+
+@available(macOS 14.0, *)
+func screenCaptureKitDisplayThumbnail(display: SCDisplay, targetSize: ThumbnailSize) -> String? {
+	let filter = SCContentFilter(display: display, excludingApplications: [], exceptingWindows: [])
+	guard let image = captureScreenCaptureKitImage(filter: filter, targetSize: targetSize, isWindow: false) else {
+		return nil
+	}
+
+	return dataURL(for: imageFromCGImage(image), targetSize: targetSize, asJPEG: true)
+}
+
+@available(macOS 14.0, *)
+func screenCaptureKitWindowThumbnail(window: SCWindow, targetSize: ThumbnailSize) -> String? {
+	let filter = SCContentFilter(desktopIndependentWindow: window)
+	guard let image = captureScreenCaptureKitImage(filter: filter, targetSize: targetSize, isWindow: true) else {
+		return nil
+	}
+
+	return dataURL(for: imageFromCGImage(image), targetSize: targetSize, asJPEG: true)
+}
+
 func cgRect(from boundsValue: Any?) -> CGRect? {
 	if let dictionary = boundsValue as? NSDictionary {
 		return CGRect(dictionaryRepresentation: dictionary)
@@ -306,14 +405,152 @@ let ownBundleIds: Set<String> = [
 	"com.calcfocus.desktop.dev",
 ]
 
+var screenCaptureKitScreenshotsDisabled = false
+
 let commandArguments = Array(CommandLine.arguments.dropFirst())
 let thumbnailSize = parseThumbnailSize(arguments: commandArguments)
-let skipThumbnails = shouldSkipThumbnails(arguments: commandArguments) || !canCaptureScreen()
+let skipThumbnails = shouldSkipThumbnails(arguments: commandArguments)
+let coreGraphicsThumbnailsAvailable = !skipThumbnails && canCaptureScreen()
 let requestedTypes = parseRequestedTypes(arguments: commandArguments)
 let wantsScreens = requestedTypes.contains("screen")
 let wantsWindows = requestedTypes.contains("window")
 
-do {
+@available(macOS 12.3, *)
+func buildScreenCaptureKitEntries() throws -> [SourceListEntry] {
+	let content = try loadShareableContent()
+	let displays = content.displays.sorted { lhs, rhs in
+		if lhs.frame.origin.x != rhs.frame.origin.x {
+			return lhs.frame.origin.x < rhs.frame.origin.x
+		}
+
+		return lhs.frame.origin.y < rhs.frame.origin.y
+	}
+	let displayInfos = displays.map { DisplayInfo(displayID: $0.displayID, frame: $0.frame) }
+	let mainDisplayID = CGMainDisplayID()
+
+	var screenEntries: [SourceListEntry] = []
+	if wantsScreens {
+		screenEntries.reserveCapacity(displays.count)
+		for (index, display) in displays.enumerated() {
+			let displayName = display.displayID == mainDisplayID ? "Main Display" : "Display \(index + 1)"
+			let thumbnail: String?
+			if skipThumbnails {
+				thumbnail = nil
+			} else if #available(macOS 14.0, *) {
+				thumbnail = screenCaptureKitDisplayThumbnail(display: display, targetSize: thumbnailSize)
+					?? (coreGraphicsThumbnailsAvailable ? displayThumbnail(displayID: display.displayID, targetSize: thumbnailSize) : nil)
+			} else {
+				thumbnail = coreGraphicsThumbnailsAvailable ? displayThumbnail(displayID: display.displayID, targetSize: thumbnailSize) : nil
+			}
+
+			screenEntries.append(SourceListEntry(
+				id: "screen:\(display.displayID):0",
+				name: displayName,
+				display_id: String(display.displayID),
+				sourceType: "screen",
+				thumbnail: thumbnail,
+				appIcon: nil,
+				appName: nil,
+				windowTitle: nil,
+				windowId: nil,
+				x: Double(display.frame.origin.x),
+				y: Double(display.frame.origin.y),
+				width: Double(display.frame.width),
+				height: Double(display.frame.height)
+			))
+		}
+	}
+
+	var windowEntries: [SourceListEntry] = []
+	if wantsWindows {
+		for window in content.windows {
+			guard window.windowLayer == 0, window.isOnScreen else {
+				continue
+			}
+
+			let bounds = window.frame
+			guard bounds.width > 1, bounds.height > 1 else {
+				continue
+			}
+
+			let bundleId = normalize(window.owningApplication?.bundleIdentifier)
+			let appName = normalize(window.owningApplication?.applicationName)
+			let rawWindowTitle = normalize(window.title)
+			guard appName != nil || rawWindowTitle != nil else {
+				continue
+			}
+
+			if let bundleId, excludedBundleIds.contains(bundleId) || ownBundleIds.contains(bundleId) {
+				continue
+			}
+
+			if let appName, ownAppNames.contains(appName.lowercased()) {
+				continue
+			}
+
+			if let rawWindowTitle, excludedWindowTitles.contains(rawWindowTitle) {
+				continue
+			}
+
+			let windowID = UInt32(window.windowID)
+			guard windowID != 0 else {
+				continue
+			}
+
+			let resolvedWindowTitle = rawWindowTitle ?? appName ?? "Window"
+			let resolvedName: String
+			if let appName, let rawWindowTitle {
+				resolvedName = "\(appName) — \(rawWindowTitle)"
+			} else {
+				resolvedName = resolvedWindowTitle
+			}
+
+			let matchedDisplay = displayInfos.first(where: { display in
+				display.frame.intersects(bounds) || display.frame.contains(CGPoint(x: bounds.midX, y: bounds.midY))
+			})
+
+			let thumbnail: String?
+			if skipThumbnails {
+				thumbnail = nil
+			} else if #available(macOS 14.0, *) {
+				thumbnail = screenCaptureKitWindowThumbnail(window: window, targetSize: thumbnailSize)
+					?? (coreGraphicsThumbnailsAvailable ? windowThumbnail(windowID: CGWindowID(windowID), bounds: bounds, targetSize: thumbnailSize) : nil)
+			} else {
+				thumbnail = coreGraphicsThumbnailsAvailable ? windowThumbnail(windowID: CGWindowID(windowID), bounds: bounds, targetSize: thumbnailSize) : nil
+			}
+
+			windowEntries.append(SourceListEntry(
+				id: "window:\(windowID):0",
+				name: resolvedName,
+				display_id: matchedDisplay.map { String($0.displayID) } ?? "",
+				sourceType: "window",
+				thumbnail: thumbnail,
+				appIcon: appIconDataURL(bundleId: bundleId),
+				appName: appName,
+				windowTitle: resolvedWindowTitle,
+				windowId: windowID,
+				x: Double(bounds.origin.x),
+				y: Double(bounds.origin.y),
+				width: Double(bounds.width),
+				height: Double(bounds.height)
+			))
+		}
+	}
+
+	windowEntries.sort { lhs, rhs in
+		let lhsApp = lhs.appName ?? lhs.name
+		let rhsApp = rhs.appName ?? rhs.name
+		if lhsApp != rhsApp {
+			return lhsApp.localizedCaseInsensitiveCompare(rhsApp) == .orderedAscending
+		}
+
+		return (lhs.windowTitle ?? lhs.name).localizedCaseInsensitiveCompare(rhs.windowTitle ?? rhs.name) == .orderedAscending
+	}
+
+	return screenEntries + windowEntries
+}
+
+func buildCoreGraphicsEntries() throws -> [SourceListEntry] {
 	let displays = try availableDisplays()
 	let mainDisplayID = CGMainDisplayID()
 
@@ -327,7 +564,7 @@ do {
 				name: displayName,
 				display_id: String(display.displayID),
 				sourceType: "screen",
-				thumbnail: skipThumbnails ? nil : displayThumbnail(displayID: display.displayID, targetSize: thumbnailSize),
+				thumbnail: coreGraphicsThumbnailsAvailable ? displayThumbnail(displayID: display.displayID, targetSize: thumbnailSize) : nil,
 				appIcon: nil,
 				appName: nil,
 				windowTitle: nil,
@@ -398,7 +635,7 @@ do {
 				name: resolvedName,
 				display_id: matchedDisplay.map { String($0.displayID) } ?? "",
 				sourceType: "window",
-				thumbnail: skipThumbnails ? nil : windowThumbnail(windowID: CGWindowID(windowID), bounds: bounds, targetSize: thumbnailSize),
+				thumbnail: coreGraphicsThumbnailsAvailable ? windowThumbnail(windowID: CGWindowID(windowID), bounds: bounds, targetSize: thumbnailSize) : nil,
 				appIcon: appIconDataURL(bundleId: bundleId),
 				appName: appName,
 				windowTitle: resolvedWindowTitle,
@@ -421,9 +658,21 @@ do {
 		return (lhs.windowTitle ?? lhs.name).localizedCaseInsensitiveCompare(rhs.windowTitle ?? rhs.name) == .orderedAscending
 	}
 
+	return screenEntries + windowEntries
+}
+
+do {
+	let entries: [SourceListEntry]
+	if #available(macOS 12.3, *) {
+		let screenCaptureKitEntries = try? buildScreenCaptureKitEntries()
+		entries = screenCaptureKitEntries?.isEmpty == false ? screenCaptureKitEntries! : try buildCoreGraphicsEntries()
+	} else {
+		entries = try buildCoreGraphicsEntries()
+	}
+
 	let encoder = JSONEncoder()
 	encoder.outputFormatting = [.sortedKeys]
-	let data = try encoder.encode(screenEntries + windowEntries)
+	let data = try encoder.encode(entries)
 	FileHandle.standardOutput.write(data)
 	exit(0)
 } catch {

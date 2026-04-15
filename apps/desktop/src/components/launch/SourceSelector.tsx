@@ -9,6 +9,11 @@ import { Button } from "../ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { getSourceGridColumnClass } from "./sourceGridLayout";
 
+const SOURCE_THUMBNAIL_SIZE = { width: 320, height: 180 };
+const SCREEN_PREVIEW_TIMEOUT_MS = 5000;
+const WINDOW_PREVIEW_TIMEOUT_MS = 9000;
+const PREVIEW_REFRESH_INTERVAL_MS = 2200;
+
 interface DesktopSource {
 	id: string;
 	name: string;
@@ -220,68 +225,34 @@ export function SourceSelector() {
 			setLoading(true);
 			try {
 				const rawSources = await getSources({
-					types: ["screen"],
-					thumbnailSize: { width: 320, height: 180 },
+					types: ["screen", "window"],
+					thumbnailSize: SOURCE_THUMBNAIL_SIZE,
+					withThumbnails: true,
+					timeoutMs: WINDOW_PREVIEW_TIMEOUT_MS,
 				});
 				if (!cancelled) {
 					setSources(mapSources(rawSources));
 				}
 			} catch (error) {
-				console.error("Error loading sources:", error);
+				console.error("Error loading source previews:", error);
+
+				try {
+					const fallbackSources = await getSources({
+						types: ["screen", "window"],
+						thumbnailSize: SOURCE_THUMBNAIL_SIZE,
+					});
+
+					if (!cancelled) {
+						setSources(mapSources(fallbackSources));
+					}
+				} catch (fallbackError) {
+					console.error("Error loading fallback sources:", fallbackError);
+				}
 			} finally {
 				if (!cancelled) {
 					setLoading(false);
-				}
-			}
-
-			try {
-				const windowSources = await getSources({
-					types: ["window"],
-					thumbnailSize: { width: 320, height: 180 },
-				});
-
-				if (!cancelled) {
-					setSources((prev) => {
-						const screens = prev.filter((source) => source.sourceType === "screen");
-						return [...screens, ...mapSources(windowSources)];
-					});
-				}
-			} catch (error) {
-				console.error("Error loading window sources:", error);
-			} finally {
-				if (!cancelled) {
 					setWindowsLoading(false);
 				}
-			}
-
-			try {
-				const previewScreens = await getSources({
-					types: ["screen"],
-					thumbnailSize: { width: 320, height: 180 },
-					withThumbnails: true,
-					timeoutMs: 4000,
-				});
-
-				if (!cancelled) {
-					setSources((prev) => mergeSources(prev, mapSources(previewScreens)));
-				}
-			} catch (error) {
-				console.error("Error loading screen previews:", error);
-			}
-
-			try {
-				const previewWindows = await getSources({
-					types: ["window"],
-					thumbnailSize: { width: 320, height: 180 },
-					withThumbnails: true,
-					timeoutMs: 8000,
-				});
-
-				if (!cancelled) {
-					setSources((prev) => mergeSources(prev, mapSources(previewWindows)));
-				}
-			} catch (error) {
-				console.error("Error loading window previews:", error);
 			}
 		}
 
@@ -290,6 +261,49 @@ export function SourceSelector() {
 			cancelled = true;
 		};
 	}, []);
+
+	useEffect(() => {
+		if (loading) {
+			return;
+		}
+
+		let cancelled = false;
+		let refreshInFlight = false;
+
+		const refreshVisiblePreviews = async () => {
+			if (refreshInFlight) {
+				return;
+			}
+
+			refreshInFlight = true;
+			const sourceType = activeTab === "windows" ? "window" : "screen";
+			try {
+				const refreshedSources = await getSources({
+					types: [sourceType],
+					thumbnailSize: SOURCE_THUMBNAIL_SIZE,
+					withThumbnails: true,
+					timeoutMs:
+						sourceType === "window" ? WINDOW_PREVIEW_TIMEOUT_MS : SCREEN_PREVIEW_TIMEOUT_MS,
+				});
+
+				if (!cancelled) {
+					setSources((prev) => mergeSources(prev, mapSources(refreshedSources)));
+				}
+			} catch (error) {
+				console.error("Error refreshing source previews:", error);
+			} finally {
+				refreshInFlight = false;
+			}
+		};
+
+		void refreshVisiblePreviews();
+		const interval = window.setInterval(refreshVisiblePreviews, PREVIEW_REFRESH_INTERVAL_MS);
+
+		return () => {
+			cancelled = true;
+			window.clearInterval(interval);
+		};
+	}, [activeTab, loading]);
 
 	const screenSources = sources.filter((source) => source.sourceType === "screen");
 	const windowSources = sources.filter((source) => source.sourceType === "window");
