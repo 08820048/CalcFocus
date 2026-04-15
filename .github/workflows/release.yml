@@ -116,7 +116,8 @@ jobs:
           set -euo pipefail
 
           if [ -z "${APPLE_CERTIFICATE:-}" ] || [ -z "${APPLE_CERTIFICATE_PASSWORD:-}" ] || [ -z "${APPLE_SIGNING_IDENTITY:-}" ]; then
-            echo "Apple signing secrets are incomplete; building unsigned macOS artifacts."
+            echo "Apple signing secrets are incomplete; using stable ad-hoc macOS signing."
+            echo "APPLE_SIGNING_IDENTITY=-" >> "$GITHUB_ENV"
             exit 0
           fi
 
@@ -238,7 +239,8 @@ jobs:
           set -euo pipefail
 
           if [ -z "${APPLE_CERTIFICATE:-}" ] || [ -z "${APPLE_CERTIFICATE_PASSWORD:-}" ] || [ -z "${APPLE_SIGNING_IDENTITY:-}" ]; then
-            echo "Apple signing secrets are incomplete; building unsigned macOS artifacts."
+            echo "Apple signing secrets are incomplete; using stable ad-hoc macOS signing."
+            echo "APPLE_SIGNING_IDENTITY=-" >> "$GITHUB_ENV"
             exit 0
           fi
 
