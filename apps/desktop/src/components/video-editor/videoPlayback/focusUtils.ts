@@ -1,6 +1,11 @@
-import { ZOOM_DEPTH_SCALES, clampFocusToDepth, type ZoomFocus, type ZoomDepth } from "../types";
+import { clampFocusToDepth, ZOOM_DEPTH_SCALES, type ZoomDepth, type ZoomFocus } from "../types";
 
 interface StageSize {
+	width: number;
+	height: number;
+}
+
+export interface ViewportRatio {
 	width: number;
 	height: number;
 }
@@ -39,9 +44,11 @@ function getFocusBounds(depth: ZoomDepth) {
 	return getFocusBoundsForScale(zoomScale);
 }
 
-function getFocusBoundsForScale(zoomScale: number) {
-	const marginX = 1 / (2 * zoomScale);
-	const marginY = 1 / (2 * zoomScale);
+function getFocusBoundsForScale(zoomScale: number, viewportRatio?: ViewportRatio) {
+	const safeViewportWidth = Math.max(0.01, Math.min(1, viewportRatio?.width ?? 1));
+	const safeViewportHeight = Math.max(0.01, Math.min(1, viewportRatio?.height ?? 1));
+	const marginX = safeViewportWidth / (2 * zoomScale);
+	const marginY = safeViewportHeight / (2 * zoomScale);
 
 	return {
 		minX: marginX,
@@ -65,12 +72,16 @@ export function clampFocusToStage(
 	};
 }
 
-export function clampFocusToScale(focus: ZoomFocus, zoomScale: number): ZoomFocus {
+export function clampFocusToScale(
+	focus: ZoomFocus,
+	zoomScale: number,
+	viewportRatio?: ViewportRatio,
+): ZoomFocus {
 	const baseFocus = {
 		cx: clamp(focus.cx, 0, 1),
 		cy: clamp(focus.cy, 0, 1),
 	};
-	const bounds = getFocusBoundsForScale(zoomScale);
+	const bounds = getFocusBoundsForScale(zoomScale, viewportRatio);
 
 	return {
 		cx: clamp(baseFocus.cx, bounds.minX, bounds.maxX),
@@ -78,12 +89,16 @@ export function clampFocusToScale(focus: ZoomFocus, zoomScale: number): ZoomFocu
 	};
 }
 
-export function softenFocusToScale(focus: ZoomFocus, zoomScale: number): ZoomFocus {
+export function softenFocusToScale(
+	focus: ZoomFocus,
+	zoomScale: number,
+	viewportRatio?: ViewportRatio,
+): ZoomFocus {
 	const baseFocus = {
 		cx: clamp(focus.cx, 0, 1),
 		cy: clamp(focus.cy, 0, 1),
 	};
-	const bounds = getFocusBoundsForScale(zoomScale);
+	const bounds = getFocusBoundsForScale(zoomScale, viewportRatio);
 	const horizontalRange = bounds.maxX - bounds.minX;
 	const verticalRange = bounds.maxY - bounds.minY;
 	const horizontalSoftness = Math.min(0.12, horizontalRange * 0.35);

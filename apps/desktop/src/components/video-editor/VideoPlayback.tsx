@@ -21,11 +21,7 @@ import {
 	VideoSource,
 } from "@/lib/pixi";
 import { ensurePixiRuntime } from "@/lib/pixiRuntime";
-import {
-	type FacecamAnchor,
-	type FacecamSettings,
-	getFacecamLayout,
-} from "@/lib/recordingSession";
+import { type FacecamAnchor, type FacecamSettings, getFacecamLayout } from "@/lib/recordingSession";
 import { DEFAULT_WALLPAPER_PATH, DEFAULT_WALLPAPER_RELATIVE_PATH } from "@/lib/wallpapers";
 import { type AspectRatio, formatAspectRatioForCSS } from "@/utils/aspectRatioUtils";
 import { AnnotationOverlay } from "./AnnotationOverlay";
@@ -36,8 +32,8 @@ import {
 	DEFAULT_CURSOR_CLICK_BOUNCE,
 	DEFAULT_CURSOR_MOTION_BLUR,
 	DEFAULT_CURSOR_SIZE,
-	DEFAULT_CURSOR_STYLE,
 	DEFAULT_CURSOR_SMOOTHING,
+	DEFAULT_CURSOR_STYLE,
 	type SpeedRegion,
 	type TrimRegion,
 	ZOOM_DEPTH_SCALES,
@@ -52,16 +48,24 @@ import {
 	ZOOM_TRANSLATION_DEADZONE_PX,
 } from "./videoPlayback/constants";
 import {
+	createAutoFocusState,
+	resetAutoFocusState,
+	smoothAutoFocus,
+} from "./videoPlayback/cursorFollowUtils";
+import { getDisplayedTimelineWindowMs } from "./videoPlayback/cursorLoopTelemetry";
+import {
 	DEFAULT_CURSOR_CONFIG,
 	PixiCursorOverlay,
 	preloadCursorAssets,
 } from "./videoPlayback/cursorRenderer";
 import type { CursorViewportRect } from "./videoPlayback/cursorViewport";
-import { clampFocusToStage as clampFocusToStageUtil } from "./videoPlayback/focusUtils";
+import {
+	clampFocusToStage as clampFocusToStageUtil,
+	type ViewportRatio,
+} from "./videoPlayback/focusUtils";
 import { layoutVideoContent as layoutVideoContentUtil } from "./videoPlayback/layoutUtils";
 import { clamp01 } from "./videoPlayback/mathUtils";
 import { updateOverlayIndicator } from "./videoPlayback/overlayUtils";
-import { getDisplayedTimelineWindowMs } from "./videoPlayback/cursorLoopTelemetry";
 import { createVideoEventHandlers } from "./videoPlayback/videoEventHandlers";
 import { findDominantRegion } from "./videoPlayback/zoomRegionUtils";
 import {
@@ -258,6 +262,7 @@ const VideoPlayback = memo(
 			const allowPlaybackRef = useRef(false);
 			const lockedVideoDimensionsRef = useRef<{ width: number; height: number } | null>(null);
 			const layoutVideoContentRef = useRef<(() => void) | null>(null);
+			const autoFocusStateRef = useRef(createAutoFocusState());
 			const trimRegionsRef = useRef<TrimRegion[]>([]);
 
 			useEffect(() => {
@@ -415,85 +420,89 @@ const VideoPlayback = memo(
 				});
 			}, []);
 
-			useImperativeHandle(ref, () => ({
-				video: videoRef.current,
-				app: appRef.current,
-				videoSprite: videoSpriteRef.current,
-				videoContainer: videoContainerRef.current,
-				containerRef,
-				play: async () => {
-					const vid = videoRef.current;
-					if (!vid) return;
-					try {
-						const durationSeconds = Number.isFinite(vid.duration) ? vid.duration : 0;
-						const timelineWindow = getDisplayedTimelineWindowMs(
-							Math.round(durationSeconds * 1000),
-							trimRegionsRef.current,
-						);
-						const playbackStartSeconds = timelineWindow.startMs / 1000;
-						const playbackEndSeconds = timelineWindow.endMs / 1000;
-						const restartThresholdSeconds =
-							durationSeconds > 0 ? Math.min(1 / 30, durationSeconds / 1000 || 1 / 30) : 1 / 30;
-						const shouldRestartFromStart =
-							vid.ended ||
-							(playbackEndSeconds > playbackStartSeconds &&
-								vid.currentTime >= playbackEndSeconds - restartThresholdSeconds);
+			useImperativeHandle(
+				ref,
+				() => ({
+					video: videoRef.current,
+					app: appRef.current,
+					videoSprite: videoSpriteRef.current,
+					videoContainer: videoContainerRef.current,
+					containerRef,
+					play: async () => {
+						const vid = videoRef.current;
+						if (!vid) return;
+						try {
+							const durationSeconds = Number.isFinite(vid.duration) ? vid.duration : 0;
+							const timelineWindow = getDisplayedTimelineWindowMs(
+								Math.round(durationSeconds * 1000),
+								trimRegionsRef.current,
+							);
+							const playbackStartSeconds = timelineWindow.startMs / 1000;
+							const playbackEndSeconds = timelineWindow.endMs / 1000;
+							const restartThresholdSeconds =
+								durationSeconds > 0 ? Math.min(1 / 30, durationSeconds / 1000 || 1 / 30) : 1 / 30;
+							const shouldRestartFromStart =
+								vid.ended ||
+								(playbackEndSeconds > playbackStartSeconds &&
+									vid.currentTime >= playbackEndSeconds - restartThresholdSeconds);
 
-						if (shouldRestartFromStart) {
-							await seekVideoToTime(vid, playbackStartSeconds);
+							if (shouldRestartFromStart) {
+								await seekVideoToTime(vid, playbackStartSeconds);
+							}
+
+							allowPlaybackRef.current = true;
+							await vid.play();
+						} catch (error) {
+							allowPlaybackRef.current = false;
+							throw error;
+						}
+					},
+					pause: () => {
+						const video = videoRef.current;
+						allowPlaybackRef.current = false;
+						if (!video) {
+							return;
+						}
+						video.pause();
+					},
+					refreshFrame: async () => {
+						const video = videoRef.current;
+						if (!video || Number.isNaN(video.currentTime)) {
+							return;
 						}
 
-						allowPlaybackRef.current = true;
-						await vid.play();
-					} catch (error) {
-						allowPlaybackRef.current = false;
-						throw error;
-					}
-				},
-				pause: () => {
-					const video = videoRef.current;
-					allowPlaybackRef.current = false;
-					if (!video) {
-						return;
-					}
-					video.pause();
-				},
-				refreshFrame: async () => {
-					const video = videoRef.current;
-					if (!video || Number.isNaN(video.currentTime)) {
-						return;
-					}
+						const restoreTime = video.currentTime;
+						const duration = Number.isFinite(video.duration) ? video.duration : 0;
+						const epsilon = duration > 0 ? Math.min(1 / 120, duration / 1000 || 1 / 120) : 1 / 120;
+						const nudgeTarget =
+							restoreTime > epsilon
+								? restoreTime - epsilon
+								: Math.min(duration || restoreTime + epsilon, restoreTime + epsilon);
 
-					const restoreTime = video.currentTime;
-					const duration = Number.isFinite(video.duration) ? video.duration : 0;
-					const epsilon = duration > 0 ? Math.min(1 / 120, duration / 1000 || 1 / 120) : 1 / 120;
-					const nudgeTarget =
-						restoreTime > epsilon
-							? restoreTime - epsilon
-							: Math.min(duration || restoreTime + epsilon, restoreTime + epsilon);
+						if (Math.abs(nudgeTarget - restoreTime) < 0.000001) {
+							return;
+						}
 
-					if (Math.abs(nudgeTarget - restoreTime) < 0.000001) {
-						return;
-					}
+						await new Promise<void>((resolve) => {
+							const handleFirstSeeked = () => {
+								video.removeEventListener("seeked", handleFirstSeeked);
+								const handleSecondSeeked = () => {
+									video.removeEventListener("seeked", handleSecondSeeked);
+									video.pause();
+									resolve();
+								};
 
-					await new Promise<void>((resolve) => {
-						const handleFirstSeeked = () => {
-							video.removeEventListener("seeked", handleFirstSeeked);
-							const handleSecondSeeked = () => {
-								video.removeEventListener("seeked", handleSecondSeeked);
-								video.pause();
-								resolve();
+								video.addEventListener("seeked", handleSecondSeeked, { once: true });
+								video.currentTime = restoreTime;
 							};
 
-							video.addEventListener("seeked", handleSecondSeeked, { once: true });
-							video.currentTime = restoreTime;
-						};
-
-						video.addEventListener("seeked", handleFirstSeeked, { once: true });
-						video.currentTime = nudgeTarget;
-					});
-				},
-			}), [containerRef, seekVideoToTime]);
+							video.addEventListener("seeked", handleFirstSeeked, { once: true });
+							video.currentTime = nudgeTarget;
+						});
+					},
+				}),
+				[containerRef, seekVideoToTime],
+			);
 
 			const updateFocusFromClientPoint = (clientX: number, clientY: number) => {
 				const overlayEl = overlayRef.current;
@@ -665,6 +674,7 @@ const VideoPlayback = memo(
 				}
 
 				animationStateRef.current = createPlaybackAnimationState();
+				resetAutoFocusState(autoFocusStateRef.current);
 
 				// Reset cursor overlay smoothing on layout change
 				cursorOverlayRef.current?.reset();
@@ -910,6 +920,7 @@ const VideoPlayback = memo(
 				setFirstFrameReady(false);
 				clearFirstFrameTimeout();
 				cursorOverlayRef.current?.reset();
+				resetAutoFocusState(autoFocusStateRef.current);
 			}, [clearFirstFrameTimeout, videoPath]);
 
 			useEffect(() => {
@@ -1066,11 +1077,20 @@ const VideoPlayback = memo(
 				};
 
 				const ticker = () => {
+					const viewportRatio: ViewportRatio =
+						stageSizeRef.current.width > 0 && stageSizeRef.current.height > 0
+							? {
+									width: baseMaskRef.current.width / stageSizeRef.current.width,
+									height: baseMaskRef.current.height / stageSizeRef.current.height,
+								}
+							: { width: 1, height: 1 };
 					const { region, strength, blendedScale, transition } = findDominantRegion(
 						zoomRegionsRef.current,
 						currentTimeRef.current,
 						{
 							connectZooms: connectZoomsRef.current,
+							cursorTelemetry: cursorTelemetryRef.current,
+							viewportRatio,
 						},
 					);
 
@@ -1084,10 +1104,25 @@ const VideoPlayback = memo(
 					const selectedId = selectedZoomIdRef.current;
 					const hasSelectedZoom = selectedId !== null;
 					const shouldShowUnzoomedView = hasSelectedZoom && !isPlayingRef.current;
+					const shouldUseAutoFocus = Boolean(
+						region &&
+							strength > 0 &&
+							!shouldShowUnzoomedView &&
+							region.focusMode === "auto" &&
+							!transition,
+					);
 
 					if (region && strength > 0 && !shouldShowUnzoomedView) {
 						const zoomScale = blendedScale ?? ZOOM_DEPTH_SCALES[region.depth];
-						const regionFocus = region.focus;
+						const regionFocus = shouldUseAutoFocus
+							? smoothAutoFocus({
+									state: autoFocusStateRef.current,
+									targetFocus: region.focus,
+									timeMs: currentTimeRef.current,
+									zoomScale,
+									viewportRatio,
+								})
+							: region.focus;
 
 						targetScaleFactor = zoomScale;
 						targetFocus = regionFocus;
@@ -1129,6 +1164,10 @@ const VideoPlayback = memo(
 							});
 							targetProgress = 1;
 						}
+					}
+
+					if (!shouldUseAutoFocus) {
+						resetAutoFocusState(autoFocusStateRef.current);
 					}
 
 					const state = animationStateRef.current;
@@ -1399,7 +1438,9 @@ const VideoPlayback = memo(
 			})();
 
 			const facecamStageWidth =
-				overlayRef.current?.clientWidth || containerRef.current?.clientWidth || stageSizeRef.current.width;
+				overlayRef.current?.clientWidth ||
+				containerRef.current?.clientWidth ||
+				stageSizeRef.current.width;
 			const facecamStageHeight =
 				overlayRef.current?.clientHeight ||
 				containerRef.current?.clientHeight ||

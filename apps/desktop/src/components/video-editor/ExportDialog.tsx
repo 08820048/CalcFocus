@@ -66,9 +66,7 @@ export function ExportDialog({
 	const isFinalizing = progress?.phase === "finalizing";
 	const phaseProgress = progress?.renderProgress;
 	const isGifFinalizing =
-		exportFormat === "gif" &&
-		Boolean(progress) &&
-		(isFinalizing || (isExporting && progress.percentage >= 100));
+		exportFormat === "gif" && (isFinalizing || (isExporting && (progress?.percentage ?? 0) >= 100));
 	const isVideoFinalizing = exportFormat === "mp4" && isFinalizing;
 	const isFinalizingExport = isGifFinalizing || isVideoFinalizing;
 

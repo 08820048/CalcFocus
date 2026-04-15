@@ -6,6 +6,8 @@ import { ASPECT_RATIOS, type AspectRatio, isCustomAspectRatio } from "@/utils/as
 import {
 	type AnnotationRegion,
 	type CropRegion,
+	CURSOR_STYLE_VALUES,
+	type CursorStyle,
 	DEFAULT_ANNOTATION_POSITION,
 	DEFAULT_ANNOTATION_SIZE,
 	DEFAULT_ANNOTATION_STYLE,
@@ -15,16 +17,15 @@ import {
 	DEFAULT_CURSOR_CLICK_BOUNCE,
 	DEFAULT_CURSOR_MOTION_BLUR,
 	DEFAULT_CURSOR_SIZE,
-	DEFAULT_CURSOR_STYLE,
 	DEFAULT_CURSOR_SMOOTHING,
-	CURSOR_STYLE_VALUES,
+	DEFAULT_CURSOR_STYLE,
 	DEFAULT_FIGURE_DATA,
 	DEFAULT_PLAYBACK_SPEED,
 	DEFAULT_ZOOM_DEPTH,
 	DEFAULT_ZOOM_MOTION_BLUR,
-	type CursorStyle,
 	type SpeedRegion,
 	type TrimRegion,
+	type ZoomFocusMode,
 	type ZoomRegion,
 } from "./types";
 
@@ -103,6 +104,8 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 	const validAspectRatios = new Set<AspectRatio>(ASPECT_RATIOS);
 	const isCursorStyle = (value: unknown): value is CursorStyle =>
 		typeof value === "string" && CURSOR_STYLE_VALUES.includes(value as CursorStyle);
+	const isZoomFocusMode = (value: unknown): value is ZoomFocusMode =>
+		value === "manual" || value === "auto";
 	const legacyMotionBlurEnabled = (editor as Partial<{ motionBlurEnabled: boolean }>)
 		.motionBlurEnabled;
 	const legacyShowBlur = (editor as Partial<{ showBlur: boolean }>).showBlur;
@@ -139,6 +142,7 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 							cx: clamp(isFiniteNumber(region.focus?.cx) ? region.focus.cx : 0.5, 0, 1),
 							cy: clamp(isFiniteNumber(region.focus?.cy) ? region.focus.cy : 0.5, 0, 1),
 						},
+						...(isZoomFocusMode(region.focusMode) ? { focusMode: region.focusMode } : {}),
 					};
 				})
 		: [];

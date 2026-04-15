@@ -1,4 +1,4 @@
-import type { CursorTelemetryPoint, ZoomFocus } from "../types";
+import type { CursorTelemetryPoint, ZoomDepth, ZoomFocus } from "../types";
 
 export const MIN_DWELL_DURATION_MS = 450;
 export const MAX_DWELL_DURATION_MS = 2600;
@@ -25,6 +25,14 @@ export interface SuggestedZoomRegion {
 	startMs: number;
 	endMs: number;
 	focus: ZoomFocus;
+	depth: ZoomDepth;
+	kind: CursorInteractionCandidate["kind"];
+}
+
+interface SuggestionProfile {
+	durationMs: number;
+	leadMs: number;
+	depth: ZoomDepth;
 }
 
 function normalizeTelemetrySample(
@@ -236,6 +244,113 @@ export function detectInteractionCandidates(
 	return [...explicitInteractionCandidates, ...dwellCandidates, ...doubleClickCandidates];
 }
 
+export function getSuggestionProfile(
+	candidate: CursorInteractionCandidate,
+	defaultDurationMs: number,
+): SuggestionProfile {
+	const fallbackDuration = Math.max(1, defaultDurationMs);
+	const dwellDuration = Math.max(1500, Math.min(2800, candidate.strength + 900));
+
+	const target =
+		candidate.kind === "double-click-like"
+			? { durationMs: 1900, leadMs: 520, depth: 4 as const }
+			: candidate.kind === "dropdown-open"
+				? { durationMs: 2800, leadMs: 360, depth: 3 as const }
+				: candidate.kind === "text-selection"
+					? { durationMs: 2600, leadMs: 420, depth: 3 as const }
+					: candidate.kind === "text-field-click" || candidate.kind === "text-focus-like"
+						? { durationMs: 2400, leadMs: 640, depth: 4 as const }
+						: candidate.kind === "dwell"
+							? {
+									durationMs: dwellDuration,
+									leadMs: Math.round(dwellDuration / 2),
+									depth: 3 as const,
+								}
+							: { durationMs: 1500, leadMs: 420, depth: 3 as const };
+
+	return {
+		...target,
+		durationMs: Math.max(fallbackDuration, target.durationMs),
+	};
+}
+
+function getAdaptiveMergeGapMs(
+	previous: SuggestedZoomRegion,
+	next: SuggestedZoomRegion,
+	maxMergeGapMs: number,
+) {
+	const interactionKindsThatBenefitFromLongContext = new Set<CursorInteractionCandidate["kind"]>([
+		"dwell",
+		"dropdown-open",
+		"text-selection",
+		"text-field-click",
+		"text-focus-like",
+	]);
+
+	if (
+		interactionKindsThatBenefitFromLongContext.has(previous.kind) &&
+		interactionKindsThatBenefitFromLongContext.has(next.kind)
+	) {
+		return maxMergeGapMs;
+	}
+
+	return Math.min(maxMergeGapMs, 800);
+}
+
+function overlapsSpan(
+	startMs: number,
+	endMs: number,
+	spans: Array<{ start: number; end: number }>,
+) {
+	return spans.some((span) => endMs > span.start && startMs < span.end);
+}
+
+function placeSuggestedSpan(options: {
+	centerTimeMs: number;
+	durationMs: number;
+	leadMs: number;
+	totalMs: number;
+	occupiedSpans: Array<{ start: number; end: number }>;
+}) {
+	const { centerTimeMs, durationMs, leadMs, totalMs, occupiedSpans } = options;
+	const minDurationMs = Math.min(durationMs, Math.max(900, Math.round(durationMs * 0.65)));
+	const suggestedStart = Math.round(centerTimeMs - leadMs);
+	const startMs = Math.max(0, Math.min(suggestedStart, totalMs - durationMs));
+	const endMs = Math.min(totalMs, startMs + durationMs);
+
+	if (!overlapsSpan(startMs, endMs, occupiedSpans)) {
+		return { startMs, endMs };
+	}
+
+	const overlappingSpans = occupiedSpans
+		.filter((span) => endMs > span.start && startMs < span.end)
+		.sort((a, b) => a.start - b.start);
+
+	for (const span of overlappingSpans) {
+		const shiftedStart = Math.max(0, span.end);
+		const shiftedEnd = Math.min(totalMs, shiftedStart + durationMs);
+		if (
+			shiftedEnd - shiftedStart >= minDurationMs &&
+			!overlapsSpan(shiftedStart, shiftedEnd, occupiedSpans)
+		) {
+			return { startMs: shiftedStart, endMs: shiftedEnd };
+		}
+	}
+
+	for (const span of [...overlappingSpans].reverse()) {
+		const shiftedEnd = Math.min(totalMs, span.start);
+		const shiftedStart = Math.max(0, shiftedEnd - durationMs);
+		if (
+			shiftedEnd - shiftedStart >= minDurationMs &&
+			!overlapsSpan(shiftedStart, shiftedEnd, occupiedSpans)
+		) {
+			return { startMs: shiftedStart, endMs: shiftedEnd };
+		}
+	}
+
+	return null;
+}
+
 export function planSuggestedZoomRegions(options: {
 	candidates: CursorInteractionCandidate[];
 	totalMs: number;
@@ -270,21 +385,28 @@ export function planSuggestedZoomRegions(options: {
 			continue;
 		}
 
-		const centeredStart = Math.round(candidate.centerTimeMs - defaultDurationMs / 2);
-		const startMs = Math.max(0, Math.min(centeredStart, totalMs - defaultDurationMs));
-		const endMs = Math.min(totalMs, startMs + defaultDurationMs);
-		const hasOverlap = occupiedSpans.some((span) => endMs > span.start && startMs < span.end);
+		const profile = getSuggestionProfile(candidate, defaultDurationMs);
+		const durationMs = Math.min(profile.durationMs, totalMs);
+		const placedSpan = placeSuggestedSpan({
+			centerTimeMs: candidate.centerTimeMs,
+			durationMs,
+			leadMs: profile.leadMs,
+			totalMs,
+			occupiedSpans,
+		});
 
-		if (hasOverlap) {
+		if (!placedSpan) {
 			continue;
 		}
 
 		accepted.push({
-			startMs,
-			endMs,
+			startMs: placedSpan.startMs,
+			endMs: placedSpan.endMs,
 			focus: candidate.focus,
+			depth: profile.depth,
+			kind: candidate.kind,
 		});
-		occupiedSpans.push({ start: startMs, end: endMs });
+		occupiedSpans.push({ start: placedSpan.startMs, end: placedSpan.endMs });
 		acceptedCenters.push(candidate.centerTimeMs);
 	}
 
@@ -297,8 +419,12 @@ export function planSuggestedZoomRegions(options: {
 
 	for (const region of sortedAccepted) {
 		const prev = merged[merged.length - 1];
-		if (prev && region.startMs - prev.endMs <= mergeNearbyGapMs) {
+		if (
+			prev &&
+			region.startMs - prev.endMs <= getAdaptiveMergeGapMs(prev, region, mergeNearbyGapMs)
+		) {
 			prev.endMs = Math.max(prev.endMs, region.endMs);
+			prev.depth = Math.max(prev.depth, region.depth) as ZoomDepth;
 			continue;
 		}
 

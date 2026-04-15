@@ -39,4 +39,22 @@ describe("projectPersistence", () => {
 
 		expect(project.sourceName).toBe("Display 1");
 	});
+
+	it("preserves auto focus mode on zoom regions", () => {
+		const editor = normalizeProjectEditor({
+			wallpaper: "#000",
+			zoomRegions: [
+				{
+					id: "zoom-1",
+					startMs: 0,
+					endMs: 1200,
+					depth: 3,
+					focus: { cx: 0.4, cy: 0.6 },
+					focusMode: "auto",
+				},
+			],
+		});
+
+		expect(editor.zoomRegions[0]?.focusMode).toBe("auto");
+	});
 });

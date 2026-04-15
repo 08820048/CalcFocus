@@ -21,6 +21,12 @@ import {
 	type MotionBlurState,
 } from "@/components/video-editor/videoPlayback/zoomTransform";
 import {
+	createAutoFocusState,
+	resetAutoFocusState,
+	smoothAutoFocus,
+	type AutoFocusState,
+} from "@/components/video-editor/videoPlayback/cursorFollowUtils";
+import {
 	DEFAULT_FOCUS,
 	ZOOM_SCALE_DEADZONE,
 	ZOOM_TRANSLATION_DEADZONE_PX,
@@ -117,11 +123,13 @@ export class FrameRenderer {
 	private currentVideoTime = 0;
 	private lastMotionVector = { x: 0, y: 0 };
 	private cursorOverlay: PixiCursorOverlay | null = null;
+	private autoFocusState: AutoFocusState;
 
 	constructor(config: FrameRenderConfig) {
 		this.config = config;
 		this.animationState = createAnimationState();
 		this.motionBlurState = createMotionBlurState();
+		this.autoFocusState = createAutoFocusState();
 	}
 
 	async initialize(): Promise<void> {
@@ -662,12 +670,18 @@ export class FrameRenderer {
 
 	private updateAnimationState(timeMs: number): number {
 		if (!this.cameraContainer || !this.layoutCache) return 0;
+		const viewportRatio = {
+			width: this.layoutCache.maskRect.width / this.layoutCache.stageSize.width,
+			height: this.layoutCache.maskRect.height / this.layoutCache.stageSize.height,
+		};
 
 		const { region, strength, blendedScale, transition } = findDominantRegion(
 			this.config.zoomRegions,
 			timeMs,
 			{
 				connectZooms: this.config.connectZooms,
+				cursorTelemetry: this.config.cursorTelemetry,
+				viewportRatio,
 			},
 		);
 
@@ -675,10 +689,22 @@ export class FrameRenderer {
 		let targetScaleFactor = 1;
 		let targetFocus = { ...defaultFocus };
 		let targetProgress = 0;
+		const shouldUseAutoFocus = Boolean(
+			region && strength > 0 && region.focusMode === "auto" && !transition,
+		);
 
 		if (region && strength > 0) {
 			const zoomScale = blendedScale ?? ZOOM_DEPTH_SCALES[region.depth];
-			const regionFocus = region.focus;
+			const regionFocus =
+				shouldUseAutoFocus
+					? smoothAutoFocus({
+							state: this.autoFocusState,
+							targetFocus: region.focus,
+							timeMs,
+							zoomScale,
+							viewportRatio,
+						})
+					: region.focus;
 
 			targetScaleFactor = zoomScale;
 			targetFocus = regionFocus;
@@ -720,6 +746,10 @@ export class FrameRenderer {
 				});
 				targetProgress = 1;
 			}
+		}
+
+		if (!shouldUseAutoFocus) {
+			resetAutoFocusState(this.autoFocusState);
 		}
 
 		const state = this.animationState;

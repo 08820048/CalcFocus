@@ -5,12 +5,15 @@ export interface ZoomFocus {
 	cy: number; // normalized vertical center (0-1)
 }
 
+export type ZoomFocusMode = "manual" | "auto";
+
 export interface ZoomRegion {
 	id: string;
 	startMs: number;
 	endMs: number;
 	depth: ZoomDepth;
 	focus: ZoomFocus;
+	focusMode?: ZoomFocusMode;
 }
 
 export interface CursorTelemetryPoint {

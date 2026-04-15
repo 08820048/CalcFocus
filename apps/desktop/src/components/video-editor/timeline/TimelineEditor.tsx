@@ -46,6 +46,7 @@ import type {
 	CursorTelemetryPoint,
 	SpeedRegion,
 	TrimRegion,
+	ZoomDepth,
 	ZoomFocus,
 	ZoomRegion,
 } from "../types";
@@ -80,7 +81,7 @@ interface TimelineEditorProps {
 	disableSuggestedZooms?: boolean;
 	zoomRegions: ZoomRegion[];
 	onZoomAdded: (span: Span) => void;
-	onZoomSuggested?: (span: Span, focus: ZoomFocus) => void;
+	onZoomSuggested?: (span: Span, focus: ZoomFocus, options?: { depth?: ZoomDepth }) => void;
 	onZoomSpanChange: (id: string, span: Span) => void;
 	onZoomDelete: (id: string) => void;
 	selectedZoomId: string | null;
@@ -1067,7 +1068,9 @@ function TimelineEditorInner({
 		}
 
 		for (const suggestion of mergedSuggestions) {
-			onZoomSuggested({ start: suggestion.startMs, end: suggestion.endMs }, suggestion.focus);
+			onZoomSuggested({ start: suggestion.startMs, end: suggestion.endMs }, suggestion.focus, {
+				depth: suggestion.depth,
+			});
 		}
 
 		toast.success(

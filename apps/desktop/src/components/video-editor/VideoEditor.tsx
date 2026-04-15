@@ -138,7 +138,7 @@ type PendingPreviewRestore = {
 };
 
 function getZoomRegionSignature(region: ZoomRegion) {
-	return `${region.id}:${region.startMs}:${region.endMs}:${region.depth}:${region.focus.cx}:${region.focus.cy}`;
+	return `${region.id}:${region.startMs}:${region.endMs}:${region.depth}:${region.focus.cx}:${region.focus.cy}:${region.focusMode ?? "manual"}`;
 }
 
 function getTrimRegionSignature(region: TrimRegion) {
@@ -1309,6 +1309,7 @@ export default function VideoEditor() {
 			endMs: Math.round(span.end),
 			depth: DEFAULT_ZOOM_DEPTH,
 			focus: { cx: 0.5, cy: 0.5 },
+			focusMode: "manual",
 		};
 		setZoomRegions((prev) => [...prev, newRegion]);
 		setSelectedZoomId(id);
@@ -1316,20 +1317,25 @@ export default function VideoEditor() {
 		setSelectedAnnotationId(null);
 	}, []);
 
-	const handleZoomSuggested = useCallback((span: Span, focus: ZoomFocus) => {
-		const id = `zoom-${nextZoomIdRef.current++}`;
-		const newRegion: ZoomRegion = {
-			id,
-			startMs: Math.round(span.start),
-			endMs: Math.round(span.end),
-			depth: DEFAULT_ZOOM_DEPTH,
-			focus: clampFocusToDepth(focus, DEFAULT_ZOOM_DEPTH),
-		};
-		setZoomRegions((prev) => [...prev, newRegion]);
-		setSelectedZoomId(id);
-		setSelectedTrimId(null);
-		setSelectedAnnotationId(null);
-	}, []);
+	const handleZoomSuggested = useCallback(
+		(span: Span, focus: ZoomFocus, options?: { depth?: ZoomDepth }) => {
+			const id = `zoom-${nextZoomIdRef.current++}`;
+			const depth = options?.depth ?? DEFAULT_ZOOM_DEPTH;
+			const newRegion: ZoomRegion = {
+				id,
+				startMs: Math.round(span.start),
+				endMs: Math.round(span.end),
+				depth,
+				focus: clampFocusToDepth(focus, depth),
+				focusMode: "auto",
+			};
+			setZoomRegions((prev) => [...prev, newRegion]);
+			setSelectedZoomId(id);
+			setSelectedTrimId(null);
+			setSelectedAnnotationId(null);
+		},
+		[],
+	);
 
 	const handleTrimAdded = useCallback((span: Span) => {
 		const id = `trim-${nextTrimIdRef.current++}`;
@@ -1379,6 +1385,7 @@ export default function VideoEditor() {
 					? {
 							...region,
 							focus: clampFocusToDepth(focus, region.depth),
+							focusMode: "manual",
 						}
 					: region,
 			),
