@@ -18,7 +18,7 @@ https://github.com/user-attachments/assets/549bf88c-74d7-4b23-97c7-17b43204c788
 
 
 ### Create polished, pro-grade screen recordings and screenshots.
-[CalcFocus](https://github.com/08820048/CalcFocus) is an **open-source screen recorder, screenshot tool, and editor** for creating **polished walkthroughs, demos, tutorials, and product videos**. Contribution encouraged.
+[CalcFocus](https://calcfocus.cc) is an **open-source screen recorder, screenshot tool, and editor** for creating **polished walkthroughs, demos, tutorials, and product videos**. Contribution encouraged.
 
 Highlights:
 
