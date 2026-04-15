@@ -16,6 +16,13 @@ use core_foundation::{
 use objc::{sel, sel_impl};
 
 #[cfg(target_os = "macos")]
+#[link(name = "CoreGraphics", kind = "framework")]
+unsafe extern "C" {
+    fn CGPreflightScreenCaptureAccess() -> bool;
+    fn CGRequestScreenCaptureAccess() -> bool;
+}
+
+#[cfg(target_os = "macos")]
 fn run_on_main_thread<R: Send + 'static>(
     app: &AppHandle,
     callback: impl FnOnce() -> R + Send + 'static,
@@ -69,14 +76,25 @@ fn run_screen_capture_helper(args: &[&str]) -> Result<bool, String> {
     parse_binary_permission_status(&String::from_utf8_lossy(&output.stdout))
 }
 
+#[cfg(target_os = "macos")]
+fn preflight_screen_recording_access_main_process() -> bool {
+    unsafe { CGPreflightScreenCaptureAccess() }
+}
+
+#[cfg(target_os = "macos")]
+fn request_screen_recording_access_main_process() -> bool {
+    unsafe { CGRequestScreenCaptureAccess() }
+}
+
 #[tauri::command]
 pub async fn get_screen_recording_permission_status(app: AppHandle) -> Result<String, String> {
     #[cfg(target_os = "macos")]
     {
         let _ = app;
-        // Single-source permission model: use the capture helper identity only,
-        // which is the same identity used by runtime screen capture.
-        let granted = run_screen_capture_helper(&["--preflight-screen-capture-access"])?;
+        let app_granted = preflight_screen_recording_access_main_process();
+        let helper_granted =
+            run_screen_capture_helper(&["--preflight-screen-capture-access"]).unwrap_or(false);
+        let granted = app_granted || helper_granted;
         Ok(if granted { "granted" } else { "denied" }.to_string())
     }
 
@@ -91,9 +109,12 @@ pub async fn get_screen_recording_permission_status(app: AppHandle) -> Result<St
 pub async fn request_screen_recording_permission(app: AppHandle) -> Result<bool, String> {
     #[cfg(target_os = "macos")]
     {
-        let _ = app;
-        // Single-source permission model: request through helper identity only.
-        run_screen_capture_helper(&["--request-screen-capture-access"])
+        let app_request_granted =
+            run_on_main_thread(&app, request_screen_recording_access_main_process).unwrap_or(false);
+        let app_preflight_granted = preflight_screen_recording_access_main_process();
+        let helper_granted =
+            run_screen_capture_helper(&["--request-screen-capture-access"]).unwrap_or(false);
+        Ok(app_request_granted || app_preflight_granted || helper_granted)
     }
 
     #[cfg(not(target_os = "macos"))]

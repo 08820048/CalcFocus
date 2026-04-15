@@ -112,7 +112,9 @@ final class ScreenCaptureRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
 		}
 
 		let config = try JSONDecoder().decode(CaptureConfig.self, from: data)
-		guard preflightScreenCaptureAccess() == .granted else {
+		let screenCaptureAccess =
+			preflightScreenCaptureAccess() == .granted || requestScreenCaptureAccess() == .granted
+		guard screenCaptureAccess else {
 			throw NSError(
 				domain: "CalcFocusCapture",
 				code: 16,

@@ -1,6 +1,6 @@
 {
-  "tagName": "v1.0.14",
-  "releaseName": "CalcFocus v1.0.14",
-  "releaseNotes": "Fix packaged video export stalls, restore cursor rendering in exported recordings, and harden decoder/encoder handling for packaged builds.",
+  "tagName": "v1.0.15",
+  "releaseName": "CalcFocus v1.0.15",
+  "releaseNotes": "Hotfix macOS Screen Recording permission detection by restoring main app permission registration and keeping helper permission as a fallback.",
   "makeLatest": true
 }
