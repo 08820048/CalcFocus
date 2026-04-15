@@ -1,9 +1,21 @@
 # CalcFocus
 
+
+<p align="center">
+<img  width="256" height="256" alt="icon" src="https://github.com/user-attachments/assets/421b49e2-deeb-4d69-96f0-9a27c80cbd1d" />  
+</p>
+
+
 <p align="center">
   <img src="https://img.shields.io/badge/macOS%20%7C%20Windows%20%7C%20Linux-111827?style=for-the-badge" alt="macOS Windows Linux" />
   <img src="https://img.shields.io/badge/open%20source-AGPL--3.0-2563eb?style=for-the-badge" alt="AGPL-3.0-only license" />
 </p>
+
+
+
+https://github.com/user-attachments/assets/549bf88c-74d7-4b23-97c7-17b43204c788
+
+
 
 ### Create polished, pro-grade screen recordings and screenshots.
 [CalcFocus](https://github.com/08820048/CalcFocus) is an **open-source screen recorder, screenshot tool, and editor** for creating **polished walkthroughs, demos, tutorials, and product videos**. Contribution encouraged.
