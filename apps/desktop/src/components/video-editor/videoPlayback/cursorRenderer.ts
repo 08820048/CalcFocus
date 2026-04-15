@@ -4,12 +4,6 @@ import { Assets, BlurFilter, Container, Graphics, Sprite, Texture } from "@/lib/
 import type { CursorStyle, CursorTelemetryPoint } from "../types";
 import { DEFAULT_CURSOR_STYLE } from "../types";
 import {
-	createSpringState,
-	getCursorSpringConfig,
-	resetSpringState,
-	stepSpringValue,
-} from "./motionSmoothing";
-import {
 	CURSOR_PACK_SOURCES,
 	type CursorPackSource,
 	type CursorPackStyle,
@@ -17,6 +11,12 @@ import {
 	minimalCursorUrl,
 } from "./cursorStyleAssets";
 import { type CursorViewportRect, projectCursorPositionToViewport } from "./cursorViewport";
+import {
+	createSpringState,
+	getCursorSpringConfig,
+	resetSpringState,
+	stepSpringValue,
+} from "./motionSmoothing";
 import { UPLOADED_CURSOR_SAMPLE_SIZE, uploadedCursorAssets } from "./uploadedCursorAssets";
 
 type CursorAssetKey = NonNullable<CursorTelemetryPoint["cursorType"]>;
@@ -315,9 +315,15 @@ async function createLoadedCursorAsset(
 	url: string,
 	normalizedAnchor: { x: number; y: number },
 ): Promise<LoadedCursorAsset> {
-	await Assets.load(url);
 	const image = await loadImage(url);
-	const texture = Texture.from(url);
+	let texture: Texture;
+	try {
+		await Assets.load(url);
+		texture = Texture.from(url);
+	} catch (error) {
+		console.warn("[CursorRenderer] Pixi asset cache load failed; using loaded image.", error);
+		texture = Texture.from(image);
+	}
 
 	return {
 		texture,
@@ -352,9 +358,15 @@ async function createInvertedCursorAsset(asset: LoadedCursorAsset): Promise<Load
 	ctx.putImageData(imageData, 0, 0);
 
 	const dataUrl = canvas.toDataURL("image/png");
-	await Assets.load(dataUrl);
 	const image = await loadImage(dataUrl);
-	const texture = Texture.from(dataUrl);
+	let texture: Texture;
+	try {
+		await Assets.load(dataUrl);
+		texture = Texture.from(dataUrl);
+	} catch (error) {
+		console.warn("[CursorRenderer] Failed to cache inverted cursor asset.", error);
+		texture = Texture.from(image);
+	}
 
 	return {
 		texture,
@@ -374,9 +386,15 @@ async function createCursorStyleAsset(style: SingleCursorStyle): Promise<LoadedC
 		const sourceCtx = sourceCanvas.getContext("2d")!;
 		sourceCtx.drawImage(image, 0, 0);
 		const trimmed = trimCanvasToAlpha(sourceCanvas, { x: 40, y: 22 });
-		await Assets.load(trimmed.dataUrl);
 		const trimmedImage = await loadImage(trimmed.dataUrl);
-		const texture = Texture.from(trimmed.dataUrl);
+		let texture: Texture;
+		try {
+			await Assets.load(trimmed.dataUrl);
+			texture = Texture.from(trimmed.dataUrl);
+		} catch (error) {
+			console.warn("[CursorRenderer] Failed to cache minimal cursor asset.", error);
+			texture = Texture.from(trimmedImage);
+		}
 
 		return {
 			texture,
@@ -403,9 +421,15 @@ async function createCursorStyleAsset(style: SingleCursorStyle): Promise<LoadedC
 	ctx.stroke();
 
 	const dataUrl = canvas.toDataURL("image/png");
-	await Assets.load(dataUrl);
 	const image = await loadImage(dataUrl);
-	const texture = Texture.from(dataUrl);
+	let texture: Texture;
+	try {
+		await Assets.load(dataUrl);
+		texture = Texture.from(dataUrl);
+	} catch (error) {
+		console.warn("[CursorRenderer] Failed to cache dot cursor asset.", error);
+		texture = Texture.from(image);
+	}
 
 	return {
 		texture,
@@ -420,9 +444,15 @@ async function createCursorPackAsset(
 	url: string,
 	anchor: { x: number; y: number },
 ): Promise<LoadedCursorAsset> {
-	await Assets.load(url);
 	const image = await loadImage(url);
-	const texture = Texture.from(url);
+	let texture: Texture;
+	try {
+		await Assets.load(url);
+		texture = Texture.from(url);
+	} catch (error) {
+		console.warn("[CursorRenderer] Failed to cache cursor pack asset.", error);
+		texture = Texture.from(image);
+	}
 
 	return {
 		texture,
@@ -511,17 +541,39 @@ export async function preloadCursorAssets() {
 
 			const invertedEntries = await Promise.all(
 				(Object.entries(loadedCursorAssets) as Array<[CursorAssetKey, LoadedCursorAsset]>).map(
-					async ([key, asset]) => [key, await createInvertedCursorAsset(asset)] as const,
+					async ([key, asset]) => {
+						try {
+							return [key, await createInvertedCursorAsset(asset)] as const;
+						} catch (error) {
+							console.warn(
+								`[CursorRenderer] Failed to invert cursor image for: ${key}; using original asset.`,
+								error,
+							);
+							return [key, asset] as const;
+						}
+					},
 				),
 			);
 			loadedInvertedCursorAssets = Object.fromEntries(invertedEntries) as Partial<
 				Record<CursorAssetKey, LoadedCursorAsset>
 			>;
 
+			const fallbackCursorAsset = loadedCursorAssets.arrow;
+			if (!fallbackCursorAsset) {
+				throw new Error("Cursor fallback asset was not initialized");
+			}
 			const customStyleEntries = await Promise.all(
-				(["dot", "figma"] as const).map(
-					async (style) => [style, await createCursorStyleAsset(style)] as const,
-				),
+				(["dot", "figma"] as const).map(async (style) => {
+					try {
+						return [style, await createCursorStyleAsset(style)] as const;
+					} catch (error) {
+						console.warn(
+							`[CursorRenderer] Failed to load ${style} cursor style; using fallback arrow.`,
+							error,
+						);
+						return [style, fallbackCursorAsset] as const;
+					}
+				}),
 			);
 			loadedCursorStyleAssets = Object.fromEntries(customStyleEntries) as Partial<
 				Record<SingleCursorStyle, LoadedCursorAsset>
@@ -549,7 +601,10 @@ export async function preloadCursorAssets() {
 			loadedCursorPackAssets = Object.fromEntries(
 				cursorPackEntries.filter(Boolean).map((entry) => entry!),
 			) as Partial<Record<CursorPackStyle, LoadedCursorPackAssets>>;
-		})();
+		})().catch((error) => {
+			cursorAssetsPromise = null;
+			throw error;
+		});
 	}
 
 	return cursorAssetsPromise;
@@ -870,7 +925,10 @@ export class PixiCursorOverlay {
 		this.clickRingGraphics = new Graphics();
 		const initialCustomAsset = getCursorStyleAsset("figma");
 		this.customCursorShadowSprite = new Sprite(initialCustomAsset.texture);
-		this.customCursorShadowSprite.anchor.set(initialCustomAsset.anchorX, initialCustomAsset.anchorY);
+		this.customCursorShadowSprite.anchor.set(
+			initialCustomAsset.anchorX,
+			initialCustomAsset.anchorY,
+		);
 		this.customCursorShadowSprite.visible = false;
 		this.customCursorShadowSprite.tint = CURSOR_SHADOW_COLOR;
 		this.customCursorShadowSprite.alpha = CURSOR_SHADOW_ALPHA;

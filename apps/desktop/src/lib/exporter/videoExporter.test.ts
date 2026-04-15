@@ -73,7 +73,15 @@ vi.mock("./frameRenderer", () => ({
 	FrameRenderer: class {
 		initialize = mockState.rendererInitialize;
 		renderFrame = mockState.renderFrame;
-		getCanvas = () => ({ nodeName: "CANVAS" });
+		getCanvas = () => ({
+			width: 2,
+			height: 2,
+			getContext: () => ({
+				getImageData: () => ({
+					data: new Uint8ClampedArray(2 * 2 * 4),
+				}),
+			}),
+		});
 		destroy = mockState.rendererDestroy;
 	},
 }));
@@ -300,5 +308,42 @@ describe("VideoExporter audio controls", () => {
 				(progress) => progress.phase === "finalizing" && progress.renderProgress === 100,
 			),
 		).toBe(true);
+	});
+
+	it("reports initial progress before renderer setup completes", async () => {
+		const progressUpdates: Array<Record<string, unknown>> = [];
+		mockState.rendererInitialize.mockImplementationOnce(async () => {
+			expect(progressUpdates[0]).toMatchObject({
+				currentFrame: 0,
+				totalFrames: 60,
+				percentage: 0,
+			});
+		});
+
+		const exporter = new VideoExporter({
+			videoUrl: "asset://video.mp4",
+			width: 1280,
+			height: 720,
+			frameRate: 60,
+			bitrate: 10_000_000,
+			wallpaper: "#000000",
+			zoomRegions: [],
+			showShadow: false,
+			shadowIntensity: 0,
+			backgroundBlur: 0,
+			cropRegion: { x: 0, y: 0, width: 1, height: 1 },
+			onProgress: (progress) => {
+				progressUpdates.push(progress as unknown as Record<string, unknown>);
+			},
+		});
+
+		const result = await exporter.export();
+
+		expect(result.success).toBe(true);
+		expect(progressUpdates[0]).toMatchObject({
+			currentFrame: 0,
+			totalFrames: 60,
+			percentage: 0,
+		});
 	});
 });

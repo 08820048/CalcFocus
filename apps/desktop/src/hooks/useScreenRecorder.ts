@@ -1042,8 +1042,14 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 
 				let nativeStarted = false;
 				try {
+					if (useNativeMacScreenCapture) {
+						await startCursorTelemetryCapture(platform);
+					}
+
 					await backend.startNativeScreenRecording(selectedSource, {
-						captureCursor: false,
+						captureCursor: useNativeMacScreenCapture
+							? !cursorTelemetryCaptureActive.current
+							: false,
 						capturesSystemAudio: systemAudioEnabled,
 						capturesMicrophone: microphoneEnabled,
 						microphoneDeviceId,
@@ -1064,9 +1070,6 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 				if (nativeStarted) {
 					startTime.current = Date.now();
 					screenRecordingStartedAt.current = startTime.current;
-					if (useNativeMacScreenCapture) {
-						await startCursorTelemetryCapture(platform);
-					}
 					await startFacecamCapture(recordingSessionId.current);
 					nativeScreenRecording.current = true;
 					wgcRecording.current = useWgcCapture;

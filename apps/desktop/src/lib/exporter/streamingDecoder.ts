@@ -1,6 +1,78 @@
 import { WebDemuxer } from "web-demuxer";
 import type { SpeedRegion, TrimRegion } from "@/components/video-editor/types";
-import { resolveMediaPlaybackUrl } from "@/lib/backend";
+import { readLocalFile, resolveMediaPlaybackUrl } from "@/lib/backend";
+
+const SOURCE_LOAD_TIMEOUT_MS = 60_000;
+const EARLY_DECODE_END_THRESHOLD_SEC = 1;
+const METADATA_TAIL_TOLERANCE_SEC = 1.5;
+const STREAM_DURATION_MATCH_TOLERANCE_SEC = 0.25;
+
+function buildAV1CodecString(description?: BufferSource): string {
+	const fallback = "av01.0.01M.08";
+
+	if (!description) {
+		return fallback;
+	}
+
+	const bytes =
+		description instanceof ArrayBuffer
+			? new Uint8Array(description)
+			: new Uint8Array(description.buffer, description.byteOffset, description.byteLength);
+
+	if (bytes.length < 4 || !(bytes[0] & 0x80)) {
+		return fallback;
+	}
+
+	const profile = (bytes[1] >> 5) & 0x07;
+	const level = bytes[1] & 0x1f;
+	const tier = (bytes[2] >> 7) & 0x01;
+	const highBitdepth = (bytes[2] >> 6) & 0x01;
+	const twelveBit = (bytes[2] >> 5) & 0x01;
+	const bitdepth = highBitdepth ? (twelveBit ? 12 : 10) : 8;
+
+	return `av01.${profile}.${level.toString().padStart(2, "0")}${tier ? "H" : "M"}.${bitdepth.toString().padStart(2, "0")}`;
+}
+
+type EarlyDecodeEndCheck = {
+	cancelled: boolean;
+	lastDecodedFrameSec: number | null;
+	requiredEndSec: number;
+	streamDurationSec?: number;
+};
+
+export function shouldFailDecodeEndedEarly({
+	cancelled,
+	lastDecodedFrameSec,
+	requiredEndSec,
+	streamDurationSec,
+}: EarlyDecodeEndCheck): boolean {
+	if (cancelled || requiredEndSec <= 0) {
+		return false;
+	}
+
+	if (lastDecodedFrameSec === null) {
+		return true;
+	}
+
+	const decodeGapSec = requiredEndSec - lastDecodedFrameSec;
+	if (decodeGapSec <= EARLY_DECODE_END_THRESHOLD_SEC) {
+		return false;
+	}
+
+	if (typeof streamDurationSec !== "number" || !Number.isFinite(streamDurationSec)) {
+		return true;
+	}
+
+	const metadataTailSec = requiredEndSec - streamDurationSec;
+	const decodedNearStreamEnd =
+		Math.abs(lastDecodedFrameSec - streamDurationSec) <= STREAM_DURATION_MATCH_TOLERANCE_SEC;
+
+	return !(
+		decodedNearStreamEnd &&
+		metadataTailSec > 0 &&
+		metadataTailSec <= METADATA_TAIL_TOLERANCE_SEC
+	);
+}
 
 export interface DecodedVideoInfo {
 	width: number;
@@ -75,14 +147,20 @@ export class StreamingVideoDecoder {
 		return /^[A-Za-z]:[\\/]/.test(videoUrl);
 	}
 
+	private getLocalFilePath(videoUrl: string): string | null {
+		const localFilePath =
+			this.toLocalFilePath(videoUrl) ??
+			(videoUrl.startsWith("/") || this.isAbsoluteWindowsPath(videoUrl) ? videoUrl : null);
+
+		return localFilePath || null;
+	}
+
 	private async resolveVideoResourceUrl(videoUrl: string): Promise<string> {
 		if (/^(blob:|data:|asset:|https?:)/i.test(videoUrl)) {
 			return videoUrl;
 		}
 
-		const localFilePath =
-			this.toLocalFilePath(videoUrl) ??
-			(videoUrl.startsWith("/") || this.isAbsoluteWindowsPath(videoUrl) ? videoUrl : null);
+		const localFilePath = this.getLocalFilePath(videoUrl);
 
 		if (!localFilePath) {
 			return videoUrl;
@@ -99,15 +177,112 @@ export class StreamingVideoDecoder {
 		}
 	}
 
-	async loadMetadata(videoUrl: string): Promise<DecodedVideoInfo> {
+	private async withTimeout<T>(
+		promise: Promise<T>,
+		timeoutMs: number,
+		message: string,
+	): Promise<T> {
+		let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+		try {
+			return await Promise.race([
+				promise,
+				new Promise<T>((_, reject) => {
+					timeoutId = setTimeout(() => reject(new Error(message)), timeoutMs);
+				}),
+			]);
+		} finally {
+			if (timeoutId) {
+				clearTimeout(timeoutId);
+			}
+		}
+	}
+
+	private getSourceFilename(source: string): string {
+		const normalized = source.split(/[?#]/)[0];
+		const filename = normalized.split(/[\\/]/).pop();
+		return filename || "video";
+	}
+
+	private async fetchSourceFile(sourceUrl: string): Promise<File> {
+		const response = await this.withTimeout(
+			fetch(sourceUrl),
+			SOURCE_LOAD_TIMEOUT_MS,
+			"Timed out while loading the source video.",
+		);
+
+		if (!response.ok) {
+			throw new Error(`Failed to fetch source video: ${response.status} ${response.statusText}`);
+		}
+
+		const blob = await this.withTimeout(
+			response.blob(),
+			SOURCE_LOAD_TIMEOUT_MS,
+			"Timed out while reading the source video.",
+		);
+
+		return new File([blob], this.getSourceFilename(sourceUrl), {
+			type: blob.type || "application/octet-stream",
+		});
+	}
+
+	private async loadSourceFile(videoUrl: string): Promise<File | string> {
+		const localFilePath = this.getLocalFilePath(videoUrl);
+
+		if (localFilePath) {
+			try {
+				const bytes = await this.withTimeout(
+					readLocalFile(localFilePath),
+					SOURCE_LOAD_TIMEOUT_MS,
+					"Timed out while reading the local source video.",
+				);
+				const fileBuffer = new ArrayBuffer(bytes.byteLength);
+				new Uint8Array(fileBuffer).set(bytes);
+				const blob = new Blob([fileBuffer], { type: "application/octet-stream" });
+				return new File([blob], this.getSourceFilename(localFilePath), {
+					type: blob.type,
+				});
+			} catch (error) {
+				console.warn(
+					"[StreamingVideoDecoder] Failed to read source as local file, falling back to URL loading:",
+					error,
+				);
+			}
+		}
+
 		const resourceUrl = await this.resolveVideoResourceUrl(videoUrl);
+
+		if (/^(blob:|data:|https?:)/i.test(resourceUrl)) {
+			try {
+				return await this.fetchSourceFile(resourceUrl);
+			} catch (error) {
+				console.warn(
+					"[StreamingVideoDecoder] Failed to fetch source into File, falling back to URL loading:",
+					error,
+				);
+			}
+		}
+
+		return resourceUrl;
+	}
+
+	async loadMetadata(videoUrl: string): Promise<DecodedVideoInfo> {
+		const sourceFile = await this.loadSourceFile(videoUrl);
 
 		// Relative URL so it resolves correctly in both dev (http) and packaged (file://) builds
 		const wasmUrl = new URL("./wasm/web-demuxer.wasm", window.location.href).href;
 		this.demuxer = new WebDemuxer({ wasmFilePath: wasmUrl });
-		await this.demuxer.load(resourceUrl);
+		await this.withTimeout(
+			this.demuxer.load(sourceFile),
+			SOURCE_LOAD_TIMEOUT_MS,
+			"Timed out while parsing the source video.",
+		);
 
-		const mediaInfo = await this.demuxer.getMediaInfo();
+		const mediaInfo = await this.withTimeout(
+			this.demuxer.getMediaInfo(),
+			SOURCE_LOAD_TIMEOUT_MS,
+			"Timed out while reading video metadata.",
+		);
 		const videoStream = mediaInfo.streams.find((s) => s.codec_type_string === "video");
 		const audioStream = mediaInfo.streams.find((s) => s.codec_type_string === "audio");
 
@@ -149,7 +324,12 @@ export class StreamingVideoDecoder {
 		}
 
 		const decoderConfig = await this.demuxer.getDecoderConfig("video");
-		const codec = this.metadata.codec.toLowerCase();
+		if (/^av01$/i.test(decoderConfig.codec)) {
+			decoderConfig.codec = buildAV1CodecString(
+				decoderConfig.description as BufferSource | undefined,
+			);
+		}
+		const codec = decoderConfig.codec.toLowerCase();
 		const shouldPreferSoftwareDecode = codec.includes("av01") || codec.includes("av1");
 		const segments = this.splitBySpeed(
 			this.computeSegments(this.metadata.duration, trimRegions),
@@ -406,13 +586,18 @@ export class StreamingVideoDecoder {
 
 		const requiredEndSec = segments.length > 0 ? segments[segments.length - 1].endSec : 0;
 		if (
-			!this.cancelled &&
-			lastDecodedFrameSec !== null &&
-			requiredEndSec - lastDecodedFrameSec > 1 &&
-			exportFrameIndex < expectedOutputFrames
+			exportFrameIndex < expectedOutputFrames &&
+			shouldFailDecodeEndedEarly({
+				cancelled: this.cancelled,
+				lastDecodedFrameSec,
+				requiredEndSec,
+				streamDurationSec: this.metadata.streamDuration,
+			})
 		) {
+			const endedAt =
+				lastDecodedFrameSec === null ? "no decoded frame" : `${lastDecodedFrameSec.toFixed(3)}s`;
 			throw new Error(
-				`Video decode ended early at ${lastDecodedFrameSec.toFixed(3)}s (needed ${requiredEndSec.toFixed(3)}s; rendered ${exportFrameIndex}/${expectedOutputFrames} frames).`,
+				`Video decode ended early at ${endedAt} (needed ${requiredEndSec.toFixed(3)}s; rendered ${exportFrameIndex}/${expectedOutputFrames} frames).`,
 			);
 		}
 	}

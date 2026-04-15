@@ -1,17 +1,30 @@
-import { Application, Container, Sprite, Graphics, BlurFilter, Texture } from "@/lib/pixi";
-import { ensurePixiRuntime } from "@/lib/pixiRuntime";
 import { MotionBlurFilter } from "pixi-filters/motion-blur";
 import type {
-	ZoomRegion,
-	CropRegion,
 	AnnotationRegion,
-	SpeedRegion,
+	CropRegion,
 	CursorStyle,
 	CursorTelemetryPoint,
+	SpeedRegion,
+	ZoomRegion,
 } from "@/components/video-editor/types";
-import { getFacecamLayout, type FacecamSettings } from "@/lib/recordingSession";
 import { ZOOM_DEPTH_SCALES } from "@/components/video-editor/types";
-import { getAssetPath, getRenderableAssetUrl, isRenderableAssetUrl } from "@/lib/assetPath";
+import {
+	DEFAULT_FOCUS,
+	ZOOM_SCALE_DEADZONE,
+	ZOOM_TRANSLATION_DEADZONE_PX,
+} from "@/components/video-editor/videoPlayback/constants";
+import {
+	type AutoFocusState,
+	createAutoFocusState,
+	resetAutoFocusState,
+	smoothAutoFocus,
+} from "@/components/video-editor/videoPlayback/cursorFollowUtils";
+import {
+	DEFAULT_CURSOR_CONFIG,
+	PixiCursorOverlay,
+	preloadCursorAssets,
+} from "@/components/video-editor/videoPlayback/cursorRenderer";
+import type { CursorViewportRect } from "@/components/video-editor/videoPlayback/cursorViewport";
 import { findDominantRegion } from "@/components/video-editor/videoPlayback/zoomRegionUtils";
 import {
 	applyZoomTransform,
@@ -20,24 +33,19 @@ import {
 	createMotionBlurState,
 	type MotionBlurState,
 } from "@/components/video-editor/videoPlayback/zoomTransform";
+import { getAssetPath, getRenderableAssetUrl, isRenderableAssetUrl } from "@/lib/assetPath";
 import {
-	createAutoFocusState,
-	resetAutoFocusState,
-	smoothAutoFocus,
-	type AutoFocusState,
-} from "@/components/video-editor/videoPlayback/cursorFollowUtils";
-import {
-	DEFAULT_FOCUS,
-	ZOOM_SCALE_DEADZONE,
-	ZOOM_TRANSLATION_DEADZONE_PX,
-} from "@/components/video-editor/videoPlayback/constants";
+	Application,
+	BlurFilter,
+	Container,
+	Graphics,
+	Sprite,
+	Texture,
+	type TextureSourceLike,
+} from "@/lib/pixi";
+import { ensurePixiRuntime } from "@/lib/pixiRuntime";
+import { type FacecamSettings, getFacecamLayout } from "@/lib/recordingSession";
 import { renderAnnotations } from "./annotationRenderer";
-import {
-	PixiCursorOverlay,
-	DEFAULT_CURSOR_CONFIG,
-	preloadCursorAssets,
-} from "@/components/video-editor/videoPlayback/cursorRenderer";
-import type { CursorViewportRect } from "@/components/video-editor/videoPlayback/cursorViewport";
 
 interface FrameRenderConfig {
 	width: number;
@@ -100,7 +108,7 @@ export class FrameRenderer {
 	private facecamContainer: Container | null = null;
 	private videoSprite: Sprite | null = null;
 	private facecamSprite: Sprite | null = null;
-	private backgroundSprite: Sprite | null = null;
+	private backgroundSprite: HTMLCanvasElement | null = null;
 	private maskGraphics: Graphics | null = null;
 	private facecamMaskGraphics: Graphics | null = null;
 	private facecamBorderGraphics: Graphics | null = null;
@@ -110,6 +118,8 @@ export class FrameRenderer {
 	private shadowCtx: CanvasRenderingContext2D | null = null;
 	private compositeCanvas: HTMLCanvasElement | null = null;
 	private compositeCtx: CanvasRenderingContext2D | null = null;
+	private rasterCanvas: HTMLCanvasElement | null = null;
+	private rasterCtx: CanvasRenderingContext2D | null = null;
 	private config: FrameRenderConfig;
 	private animationState: AnimationState;
 	private motionBlurState: MotionBlurState;
@@ -152,7 +162,6 @@ export class FrameRenderer {
 		// Try to set colorSpace if supported (may not be available on all platforms)
 		try {
 			if (canvas && "colorSpace" in canvas) {
-				// @ts-ignore
 				canvas.colorSpace = "srgb";
 			}
 		} catch (error) {
@@ -213,6 +222,15 @@ export class FrameRenderer {
 
 		if (!this.compositeCtx) {
 			throw new Error("Failed to get 2D context for composite canvas");
+		}
+
+		this.rasterCanvas = document.createElement("canvas");
+		this.rasterCanvas.width = this.config.width;
+		this.rasterCanvas.height = this.config.height;
+		this.rasterCtx = this.rasterCanvas.getContext("2d", { willReadFrequently: true });
+
+		if (!this.rasterCtx) {
+			throw new Error("Failed to get 2D context for raster canvas");
 		}
 
 		// Setup shadow canvas if needed
@@ -355,7 +373,7 @@ export class FrameRenderer {
 		}
 
 		// Store the background canvas for compositing
-		this.backgroundSprite = bgCanvas as any;
+		this.backgroundSprite = bgCanvas;
 	}
 
 	private async resolveWallpaperImageUrl(wallpaper: string): Promise<string> {
@@ -406,7 +424,7 @@ export class FrameRenderer {
 
 		// Create or update video sprite from VideoFrame
 		if (!this.videoSprite) {
-			const texture = Texture.from(videoFrame as any);
+			const texture = Texture.from(videoFrame as unknown as TextureSourceLike);
 			this.videoSprite = new Sprite(texture);
 			this.videoContainer.addChild(this.videoSprite);
 			if (this.cursorOverlay && this.cursorContainer) {
@@ -418,7 +436,7 @@ export class FrameRenderer {
 		} else {
 			// Destroy old texture to avoid memory leaks, then create new one
 			const oldTexture = this.videoSprite.texture;
-			const newTexture = Texture.from(videoFrame as any);
+			const newTexture = Texture.from(videoFrame as unknown as TextureSourceLike);
 			this.videoSprite.texture = newTexture;
 			oldTexture.destroy(true);
 		}
@@ -518,12 +536,12 @@ export class FrameRenderer {
 		}
 
 		if (!this.facecamSprite) {
-			const texture = Texture.from(facecamFrame as any);
+			const texture = Texture.from(facecamFrame as unknown as TextureSourceLike);
 			this.facecamSprite = new Sprite(texture);
 			this.facecamContainer.addChildAt(this.facecamSprite, 0);
 		} else {
 			const oldTexture = this.facecamSprite.texture;
-			const newTexture = Texture.from(facecamFrame as any);
+			const newTexture = Texture.from(facecamFrame as unknown as TextureSourceLike);
 			this.facecamSprite.texture = newTexture;
 			oldTexture.destroy(true);
 		}
@@ -695,16 +713,15 @@ export class FrameRenderer {
 
 		if (region && strength > 0) {
 			const zoomScale = blendedScale ?? ZOOM_DEPTH_SCALES[region.depth];
-			const regionFocus =
-				shouldUseAutoFocus
-					? smoothAutoFocus({
-							state: this.autoFocusState,
-							targetFocus: region.focus,
-							timeMs,
-							zoomScale,
-							viewportRatio,
-						})
-					: region.focus;
+			const regionFocus = shouldUseAutoFocus
+				? smoothAutoFocus({
+						state: this.autoFocusState,
+						targetFocus: region.focus,
+						timeMs,
+						zoomScale,
+						viewportRatio,
+					})
+				: region.focus;
 
 			targetScaleFactor = zoomScale;
 			targetFocus = regionFocus;
@@ -797,10 +814,45 @@ export class FrameRenderer {
 		);
 	}
 
+	private readbackVideoCanvas(): HTMLCanvasElement {
+		const glCanvas = this.app!.canvas as HTMLCanvasElement;
+		const gl =
+			(glCanvas.getContext("webgl2") as WebGL2RenderingContext | null) ??
+			(glCanvas.getContext("webgl") as WebGLRenderingContext | null);
+
+		if (!gl || !this.rasterCanvas || !this.rasterCtx) {
+			return glCanvas;
+		}
+
+		const w = glCanvas.width;
+		const h = glCanvas.height;
+		const buffer = new Uint8Array(w * h * 4);
+
+		try {
+			gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buffer);
+		} catch (error) {
+			console.warn("[FrameRenderer] Failed to read WebGL pixels, using canvas directly:", error);
+			return glCanvas;
+		}
+
+		const rowSize = w * 4;
+		const temp = new Uint8Array(rowSize);
+		for (let top = 0, bottom = h - 1; top < bottom; top++, bottom--) {
+			const topOffset = top * rowSize;
+			const bottomOffset = bottom * rowSize;
+			temp.set(buffer.subarray(topOffset, topOffset + rowSize));
+			buffer.copyWithin(topOffset, bottomOffset, bottomOffset + rowSize);
+			buffer.set(temp, bottomOffset);
+		}
+
+		this.rasterCtx.putImageData(new ImageData(new Uint8ClampedArray(buffer.buffer), w, h), 0, 0);
+		return this.rasterCanvas;
+	}
+
 	private compositeWithShadows(): void {
 		if (!this.compositeCanvas || !this.compositeCtx || !this.app) return;
 
-		const videoCanvas = this.app.canvas as HTMLCanvasElement;
+		const videoCanvas = this.readbackVideoCanvas();
 		const ctx = this.compositeCtx;
 		const w = this.compositeCanvas.width;
 		const h = this.compositeCanvas.height;
@@ -810,7 +862,7 @@ export class FrameRenderer {
 
 		// Step 1: Draw background layer (with optional blur, not affected by zoom)
 		if (this.backgroundSprite) {
-			const bgCanvas = this.backgroundSprite as any as HTMLCanvasElement;
+			const bgCanvas = this.backgroundSprite;
 
 			if (this.config.backgroundBlur > 0) {
 				ctx.save();
@@ -895,5 +947,7 @@ export class FrameRenderer {
 		this.shadowCtx = null;
 		this.compositeCanvas = null;
 		this.compositeCtx = null;
+		this.rasterCanvas = null;
+		this.rasterCtx = null;
 	}
 }
