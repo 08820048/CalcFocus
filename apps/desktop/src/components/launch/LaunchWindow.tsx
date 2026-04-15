@@ -33,7 +33,7 @@ import {
 	MdVolumeUp,
 } from "react-icons/md";
 import { RxDragHandleDots2 } from "react-icons/rx";
-import { APP_UPDATER_CHECK_EVENT, APP_UPDATER_STATUS_EVENT } from "@/components/AppUpdaterDialog";
+import { APP_UPDATER_STATUS_EVENT } from "@/components/appUpdaterEvents";
 import { buildEditorWindowQuery } from "@/components/video-editor/editorWindowParams";
 import { useI18n, useScopedT } from "@/contexts/I18nContext";
 import * as backend from "@/lib/backend";
@@ -664,11 +664,15 @@ export function LaunchWindow() {
 			return;
 		}
 
-		window.dispatchEvent(
-			new CustomEvent(APP_UPDATER_CHECK_EVENT, {
-				detail: { showDialog: false },
-			}),
-		);
+		setMoreMenuOpen(false);
+		void backend.openUpdateWindow().catch((error) => {
+			console.error("Failed to open update window:", error);
+			setManualUpdateCheckState("error");
+			updateCheckResetTimerRef.current = setTimeout(() => {
+				setManualUpdateCheckState("idle");
+				updateCheckResetTimerRef.current = null;
+			}, 2400);
+		});
 	}, [manualUpdateCheckState]);
 
 	const updateCheckMenuLabel =

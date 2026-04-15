@@ -1,3 +1,4 @@
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
 	CheckCircle2,
 	Download,
@@ -8,6 +9,7 @@ import {
 	TriangleAlert,
 } from "lucide-react";
 import { type ReactNode, useEffect, useRef } from "react";
+import { APP_UPDATER_CHECK_EVENT, APP_UPDATER_STATUS_EVENT } from "@/components/appUpdaterEvents";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -21,10 +23,9 @@ import { type UpdateStatus, useAppUpdater } from "@/hooks/useAppUpdater";
 
 type AppUpdaterDialogProps = {
 	enableAutoCheck?: boolean;
+	checkOnMount?: boolean;
+	closeWindowOnDismiss?: boolean;
 };
-
-export const APP_UPDATER_CHECK_EVENT = "calcfocus:check-updates";
-export const APP_UPDATER_STATUS_EVENT = "calcfocus:update-status";
 
 type AppUpdaterCheckEventDetail = {
 	showDialog?: boolean;
@@ -136,7 +137,11 @@ function ReleaseNotes({ releaseNotes }: { releaseNotes: string | null }) {
 	);
 }
 
-export function AppUpdaterDialog({ enableAutoCheck = true }: AppUpdaterDialogProps) {
+export function AppUpdaterDialog({
+	enableAutoCheck = true,
+	checkOnMount = false,
+	closeWindowOnDismiss = false,
+}: AppUpdaterDialogProps) {
 	const {
 		status,
 		isDialogOpen,
@@ -152,6 +157,22 @@ export function AppUpdaterDialog({ enableAutoCheck = true }: AppUpdaterDialogPro
 		dismiss,
 	} = useAppUpdater({ enableAutoCheck });
 	const contentRef = useRef<HTMLDivElement | null>(null);
+	const checkedOnMountRef = useRef(false);
+
+	const closeStandaloneWindow = () => {
+		if (!closeWindowOnDismiss) {
+			return;
+		}
+
+		window.setTimeout(() => {
+			void getCurrentWindow().close();
+		}, 0);
+	};
+
+	const handleDismiss = () => {
+		dismiss();
+		closeStandaloneWindow();
+	};
 
 	useEffect(() => {
 		if (!isBlocking) {
@@ -214,6 +235,15 @@ export function AppUpdaterDialog({ enableAutoCheck = true }: AppUpdaterDialogPro
 		};
 	}, [checkForUpdate, error, version]);
 
+	useEffect(() => {
+		if (!checkOnMount || checkedOnMountRef.current) {
+			return;
+		}
+
+		checkedOnMountRef.current = true;
+		void checkForUpdate({ showDialog: true });
+	}, [checkForUpdate, checkOnMount]);
+
 	const canDismiss = !isBlocking;
 
 	return (
@@ -221,7 +251,7 @@ export function AppUpdaterDialog({ enableAutoCheck = true }: AppUpdaterDialogPro
 			open={isDialogOpen}
 			onOpenChange={(open) => {
 				if (!open && canDismiss) {
-					dismiss();
+					handleDismiss();
 				}
 			}}
 		>
@@ -229,7 +259,7 @@ export function AppUpdaterDialog({ enableAutoCheck = true }: AppUpdaterDialogPro
 				ref={contentRef}
 				showCloseButton={canDismiss}
 				overlayClassName="bg-transparent"
-				className="max-w-[560px] overflow-hidden rounded-[6px] border border-white/10 bg-[#08090d] p-0 text-white shadow-2xl [&>button]:right-4 [&>button]:top-4 [&>button]:rounded-[6px] [&>button]:p-2 [&>button]:text-slate-400 [&>button]:opacity-100 [&>button]:ring-0 [&>button:hover]:bg-white/10 [&>button:hover]:text-white"
+				className="max-h-[calc(100vh-32px)] max-w-[560px] overflow-y-auto rounded-[6px] border border-white/10 bg-[#08090d] p-0 text-white shadow-2xl [&>button]:right-4 [&>button]:top-4 [&>button]:rounded-[6px] [&>button]:p-2 [&>button]:text-slate-400 [&>button]:opacity-100 [&>button]:ring-0 [&>button:hover]:bg-white/10 [&>button:hover]:text-white"
 				onEscapeKeyDown={(event) => {
 					if (!canDismiss) {
 						event.preventDefault();
@@ -269,7 +299,7 @@ export function AppUpdaterDialog({ enableAutoCheck = true }: AppUpdaterDialogPro
 							/>
 							<DialogFooter className="pt-1">
 								<Button
-									onClick={dismiss}
+									onClick={handleDismiss}
 									className="h-10 rounded-[6px] bg-white/10 px-4 text-white hover:bg-white/15"
 								>
 									Close
@@ -296,7 +326,7 @@ export function AppUpdaterDialog({ enableAutoCheck = true }: AppUpdaterDialogPro
 							<DialogFooter className="gap-2 pt-1 sm:justify-between">
 								<Button
 									variant="ghost"
-									onClick={dismiss}
+									onClick={handleDismiss}
 									className="h-10 rounded-[6px] border border-white/10 bg-transparent px-4 text-slate-200 hover:bg-white/10 hover:text-white"
 								>
 									Later
@@ -353,7 +383,7 @@ export function AppUpdaterDialog({ enableAutoCheck = true }: AppUpdaterDialogPro
 							<DialogFooter className="gap-2 pt-1 sm:justify-between">
 								<Button
 									variant="ghost"
-									onClick={dismiss}
+									onClick={handleDismiss}
 									className="h-10 rounded-[6px] border border-white/10 bg-transparent px-4 text-slate-200 hover:bg-white/10 hover:text-white"
 								>
 									Later
@@ -384,7 +414,7 @@ export function AppUpdaterDialog({ enableAutoCheck = true }: AppUpdaterDialogPro
 							<DialogFooter className="gap-2 pt-1 sm:justify-between">
 								<Button
 									variant="ghost"
-									onClick={dismiss}
+									onClick={handleDismiss}
 									className="h-10 rounded-[6px] border border-white/10 bg-transparent px-4 text-slate-200 hover:bg-white/10 hover:text-white"
 								>
 									Close

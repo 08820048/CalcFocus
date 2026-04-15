@@ -25,6 +25,13 @@ export default function App() {
 			document.documentElement.style.background = "transparent";
 			document.getElementById("root")?.style.setProperty("background", "transparent");
 			document.documentElement.classList.add("dark");
+			document.body.style.overflow = "hidden";
+		} else if (type === "updater") {
+			document.body.style.background = "#08090d";
+			document.documentElement.style.background = "#08090d";
+			document.getElementById("root")?.style.setProperty("background", "#08090d");
+			document.documentElement.classList.add("dark");
+			document.body.style.overflow = "hidden";
 		}
 
 		// Load custom fonts on app initialization
@@ -68,6 +75,9 @@ export default function App() {
 		case "image-editor":
 			content = <ImageEditor />;
 			break;
+		case "updater":
+			content = <div className="h-full w-full bg-[#08090d]" />;
+			break;
 		default:
 			content = (
 				<div className="flex h-full w-full items-center justify-center bg-slate-950 text-white">
@@ -92,7 +102,7 @@ export default function App() {
 	const shouldRenderUpdater =
 		windowType === "editor" ||
 		windowType === "image-editor" ||
-		windowType === "hud-overlay" ||
+		windowType === "updater" ||
 		windowType === "";
 
 	const updaterAutoCheckEnabled = windowType === "editor" || windowType === "";
@@ -101,7 +111,11 @@ export default function App() {
 		<>
 			{content}
 			{shouldRenderUpdater ? (
-				<AppUpdaterDialog enableAutoCheck={updaterAutoCheckEnabled} />
+				<AppUpdaterDialog
+					enableAutoCheck={updaterAutoCheckEnabled}
+					checkOnMount={windowType === "updater"}
+					closeWindowOnDismiss={windowType === "updater"}
+				/>
 			) : null}
 		</>
 	);

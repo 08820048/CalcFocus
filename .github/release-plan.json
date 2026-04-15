@@ -1,6 +1,6 @@
 {
-  "tagName": "v1.0.16",
-  "releaseName": "CalcFocus v1.0.16",
-  "releaseNotes": "Hotfix macOS Screen Recording permission detection and stabilize unsigned macOS code-signing identity for TCC recognition.",
+  "tagName": "v1.0.17",
+  "releaseName": "CalcFocus v1.0.17",
+  "releaseNotes": "Align the source sharing picker with OpenScreen's compact floating selector and move update checks into a standalone updater window so packaged builds no longer clip the dialog.",
   "makeLatest": true
 }

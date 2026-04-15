@@ -165,7 +165,7 @@ pub fn setup_menu(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
             } else if let Some(window) = app.get_webview_window("image-editor") {
                 let _ = window.emit("menu-check-updates", ());
             } else {
-                let _ = app.emit("menu-check-updates", ());
+                let _ = crate::commands::window_mgmt::open_update_window(app.clone());
             }
         }
         _ => {}

@@ -1,10 +1,17 @@
 use std::sync::Mutex;
 use tauri::window::Color;
-use tauri::{AppHandle, Manager, Theme, WebviewUrl, WebviewWindowBuilder, Window};
+use tauri::{AppHandle, Emitter, Manager, Theme, WebviewUrl, WebviewWindowBuilder, Window};
 #[cfg(target_os = "macos")]
 use tauri::{LogicalPosition, Position, TitleBarStyle};
 
 use crate::state::AppState;
+
+const SOURCE_SELECTOR_WIDTH: f64 = 620.0;
+const SOURCE_SELECTOR_HEIGHT: f64 = 420.0;
+const SOURCE_SELECTOR_MIN_HEIGHT: f64 = 350.0;
+const SOURCE_SELECTOR_MAX_HEIGHT: f64 = 500.0;
+const UPDATE_WINDOW_WIDTH: f64 = 640.0;
+const UPDATE_WINDOW_HEIGHT: f64 = 560.0;
 
 fn next_editor_window_label(app: &AppHandle) -> String {
     let mut index = 1;
@@ -85,16 +92,57 @@ pub async fn open_source_selector(app: AppHandle, tab: Option<String>) -> Result
 
     WebviewWindowBuilder::new(&app, "source-selector", WebviewUrl::App(url.into()))
         .title("Select Source")
-        .inner_size(660.0, 820.0)
-        .min_inner_size(400.0, 300.0)
-        .resizable(true)
+        .inner_size(SOURCE_SELECTOR_WIDTH, SOURCE_SELECTOR_HEIGHT)
+        .min_inner_size(SOURCE_SELECTOR_WIDTH, SOURCE_SELECTOR_MIN_HEIGHT)
+        .max_inner_size(SOURCE_SELECTOR_WIDTH, SOURCE_SELECTOR_MAX_HEIGHT)
+        .resizable(false)
         .decorations(false)
         .transparent(true)
+        .background_color(Color(0, 0, 0, 0))
         .always_on_top(true)
+        .visible_on_all_workspaces(true)
         .skip_taskbar(true)
+        .shadow(false)
         .center()
         .build()
         .map_err(|e: tauri::Error| e.to_string())?;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn open_update_window(app: AppHandle) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("updater") {
+        let _ = window.unminimize();
+        let _ = window.show();
+        let _ = window.set_focus();
+        let _ = window.emit("menu-check-updates", ());
+        return Ok(());
+    }
+
+    let app_name = app.package_info().name.clone();
+    let mut builder = WebviewWindowBuilder::new(
+        &app,
+        "updater",
+        WebviewUrl::App("index.html?windowType=updater".into()),
+    )
+    .title(format!("{app_name} Updates"))
+    .inner_size(UPDATE_WINDOW_WIDTH, UPDATE_WINDOW_HEIGHT)
+    .min_inner_size(560.0, 420.0)
+    .resizable(true)
+    .decorations(true)
+    .background_color(Color(8, 9, 13, 255));
+
+    #[cfg(target_os = "macos")]
+    {
+        builder = builder.theme(Some(Theme::Dark));
+    }
+
+    let window = builder
+        .center()
+        .build()
+        .map_err(|e: tauri::Error| e.to_string())?;
+    let _ = window.set_focus();
 
     Ok(())
 }
@@ -252,13 +300,15 @@ mod tests {
 
     #[test]
     fn test_source_selector_dimensions() {
-        let width = 620.0_f64;
-        let height = 420.0_f64;
-        let min_height = 350.0_f64;
-        let max_height = 500.0_f64;
-        assert!(min_height <= height);
-        assert!(height <= max_height);
-        assert_eq!(width, 620.0);
+        assert!(SOURCE_SELECTOR_MIN_HEIGHT <= SOURCE_SELECTOR_HEIGHT);
+        assert!(SOURCE_SELECTOR_HEIGHT <= SOURCE_SELECTOR_MAX_HEIGHT);
+        assert_eq!(SOURCE_SELECTOR_WIDTH, 620.0);
+    }
+
+    #[test]
+    fn test_update_window_dimensions() {
+        assert!(UPDATE_WINDOW_WIDTH >= 560.0);
+        assert!(UPDATE_WINDOW_HEIGHT >= 420.0);
     }
 
     // ==================== Window URLs ====================

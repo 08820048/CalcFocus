@@ -325,6 +325,10 @@ export function closeSourceSelector(): Promise<void> {
 	return invoke("close_source_selector");
 }
 
+export function openUpdateWindow(): Promise<void> {
+	return invoke("open_update_window");
+}
+
 export function hudOverlayShow(): Promise<void> {
 	return invoke("hud_overlay_show");
 }

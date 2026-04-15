@@ -403,7 +403,7 @@ dependencies = [
 
 [[package]]
 name = "calcfocus"
-version = "1.0.16"
+version = "1.0.17"
 dependencies = [
  "block",
  "cocoa",
