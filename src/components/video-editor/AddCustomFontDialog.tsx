@@ -119,7 +119,7 @@ export function AddCustomFontDialog({ onFontAdded }: AddCustomFontDialogProps) {
           {t('addFont.title')}
         </Button>
       </DialogTrigger>
-      <DialogContent className="bg-[#1a1a1c] border-white/10 text-slate-200">
+      <DialogContent className="bg-[#09090b] border-white/10 text-slate-200">
         <DialogHeader>
           <DialogTitle>{t('addFont.heading')}</DialogTitle>
           <DialogDescription className="text-slate-400">
@@ -171,7 +171,7 @@ export function AddCustomFontDialog({ onFontAdded }: AddCustomFontDialogProps) {
             <Button
               onClick={handleAdd}
               disabled={loading}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="bg-[#4bbd7e] hover:bg-[#43aa71] text-white"
             >
               {loading ? t('addFont.adding') : t('addFont.addFont')}
             </Button>

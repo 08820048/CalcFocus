@@ -74,7 +74,7 @@ export default function AudioWaveform({ peaks }: AudioWaveformProps) {
 			ctx.lineTo(px, midY + barHeight);
 		}
 
-		ctx.strokeStyle = "rgba(59, 130, 246, 0.45)";
+		ctx.strokeStyle = "rgba(75, 189, 126, 0.45)";
 		ctx.lineWidth = dpr;
 		ctx.stroke();
 	}, [peaks, range.start, range.end, resizeKey]);

@@ -192,13 +192,13 @@ export default function ProjectBrowserDialog({
 													draggable={false}
 												/>
 											) : (
-												<div className="flex h-full w-full items-center justify-center bg-[linear-gradient(180deg,_rgba(37,99,235,0.22),_rgba(13,17,23,0.92))] text-[10px] font-medium text-slate-300">
+												<div className="flex h-full w-full items-center justify-center bg-[linear-gradient(180deg,_rgba(75,189,126,0.22),_rgba(13,17,23,0.92))] text-[10px] font-medium text-slate-300">
 													No preview yet
 												</div>
 											)}
 											{entry.isCurrent ? (
 												<div className="absolute right-1.5 top-1.5">
-													<span className="rounded-[5px] bg-[#2563EB] px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.14em] text-white shadow-[0_8px_20px_rgba(37,99,235,0.28)]">
+													<span className="rounded-[5px] bg-[#4bbd7e] px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.14em] text-white shadow-[0_8px_20px_rgba(75,189,126,0.28)]">
 														Current
 													</span>
 												</div>
@@ -214,7 +214,7 @@ export default function ProjectBrowserDialog({
 							})}
 						</div>
 					) : (
-						<div className="flex min-h-[140px] flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-white/10 bg-[#111215] px-4 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+						<div className="flex min-h-[140px] flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-white/10 bg-[#09090b] px-4 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
 							<div className="text-sm font-semibold text-white">No saved projects yet</div>
 						</div>
 					)}
@@ -230,7 +230,7 @@ export default function ProjectBrowserDialog({
 				role="dialog"
 				aria-label="Projects"
 				style={{ top: `${position.top}px`, left: `${position.left}px` }}
-				className="pointer-events-auto fixed w-[min(280px,calc(100vw-24px))] overflow-hidden rounded-2xl border border-white/10 bg-[#17171a] text-slate-200 shadow-2xl animate-in fade-in-0 duration-150"
+				className="pointer-events-auto fixed w-[min(280px,calc(100vw-24px))] overflow-hidden rounded-2xl border border-white/10 bg-[#09090b] text-slate-200 shadow-2xl animate-in fade-in-0 duration-150"
 			>
 				<div className="border-b border-white/10 px-3 py-2.5">
 					<div className="text-sm font-medium tracking-tight text-white">Projects</div>
@@ -259,13 +259,13 @@ export default function ProjectBrowserDialog({
 													draggable={false}
 												/>
 											) : (
-												<div className="flex h-full w-full items-center justify-center bg-[linear-gradient(180deg,_rgba(37,99,235,0.22),_rgba(13,17,23,0.92))] text-[10px] font-medium text-slate-300">
+												<div className="flex h-full w-full items-center justify-center bg-[linear-gradient(180deg,_rgba(75,189,126,0.22),_rgba(13,17,23,0.92))] text-[10px] font-medium text-slate-300">
 													No preview yet
 												</div>
 											)}
 											{entry.isCurrent ? (
 												<div className="absolute right-1.5 top-1.5">
-													<span className="rounded-[5px] bg-[#2563EB] px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.14em] text-white shadow-[0_8px_20px_rgba(37,99,235,0.28)]">
+													<span className="rounded-[5px] bg-[#4bbd7e] px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.14em] text-white shadow-[0_8px_20px_rgba(75,189,126,0.28)]">
 														Current
 													</span>
 												</div>
@@ -281,7 +281,7 @@ export default function ProjectBrowserDialog({
 							})}
 						</div>
 					) : (
-						<div className="flex min-h-[140px] flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-white/10 bg-[#111215] px-4 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+						<div className="flex min-h-[140px] flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-white/10 bg-[#09090b] px-4 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
 							<div className="text-sm font-semibold text-white">No saved projects yet</div>
 						</div>
 					)}

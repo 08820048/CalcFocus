@@ -67,7 +67,7 @@ export default function PlaybackControls({
 			<div className="flex-1 relative h-6 flex items-center group">
 				{/* Custom Track Background */}
 				<div className="absolute left-0 right-0 h-0.5 bg-white/10 rounded-full overflow-hidden">
-					<div className="h-full bg-[#2563EB] rounded-full" style={{ width: `${progress}%` }} />
+					<div className="h-full bg-[#4bbd7e] rounded-full" style={{ width: `${progress}%` }} />
 				</div>
 
 				{/* Interactive Input */}

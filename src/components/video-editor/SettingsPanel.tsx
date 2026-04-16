@@ -167,7 +167,7 @@ function ExtensionSettingsSection({ extensionId, label, fields }: {
 									extensionHost.setExtensionSetting(extensionId, field.id, checked);
 									forceUpdate(n => n + 1);
 								}}
-								className="data-[state=checked]:bg-[#2563EB] scale-75"
+								className="data-[state=checked]:bg-[#4bbd7e] scale-75"
 							/>
 						</div>
 					);
@@ -188,7 +188,7 @@ function ExtensionSettingsSection({ extensionId, label, fields }: {
 										extensionHost.setExtensionSetting(extensionId, field.id, parseFloat(e.target.value));
 										forceUpdate(n => n + 1);
 									}}
-									className="w-20 h-1 accent-[#2563EB]"
+									className="w-20 h-1 accent-[#4bbd7e]"
 								/>
 								<span className="text-[10px] text-slate-500 w-8 text-right font-mono">
 									{(typeof value === 'number' ? value : 0).toFixed(1)}
@@ -824,7 +824,7 @@ export function SettingsPanel({
 		"#FF5722",
 		"#8BC34A",
 		"#FFC107",
-		"#2563EB",
+		"#4bbd7e",
 		"#000000",
 		"#607D8B",
 		"#795548",
@@ -1081,7 +1081,7 @@ export function SettingsPanel({
 		cn(
 			"group relative aspect-square w-full overflow-hidden rounded-[10px] border bg-[#101115] transition-colors duration-150",
 			isSelected
-				? "border-[#2563EB] bg-white/8"
+				? "border-[#4bbd7e] bg-white/8"
 				: "border-white/10 bg-white/[0.045] hover:border-white/20 hover:bg-white/[0.07]",
 		);
 
@@ -1337,7 +1337,7 @@ export function SettingsPanel({
 					<button
 						type="button"
 						onClick={resetBackgroundSection}
-						className="text-[10px] text-[#2563EB] transition-opacity hover:opacity-80"
+						className="text-[10px] text-[#4bbd7e] transition-opacity hover:opacity-80"
 					>
 						{t("common.actions.reset", "Reset")}
 					</button>
@@ -1377,7 +1377,7 @@ export function SettingsPanel({
 									{isActive ? (
 										<motion.span
 											layoutId="background-picker-pill"
-											className="absolute inset-0 rounded-lg bg-[#2563EB]"
+											className="absolute inset-0 rounded-lg bg-[#4bbd7e]"
 											transition={{ type: "spring", stiffness: 420, damping: 34 }}
 										/>
 									) : null}
@@ -1416,7 +1416,7 @@ export function SettingsPanel({
 									<Button
 										onClick={() => fileInputRef.current?.click()}
 										variant="outline"
-										className="w-full gap-2 bg-white/5 text-slate-200 border-white/10 hover:bg-[#2563EB] hover:text-white hover:border-[#2563EB] transition-all h-7 text-[10px]"
+										className="w-full gap-2 bg-white/5 text-slate-200 border-white/10 hover:bg-[#4bbd7e] hover:text-white hover:border-[#4bbd7e] transition-all h-7 text-[10px]"
 									>
 										<Upload className="w-3 h-3" />
 										{tSettings("background.uploadCustom")}
@@ -1461,7 +1461,7 @@ export function SettingsPanel({
 									<Button
 										onClick={handleVideoUpload}
 										variant="outline"
-										className="w-full gap-2 bg-white/5 text-slate-200 border-white/10 hover:bg-[#2563EB] hover:text-white hover:border-[#2563EB] transition-all h-7 text-[10px]"
+										className="w-full gap-2 bg-white/5 text-slate-200 border-white/10 hover:bg-[#4bbd7e] hover:text-white hover:border-[#4bbd7e] transition-all h-7 text-[10px]"
 									>
 										<Upload className="w-3 h-3" />
 										{tSettings("background.uploadCustomVideo", "Upload Video")}
@@ -1610,10 +1610,10 @@ export function SettingsPanel({
 
 	if (isBackgroundPanel) {
 		return (
-			<div className="flex-[2] w-[332px] min-w-[280px] max-w-[332px] bg-[#161619] border border-white/10 rounded-2xl flex flex-col shadow-xl h-full overflow-hidden">
+			<div className="flex-[2] w-[332px] min-w-[280px] max-w-[332px] bg-[#09090b] border border-white/10 rounded-2xl flex flex-col shadow-xl h-full overflow-hidden">
 				<div className="flex-1 overflow-y-auto custom-scrollbar p-4">
 					<div className="mb-4 flex items-center gap-2">
-						<Palette className="w-4 h-4 text-[#2563EB]" />
+						<Palette className="w-4 h-4 text-[#4bbd7e]" />
 						<span className="text-sm font-medium text-slate-200">
 							{tSettings("background.title")}
 						</span>
@@ -1632,7 +1632,7 @@ export function SettingsPanel({
 					<button
 						type="button"
 						onClick={resetZoomSection}
-						className="text-[10px] text-[#2563EB] transition-opacity hover:opacity-80"
+						className="text-[10px] text-[#4bbd7e] transition-opacity hover:opacity-80"
 					>
 						{t("common.actions.reset", "Reset")}
 					</button>
@@ -1645,7 +1645,7 @@ export function SettingsPanel({
 				<Switch
 					checked={zoomClassicMode}
 					onCheckedChange={(v) => onZoomClassicModeChange?.(v)}
-					className="data-[state=checked]:bg-[#2563EB] scale-75"
+					className="data-[state=checked]:bg-[#4bbd7e] scale-75"
 				/>
 			</div>
 			{!zoomClassicMode && (
@@ -1682,7 +1682,7 @@ export function SettingsPanel({
 				<button
 					type="button"
 					onClick={resetFrameSection}
-					className="text-[10px] text-[#2563EB] transition-opacity hover:opacity-80"
+					className="text-[10px] text-[#4bbd7e] transition-opacity hover:opacity-80"
 				>
 					{t("common.actions.reset", "Reset")}
 				</button>
@@ -1728,7 +1728,7 @@ export function SettingsPanel({
 					<Switch
 						checked={removeBackgroundEnabled}
 						onCheckedChange={handleRemoveBackgroundToggle}
-						className="data-[state=checked]:bg-[#2563EB] scale-75"
+						className="data-[state=checked]:bg-[#4bbd7e] scale-75"
 					/>
 				</div>
 				{/* Frame Picker */}
@@ -1740,7 +1740,7 @@ export function SettingsPanel({
 								<button
 									type="button"
 									onClick={() => onFrameChange?.(null)}
-									className="text-[9px] text-[#2563EB] hover:opacity-80"
+									className="text-[9px] text-[#4bbd7e] hover:opacity-80"
 								>
 									Remove
 								</button>
@@ -1757,7 +1757,7 @@ export function SettingsPanel({
 										className={cn(
 											"flex flex-col items-center gap-1 p-1.5 rounded-lg border transition-all text-center",
 											isSelected
-												? "border-[#2563EB]/50 bg-[#2563EB]/10 ring-1 ring-[#2563EB]/30"
+												? "border-[#4bbd7e]/50 bg-[#4bbd7e]/10 ring-1 ring-[#4bbd7e]/30"
 												: "border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.05]",
 										)}
 									>
@@ -1790,7 +1790,7 @@ export function SettingsPanel({
 					<button
 						type="button"
 						onClick={resetCropSection}
-						className="text-[10px] text-[#2563EB] transition-opacity hover:opacity-80"
+						className="text-[10px] text-[#4bbd7e] transition-opacity hover:opacity-80"
 					>
 						{t("common.actions.reset", "Reset")}
 					</button>
@@ -1853,7 +1853,7 @@ export function SettingsPanel({
 					<button
 						type="button"
 						onClick={() => onAutoCaptionSettingsChange?.(DEFAULT_AUTO_CAPTION_SETTINGS)}
-						className="text-[10px] text-[#2563EB] transition-opacity hover:opacity-80"
+						className="text-[10px] text-[#4bbd7e] transition-opacity hover:opacity-80"
 					>
 						{t("common.actions.reset", "Reset")}
 					</button>
@@ -1863,7 +1863,7 @@ export function SettingsPanel({
 					<Switch
 						checked={autoCaptionSettings.enabled}
 						onCheckedChange={(enabled) => updateAutoCaptionSettings({ enabled })}
-						className="data-[state=checked]:bg-[#2563EB] scale-75"
+						className="data-[state=checked]:bg-[#4bbd7e] scale-75"
 					/>
 				</div>
 			</div>
@@ -1890,7 +1890,7 @@ export function SettingsPanel({
 						<SelectTrigger className="h-10 w-[180px] rounded-xl border-white/10 bg-white/5 text-sm text-slate-200 hover:bg-white/10">
 							<SelectValue />
 						</SelectTrigger>
-						<SelectContent className="border-white/10 bg-[#1a1a1f] text-slate-200">
+						<SelectContent className="border-white/10 bg-[#09090b] text-slate-200">
 							{CAPTION_LANGUAGE_OPTIONS.map((option) => (
 								<SelectItem key={option.value} value={option.value}>
 									{option.label}
@@ -1923,7 +1923,7 @@ export function SettingsPanel({
 							<Button
 								type="button"
 								onClick={onDownloadWhisperSmallModel}
-								className="h-10 w-full rounded-xl bg-[#2563EB] px-4 text-sm font-medium text-white hover:bg-[#2563EB]/90"
+								className="h-10 w-full rounded-xl bg-[#4bbd7e] px-4 text-sm font-medium text-white hover:bg-[#4bbd7e]/90"
 							>
 								{tSettings("captions.downloadModel", "Download Model")}
 							</Button>
@@ -1944,7 +1944,7 @@ export function SettingsPanel({
 						type="button"
 						onClick={onGenerateAutoCaptions}
 						disabled={isGeneratingCaptions || !whisperModelPath}
-						className="h-10 w-full rounded-xl bg-[#2563EB] px-4 text-sm font-medium text-white hover:bg-[#2563EB]/90 disabled:opacity-60"
+						className="h-10 w-full rounded-xl bg-[#4bbd7e] px-4 text-sm font-medium text-white hover:bg-[#4bbd7e]/90 disabled:opacity-60"
 					>
 						{isGeneratingCaptions
 							? tSettings("captions.generating", "Generating...")
@@ -1988,7 +1988,7 @@ export function SettingsPanel({
 						<SelectTrigger className="h-9 w-[160px] rounded-xl border-white/10 bg-white/5 text-sm text-slate-200 hover:bg-white/10">
 							<SelectValue />
 						</SelectTrigger>
-						<SelectContent className="border-white/10 bg-[#1a1a1f] text-slate-200">
+						<SelectContent className="border-white/10 bg-[#09090b] text-slate-200">
 							{CAPTION_ANIMATION_OPTIONS.map((option) => (
 								<SelectItem key={option.value} value={option.value}>
 									{option.label}
@@ -2115,7 +2115,7 @@ export function SettingsPanel({
 								<button
 									type="button"
 									onClick={resetCursorSection}
-									className="text-[10px] text-[#2563EB] transition-opacity hover:opacity-80"
+									className="text-[10px] text-[#4bbd7e] transition-opacity hover:opacity-80"
 								>
 									{t("common.actions.reset", "Reset")}
 								</button>
@@ -2126,7 +2126,7 @@ export function SettingsPanel({
 									<Switch
 										checked={showCursor}
 										onCheckedChange={onShowCursorChange}
-										className="data-[state=checked]:bg-[#2563EB] scale-75"
+										className="data-[state=checked]:bg-[#4bbd7e] scale-75"
 									/>
 								</label>
 								<label className="flex items-center gap-1.5 text-[10px] text-slate-400">
@@ -2134,7 +2134,7 @@ export function SettingsPanel({
 									<Switch
 										checked={loopCursor}
 										onCheckedChange={onLoopCursorChange}
-										className="data-[state=checked]:bg-[#2563EB] scale-75"
+										className="data-[state=checked]:bg-[#4bbd7e] scale-75"
 									/>
 								</label>
 							</div>
@@ -2160,7 +2160,7 @@ export function SettingsPanel({
 											aria-label={option.label}
 											className={cn(
 												"group aspect-square h-auto min-w-0 rounded-[10px] border border-white/10 bg-white/[0.03] p-3 text-left text-slate-200 shadow-none transition-all hover:border-white/20 hover:bg-white/[0.06]",
-												"data-[state=on]:border-[#2563EB]/70 data-[state=on]:bg-[#2563EB]/12 data-[state=on]:text-white",
+												"data-[state=on]:border-[#4bbd7e]/70 data-[state=on]:bg-[#4bbd7e]/12 data-[state=on]:text-white",
 											)}
 										>
 											<div className="flex h-full flex-col items-center justify-between gap-3">
@@ -2257,7 +2257,7 @@ export function SettingsPanel({
 							<button
 								type="button"
 								onClick={resetWebcamSection}
-								className="text-[10px] text-[#2563EB] transition-opacity hover:opacity-80"
+								className="text-[10px] text-[#4bbd7e] transition-opacity hover:opacity-80"
 							>
 								{t("common.actions.reset", "Reset")}
 							</button>
@@ -2270,7 +2270,7 @@ export function SettingsPanel({
 								<Switch
 									checked={webcam?.enabled ?? false}
 									onCheckedChange={(enabled) => updateWebcam({ enabled })}
-									className="data-[state=checked]:bg-[#2563EB] scale-75"
+									className="data-[state=checked]:bg-[#4bbd7e] scale-75"
 								/>
 							</div>
 							<div className="flex items-center justify-between rounded-lg bg-white/[0.03] px-2.5 py-1.5">
@@ -2280,7 +2280,7 @@ export function SettingsPanel({
 								<Switch
 									checked={webcam?.reactToZoom ?? DEFAULT_WEBCAM_REACT_TO_ZOOM}
 									onCheckedChange={(reactToZoom) => updateWebcam({ reactToZoom })}
-									className="data-[state=checked]:bg-[#2563EB] scale-75"
+									className="data-[state=checked]:bg-[#4bbd7e] scale-75"
 								/>
 							</div>
 							<SliderControl
@@ -2309,7 +2309,7 @@ export function SettingsPanel({
 												className={cn(
 													"h-8 rounded-lg border px-0 text-sm font-semibold transition-all",
 													isActive
-														? "border-[#2563EB] bg-[#2563EB] text-white"
+														? "border-[#4bbd7e] bg-[#4bbd7e] text-white"
 														: "border-white/10 bg-white/5 text-slate-300 hover:border-white/20 hover:bg-white/10",
 												)}
 											>
@@ -2327,7 +2327,7 @@ export function SettingsPanel({
 										onCheckedChange={(checked) =>
 											applyWebcamPositionPreset(checked ? "custom" : DEFAULT_WEBCAM_POSITION_PRESET)
 										}
-										className="data-[state=checked]:bg-[#2563EB] scale-75"
+										className="data-[state=checked]:bg-[#4bbd7e] scale-75"
 									/>
 								</div>
 							</div>
@@ -2456,7 +2456,7 @@ export function SettingsPanel({
 	})();
 
 	return (
-		<div className="flex-[2] w-[332px] min-w-[280px] max-w-[332px] bg-[#161619] border border-white/10 rounded-2xl flex flex-col shadow-xl h-full overflow-hidden">
+		<div className="flex-[2] w-[332px] min-w-[280px] max-w-[332px] bg-[#09090b] border border-white/10 rounded-2xl flex flex-col shadow-xl h-full overflow-hidden">
 			<div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-4 pb-0" style={{ scrollbarGutter: 'stable' }}>
 				<AnimatePresence mode="wait" initial={false}>
 					<motion.div
@@ -2472,7 +2472,7 @@ export function SettingsPanel({
 			</div>
 
 			<div className={cn(
-				"flex-shrink-0 border-t border-white/10 bg-[#151518] p-4 pt-3",
+				"flex-shrink-0 border-t border-white/10 bg-[#09090b] p-4 pt-3",
 				!selectedZoomId && !selectedTrimId && !selectedSpeedId && !selectedClipId && "hidden"
 			)}>
 				{selectedZoomId && (
@@ -2481,7 +2481,7 @@ export function SettingsPanel({
 							<span className="text-sm font-medium text-slate-200">{tSettings("zoom.level")}</span>
 							<div className="flex items-center gap-2">
 								{selectedZoomDepth && (
-									<span className="rounded-full bg-[#2563EB]/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-[#2563EB]">
+									<span className="rounded-full bg-[#4bbd7e]/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-[#4bbd7e]">
 										{ZOOM_DEPTH_OPTIONS.find((o) => o.depth === selectedZoomDepth)?.label}
 									</span>
 								)}
@@ -2495,7 +2495,7 @@ export function SettingsPanel({
 									className={cn(
 										"flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-all",
 										selectedZoomMode === 'auto'
-											? "bg-[#2563EB] text-white shadow-sm"
+											? "bg-[#4bbd7e] text-white shadow-sm"
 											: "text-slate-400 hover:text-slate-200",
 									)}
 								>
@@ -2507,7 +2507,7 @@ export function SettingsPanel({
 									className={cn(
 										"flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-all",
 										selectedZoomMode === 'manual'
-											? "bg-[#2563EB] text-white shadow-sm"
+											? "bg-[#4bbd7e] text-white shadow-sm"
 											: "text-slate-400 hover:text-slate-200",
 									)}
 								>
@@ -2531,7 +2531,7 @@ export function SettingsPanel({
 										className={cn(
 											"h-auto w-full rounded-lg border px-1 py-2 text-center shadow-sm transition-all duration-200 ease-out cursor-pointer",
 											isActive
-												? "border-[#2563EB] bg-[#2563EB] text-white"
+												? "border-[#4bbd7e] bg-[#4bbd7e] text-white"
 												: "border-white/5 bg-white/5 text-slate-400 hover:bg-white/10 hover:border-white/10 hover:text-slate-200",
 										)}
 									>

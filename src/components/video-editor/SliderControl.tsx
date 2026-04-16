@@ -29,7 +29,7 @@ export function SliderControl({
   const dividerClass =
     accentColor === "purple"
       ? "bg-white/95 shadow-[0_0_10px_rgba(139,92,246,0.28)]"
-      : "bg-white/95 shadow-[0_0_10px_rgba(37,99,235,0.28)]";
+      : "bg-white/95 shadow-[0_0_10px_rgba(75,189,126,0.28)]";
 
   return (
 		<div className="relative flex h-10 w-full select-none items-center overflow-hidden rounded-xl bg-black/60 px-1.5">

@@ -432,9 +432,7 @@ function LanguageSwitcher() {
 	const next = SUPPORTED_LOCALES[(idx + 1) % SUPPORTED_LOCALES.length] as AppLocale;
 	const labels: Record<string, string> = {
 		en: "EN",
-		es: "ES",
 		"zh-CN": "中文",
-		ko: "한국어",
 	};
 	return (
 		<Button
@@ -712,7 +710,7 @@ export default function VideoEditor() {
 		}
 		context.imageSmoothingEnabled = true;
 		context.imageSmoothingQuality = "high";
-		context.fillStyle = "#111113";
+		context.fillStyle = "#09090b";
 		context.fillRect(0, 0, targetWidth, targetHeight);
 
 		const previewWidth = previewHandle?.containerRef.current?.clientWidth || 1920;
@@ -4103,9 +4101,9 @@ export default function VideoEditor() {
 	}
 
 	return (
-		<div className="flex flex-col h-screen bg-[#111113] text-slate-200 overflow-hidden selection:bg-[#2563EB]/30">
+		<div className="flex flex-col h-screen bg-[#09090b] text-slate-200 overflow-hidden selection:bg-[#4bbd7e]/30">
 			<div
-				className="relative flex h-11 flex-shrink-0 items-center justify-between bg-[#151518]/88 px-5 backdrop-blur-md border-b border-white/10 z-50"
+				className="relative flex h-11 flex-shrink-0 items-center justify-between bg-[#09090b]/88 px-5 backdrop-blur-md border-b border-white/10 z-50"
 				style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
 			>
 				<div
@@ -4185,8 +4183,8 @@ export default function VideoEditor() {
 						<span
 							className={`${hasUnsavedChanges ? "flex" : "hidden"} size-2 relative`}
 						>
-							<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#2563EB] opacity-75"></span>
-							<span className="relative inline-flex size-2 rounded-full bg-[#2563EB]"></span>
+							<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#4bbd7e] opacity-75"></span>
+							<span className="relative inline-flex size-2 rounded-full bg-[#4bbd7e]"></span>
 						</span>
 						<Save className="h-4 w-4" />
 						<span className="text-sm font-semibold tracking-tight">
@@ -4203,7 +4201,7 @@ export default function VideoEditor() {
 							<Button
 								type="button"
 								onClick={handleOpenExportDropdown}
-								className="inline-flex h-8 min-w-[112px] items-center justify-center gap-2 rounded-[5px] bg-[#2563EB] px-4.5 text-white transition-colors hover:bg-[#2563EB]/92"
+								className="inline-flex h-8 min-w-[112px] items-center justify-center gap-2 rounded-[5px] bg-[#4bbd7e] px-4.5 text-white transition-colors hover:bg-[#4bbd7e]/92"
 							>
 								<Download className="h-4 w-4" />
 								<span className="text-sm font-semibold tracking-tight">
@@ -4217,7 +4215,7 @@ export default function VideoEditor() {
 							className="w-[360px] border-none bg-transparent p-0 shadow-none"
 						>
 							{isExporting ? (
-								<div className="rounded-2xl border border-white/10 bg-[#17171a] p-4 text-slate-200 shadow-2xl">
+								<div className="rounded-2xl border border-white/10 bg-[#09090b] p-4 text-slate-200 shadow-2xl">
 									<div className="mb-3 flex items-center justify-between gap-3">
 										<div>
 											<p className="text-sm font-semibold text-white">
@@ -4264,7 +4262,7 @@ export default function VideoEditor() {
 											<div className="indeterminate-progress h-full rounded-full bg-transparent" />
 										) : (
 											<div
-												className="h-full bg-[#2563EB] transition-all duration-300 ease-out"
+												className="h-full bg-[#4bbd7e] transition-all duration-300 ease-out"
 												style={{
 													width: `${Math.min(isRenderingAudio ? (exportProgress.audioProgress ?? 0) * 100 : (exportFinalizingProgress ?? exportProgress?.percentage ?? 8), 100)}%`,
 												}}
@@ -4291,7 +4289,7 @@ export default function VideoEditor() {
 									) : null}
 								</div>
 							) : exportError ? (
-								<div className="rounded-2xl border border-white/10 bg-[#17171a] p-4 text-slate-200 shadow-2xl">
+								<div className="rounded-2xl border border-white/10 bg-[#09090b] p-4 text-slate-200 shadow-2xl">
 									<p className="text-sm font-semibold text-white">
 										{t("editor.exportStatus.issue", "Export issue")}
 									</p>
@@ -4308,7 +4306,7 @@ export default function VideoEditor() {
 											<Button
 												type="button"
 												onClick={handleRetrySaveExport}
-												className="h-8 flex-1 rounded-[5px] bg-[#2563EB] text-xs font-semibold text-white hover:bg-[#2563EB]/92"
+												className="h-8 flex-1 rounded-[5px] bg-[#4bbd7e] text-xs font-semibold text-white hover:bg-[#4bbd7e]/92"
 											>
 												{t("editor.actions.saveAgain", "Save Again")}
 											</Button>
@@ -4324,7 +4322,7 @@ export default function VideoEditor() {
 									</div>
 								</div>
 							) : exportedFilePath ? (
-								<div className="rounded-2xl border border-white/10 bg-[#17171a] p-4 text-slate-200 shadow-2xl">
+								<div className="rounded-2xl border border-white/10 bg-[#09090b] p-4 text-slate-200 shadow-2xl">
 									<p className="text-sm font-semibold text-white">
 										{t("editor.exportStatus.complete", "Export complete")}
 									</p>
@@ -4346,7 +4344,7 @@ export default function VideoEditor() {
 										<Button
 											type="button"
 											onClick={revealExportedFile}
-											className="h-8 flex-1 rounded-[5px] bg-[#2563EB] text-xs font-semibold text-white hover:bg-[#2563EB]/92"
+											className="h-8 flex-1 rounded-[5px] bg-[#4bbd7e] text-xs font-semibold text-white hover:bg-[#4bbd7e]/92"
 										>
 											{t("editor.actions.showInFolder", "Show In Folder")}
 										</Button>
@@ -4427,7 +4425,7 @@ export default function VideoEditor() {
 														<motion.span
 															animate={{
 																color: isActive
-																	? "#2563EB"
+																	? "#4bbd7e"
 																	: "rgba(255,255,255,0.75)",
 															}}
 															transition={{ duration: 0.16 }}
@@ -4445,7 +4443,7 @@ export default function VideoEditor() {
 															{isActive ? (
 																<motion.span
 																	layoutId="preview-active-dot"
-																	className="absolute -left-1 h-1.5 w-1.5 rounded-full bg-[#2563EB]"
+																	className="absolute -left-1 h-1.5 w-1.5 rounded-full bg-[#4bbd7e]"
 																	initial={{
 																		opacity: 0,
 																		scale: 0.6,
@@ -4735,7 +4733,7 @@ export default function VideoEditor() {
 
 				{/* Timeline section - full width */}
 				<div
-					className="min-h-[200px] flex-shrink-0 bg-[#17171a] rounded-2xl border border-white/10 shadow-lg overflow-auto flex flex-col"
+					className="min-h-[200px] flex-shrink-0 bg-[#09090b] rounded-2xl border border-white/10 shadow-lg overflow-auto flex flex-col"
 					style={{ height: "33%" }}
 				>
 					<TimelineEditor
@@ -4825,7 +4823,7 @@ export default function VideoEditor() {
 							<Button
 								onClick={handleCloseCropEditor}
 								size="lg"
-								className="bg-[#2563EB] text-white hover:bg-[#2563EB]/90"
+								className="bg-[#4bbd7e] text-white hover:bg-[#4bbd7e]/90"
 							>
 								{t("common.actions.done")}
 							</Button>

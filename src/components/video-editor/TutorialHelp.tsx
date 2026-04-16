@@ -86,7 +86,7 @@ export function FeedbackDialog() {
 			<DialogContent className="max-w-lg bg-[#09090b] border-white/10 [&>button]:text-slate-400 [&>button:hover]:text-white">
 				<DialogHeader>
 					<DialogTitle className="text-xl font-semibold text-slate-200 flex items-center gap-2">
-						<MessageSquareMore className="h-5 w-5 text-[#2563EB]" />{" "}
+						<MessageSquareMore className="h-5 w-5 text-[#4bbd7e]" />{" "}
 						{t("feedback.title", "Feedback & contact")}
 					</DialogTitle>
 					<DialogDescription className="text-slate-400">
@@ -201,7 +201,7 @@ export function KeyboardShortcutsDialog() {
 			<DialogContent className="max-w-lg bg-[#09090b] border-white/10 [&>button]:text-slate-400 [&>button:hover]:text-white">
 				<DialogHeader>
 					<DialogTitle className="text-xl font-semibold text-slate-200 flex items-center gap-2">
-						<Keyboard className="h-5 w-5 text-[#2563EB]" />{" "}
+						<Keyboard className="h-5 w-5 text-[#4bbd7e]" />{" "}
 						{t("keyboardShortcuts.title")}
 					</DialogTitle>
 					<DialogDescription className="text-slate-400">
@@ -219,7 +219,7 @@ export function KeyboardShortcutsDialog() {
 								className="flex items-center justify-between gap-3 rounded-lg border border-white/5 bg-white/5 px-3 py-2.5"
 							>
 								<span className="text-slate-300">{SHORTCUT_LABELS[action]}</span>
-								<kbd className="rounded border border-white/10 bg-black/20 px-2 py-1 font-mono text-[#2563EB]">
+								<kbd className="rounded border border-white/10 bg-black/20 px-2 py-1 font-mono text-[#4bbd7e]">
 									{formatBinding(shortcuts[action], isMac)}
 								</kbd>
 							</div>
@@ -229,7 +229,7 @@ export function KeyboardShortcutsDialog() {
 								<p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
 									{t("keyboardShortcuts.panTimeline")}
 								</p>
-								<kbd className="mt-2 inline-flex rounded border border-white/10 bg-black/20 px-2 py-1 font-mono text-[#2563EB]">
+								<kbd className="mt-2 inline-flex rounded border border-white/10 bg-black/20 px-2 py-1 font-mono text-[#4bbd7e]">
 									{scrollLabels.pan}
 								</kbd>
 							</div>
@@ -237,7 +237,7 @@ export function KeyboardShortcutsDialog() {
 								<p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
 									{t("keyboardShortcuts.zoomTimeline")}
 								</p>
-								<kbd className="mt-2 inline-flex rounded border border-white/10 bg-black/20 px-2 py-1 font-mono text-[#2563EB]">
+								<kbd className="mt-2 inline-flex rounded border border-white/10 bg-black/20 px-2 py-1 font-mono text-[#4bbd7e]">
 									{scrollLabels.zoom}
 								</kbd>
 							</div>
@@ -245,7 +245,7 @@ export function KeyboardShortcutsDialog() {
 								<p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
 									{t("keyboardShortcuts.cycleAnnotations")}
 								</p>
-								<kbd className="mt-2 inline-flex rounded border border-white/10 bg-black/20 px-2 py-1 font-mono text-[#2563EB]">
+								<kbd className="mt-2 inline-flex rounded border border-white/10 bg-black/20 px-2 py-1 font-mono text-[#4bbd7e]">
 									{t("keyboardShortcuts.tab")}
 								</kbd>
 							</div>

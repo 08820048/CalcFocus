@@ -22,30 +22,6 @@ import enSettings from '@/i18n/locales/en/settings.json'
 import enShortcuts from '@/i18n/locales/en/shortcuts.json'
 import enTimeline from '@/i18n/locales/en/timeline.json'
 import enExtensions from '@/i18n/locales/en/extensions.json'
-import esCommon from '@/i18n/locales/es/common.json'
-import esDialogs from '@/i18n/locales/es/dialogs.json'
-import esEditor from '@/i18n/locales/es/editor.json'
-import esLaunch from '@/i18n/locales/es/launch.json'
-import esSettings from '@/i18n/locales/es/settings.json'
-import esShortcuts from '@/i18n/locales/es/shortcuts.json'
-import esTimeline from '@/i18n/locales/es/timeline.json'
-import esExtensions from '@/i18n/locales/es/extensions.json'
-import nlCommon from '@/i18n/locales/nl/common.json'
-import nlDialogs from '@/i18n/locales/nl/dialogs.json'
-import nlEditor from '@/i18n/locales/nl/editor.json'
-import nlLaunch from '@/i18n/locales/nl/launch.json'
-import nlSettings from '@/i18n/locales/nl/settings.json'
-import nlShortcuts from '@/i18n/locales/nl/shortcuts.json'
-import nlTimeline from '@/i18n/locales/nl/timeline.json'
-import nlExtensions from '@/i18n/locales/nl/extensions.json'
-import koCommon from '@/i18n/locales/ko/common.json'
-import koDialogs from '@/i18n/locales/ko/dialogs.json'
-import koEditor from '@/i18n/locales/ko/editor.json'
-import koLaunch from '@/i18n/locales/ko/launch.json'
-import koSettings from '@/i18n/locales/ko/settings.json'
-import koShortcuts from '@/i18n/locales/ko/shortcuts.json'
-import koTimeline from '@/i18n/locales/ko/timeline.json'
-import koExtensions from '@/i18n/locales/ko/extensions.json'
 import zhCNCommon from '@/i18n/locales/zh-CN/common.json'
 import zhCNDialogs from '@/i18n/locales/zh-CN/dialogs.json'
 import zhCNEditor from '@/i18n/locales/zh-CN/editor.json'
@@ -69,36 +45,6 @@ const messages: Record<AppLocale, LocaleBundle> = {
     dialogs: enDialogs,
     shortcuts: enShortcuts,
     extensions: enExtensions,
-  },
-  es: {
-    common: esCommon,
-    launch: esLaunch,
-    editor: esEditor,
-    timeline: esTimeline,
-    settings: esSettings,
-    dialogs: esDialogs,
-    shortcuts: esShortcuts,
-    extensions: esExtensions,
-  },
-  nl: {
-    common: nlCommon,
-    launch: nlLaunch,
-    editor: nlEditor,
-    timeline: nlTimeline,
-    settings: nlSettings,
-    dialogs: nlDialogs,
-    shortcuts: nlShortcuts,
-    extensions: nlExtensions,
-  },
-  ko: {
-    common: koCommon,
-    launch: koLaunch,
-    editor: koEditor,
-    timeline: koTimeline,
-    settings: koSettings,
-    dialogs: koDialogs,
-    shortcuts: koShortcuts,
-    extensions: koExtensions,
   },
   'zh-CN': {
     common: zhCNCommon,

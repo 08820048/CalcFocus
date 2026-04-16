@@ -37,7 +37,7 @@ export function AnnotationOverlay({
 
   const renderArrow = () => {
     const direction = annotation.figureData?.arrowDirection || 'right';
-    const color = annotation.figureData?.color || '#2563EB';
+    const color = annotation.figureData?.color || '#4bbd7e';
     const strokeWidth = annotation.figureData?.strokeWidth || 4;
 
     const ArrowComponent = getArrowComponent(direction);
@@ -168,14 +168,14 @@ export function AnnotationOverlay({
       bounds="parent"
       className={cn(
         "cursor-move transition-all",
-        isSelected && "ring-2 ring-[#2563EB] ring-offset-2 ring-offset-transparent"
+        isSelected && "ring-2 ring-[#4bbd7e] ring-offset-2 ring-offset-transparent"
       )}
       style={{
         zIndex: isSelectedBoost ? zIndex + 1000 : zIndex, // Boost selected annotation to ensure it's on top
         pointerEvents: isSelected ? 'auto' : 'none',
-        border: isSelected ? '2px solid rgba(37, 99, 235, 0.8)' : 'none',
-        backgroundColor: isSelected ? 'rgba(37, 99, 235, 0.1)' : 'transparent',
-        boxShadow: isSelected ? '0 0 0 1px rgba(37, 99, 235, 0.35)' : 'none',
+        border: isSelected ? '2px solid rgba(75, 189, 126, 0.8)' : 'none',
+        backgroundColor: isSelected ? 'rgba(75, 189, 126, 0.1)' : 'transparent',
+        boxShadow: isSelected ? '0 0 0 1px rgba(75, 189, 126, 0.35)' : 'none',
       }}
       enableResizing={isSelected}
       disableDragging={!isSelected}
@@ -184,7 +184,7 @@ export function AnnotationOverlay({
           width: '12px',
           height: '12px',
           backgroundColor: isSelected ? 'white' : 'transparent',
-          border: isSelected ? '2px solid #2563EB' : 'none',
+          border: isSelected ? '2px solid #4bbd7e' : 'none',
           borderRadius: '50%',
           left: '-6px',
           top: '-6px',
@@ -194,7 +194,7 @@ export function AnnotationOverlay({
           width: '12px',
           height: '12px',
           backgroundColor: isSelected ? 'white' : 'transparent',
-          border: isSelected ? '2px solid #2563EB' : 'none',
+          border: isSelected ? '2px solid #4bbd7e' : 'none',
           borderRadius: '50%',
           right: '-6px',
           top: '-6px',
@@ -204,7 +204,7 @@ export function AnnotationOverlay({
           width: '12px',
           height: '12px',
           backgroundColor: isSelected ? 'white' : 'transparent',
-          border: isSelected ? '2px solid #2563EB' : 'none',
+          border: isSelected ? '2px solid #4bbd7e' : 'none',
           borderRadius: '50%',
           left: '-6px',
           bottom: '-6px',
@@ -214,7 +214,7 @@ export function AnnotationOverlay({
           width: '12px',
           height: '12px',
           backgroundColor: isSelected ? 'white' : 'transparent',
-          border: isSelected ? '2px solid #2563EB' : 'none',
+          border: isSelected ? '2px solid #4bbd7e' : 'none',
           borderRadius: '50%',
           right: '-6px',
           bottom: '-6px',

@@ -64,7 +64,7 @@ export function ExportSettingsMenu({
 	const isLegacyModel = exportPipelineModel === "legacy";
 
 	return (
-		<div className={cn("w-full rounded-2xl border border-white/10 bg-[#17171a] p-3 text-slate-200", className)}>
+		<div className={cn("w-full rounded-2xl border border-white/10 bg-[#09090b] p-3 text-slate-200", className)}>
 			<div className="mb-2 flex items-center justify-between">
 				<span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
 					{tSettings("export.title", "Export")}
@@ -87,14 +87,14 @@ export function ExportSettingsMenu({
 								className={cn(
 									"relative flex-1 overflow-hidden rounded-xl border py-2 text-xs font-medium transition-colors",
 									isActive
-										? "border-[#2563EB]/50 text-white"
+										? "border-[#4bbd7e]/50 text-white"
 										: "border-white/10 bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-200",
 								)}
 							>
 								{isActive ? (
 									<motion.span
 										layoutId="header-export-format-pill"
-										className="absolute inset-0 rounded-xl bg-[#2563EB]/10"
+										className="absolute inset-0 rounded-xl bg-[#4bbd7e]/10"
 										transition={{ type: "spring", stiffness: 380, damping: 32 }}
 									/>
 								) : null}
@@ -307,13 +307,13 @@ export function ExportSettingsMenu({
 						</span>
 						<div className="flex items-center gap-2">
 							<span className="text-[10px] text-slate-400">{tSettings("export.loop")}</span>
-							<Switch checked={gifLoop} onCheckedChange={onGifLoopChange} className="scale-75 data-[state=checked]:bg-[#2563EB]" />
+							<Switch checked={gifLoop} onCheckedChange={onGifLoopChange} className="scale-75 data-[state=checked]:bg-[#4bbd7e]" />
 						</div>
 					</div>
 				</div>
 			)}
 
-			<Button type="button" size="lg" onClick={onExport} className="h-11 w-full gap-2 rounded-lg bg-[#2563EB] text-sm font-semibold text-white transition-colors duration-200 hover:bg-[#2563EB]/90">
+			<Button type="button" size="lg" onClick={onExport} className="h-11 w-full gap-2 rounded-lg bg-[#4bbd7e] text-sm font-semibold text-white transition-colors duration-200 hover:bg-[#4bbd7e]/90">
 				<Download className="h-4 w-4" />
 				{tSettings("export.exportVideo", undefined, {
 					format: exportFormat === "gif" ? "GIF" : "Video",

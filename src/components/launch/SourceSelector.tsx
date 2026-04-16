@@ -131,10 +131,10 @@ export function SourceSelector() {
       <div className="flex-1 flex flex-col w-full max-w-xl" style={{ padding: 0 }}>
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'screens' | 'windows')}>
           <TabsList className="grid grid-cols-2 mb-3 bg-zinc-900/40 rounded-full">
-            <TabsTrigger value="screens" className="data-[state=active]:bg-[#2563EB] data-[state=active]:text-white text-zinc-200 rounded-full text-xs py-1">
+            <TabsTrigger value="screens" className="data-[state=active]:bg-[#4bbd7e] data-[state=active]:text-white text-zinc-200 rounded-full text-xs py-1">
               {t('sourceSelector.screens')} ({screenSources.length})
             </TabsTrigger>
-            <TabsTrigger value="windows" className="data-[state=active]:bg-[#2563EB] data-[state=active]:text-white text-zinc-200 rounded-full text-xs py-1">
+            <TabsTrigger value="windows" className="data-[state=active]:bg-[#4bbd7e] data-[state=active]:text-white text-zinc-200 rounded-full text-xs py-1">
               {t('sourceSelector.windows')} ({windowSources.length})
             </TabsTrigger>
           </TabsList>
@@ -160,7 +160,7 @@ export function SourceSelector() {
                         />
                         {selectedSource?.id === source.id && (
                           <div className="absolute -top-1 -right-1">
-                            <div className="w-4 h-4 bg-[#2563EB] rounded-full flex items-center justify-center shadow-md">
+                            <div className="w-4 h-4 bg-[#4bbd7e] rounded-full flex items-center justify-center shadow-md">
                               <MdCheck className={styles.icon} />
                             </div>
                           </div>
@@ -209,7 +209,7 @@ export function SourceSelector() {
                         )}
                         {selectedSource?.id === source.id && (
                           <div className="absolute -top-1 -right-1">
-                            <div className="w-4 h-4 bg-blue-600 rounded-full flex items-center justify-center shadow-md">
+                            <div className="w-4 h-4 bg-[#4bbd7e] rounded-full flex items-center justify-center shadow-md">
                               <MdCheck className={styles.icon} />
                             </div>
                           </div>
@@ -236,10 +236,9 @@ export function SourceSelector() {
       <div className="border-t border-zinc-800 p-2 w-full max-w-xl">
         <div className="flex justify-center gap-2">
           <Button variant="outline" onClick={() => window.close()} className="px-4 py-1 text-xs bg-zinc-800 border-zinc-700 text-zinc-200 hover:bg-zinc-700">{t('sourceSelector.cancel')}</Button>
-          <Button onClick={handleShare} disabled={!selectedSource} className="px-4 py-1 text-xs bg-[#2563EB] text-white hover:bg-[#2563EB]/80 disabled:opacity-50 disabled:bg-zinc-700">{t('sourceSelector.share')}</Button>
+          <Button onClick={handleShare} disabled={!selectedSource} className="px-4 py-1 text-xs bg-[#4bbd7e] text-white hover:bg-[#4bbd7e]/80 disabled:opacity-50 disabled:bg-zinc-700">{t('sourceSelector.share')}</Button>
         </div>
       </div>
     </div>
   );
 }
-

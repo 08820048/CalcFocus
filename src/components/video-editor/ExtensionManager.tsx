@@ -76,7 +76,7 @@ function InstalledExtensionCard({
         isError
           ? "border-red-500/30 bg-red-500/5"
           : isActive
-            ? "border-[#2563EB]/20 bg-[#2563EB]/5"
+            ? "border-[#4bbd7e]/20 bg-[#4bbd7e]/5"
             : "border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04]",
       )}
       onClick={onClick}
@@ -217,7 +217,7 @@ function MarketplaceCard({
             {extension.tags.slice(0, 3).map((tag) => (
               <span
                 key={tag}
-                className="text-[8px] px-1 py-[1px] rounded bg-[#2563EB]/10 text-[#2563EB]/70 font-medium"
+                className="text-[8px] px-1 py-[1px] rounded bg-[#4bbd7e]/10 text-[#4bbd7e]/70 font-medium"
               >
                 {tag}
               </span>
@@ -236,7 +236,7 @@ function MarketplaceCard({
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 px-2.5 text-[11px] text-[#2563EB] hover:text-[#2563EB] hover:bg-[#2563EB]/10 font-medium gap-1"
+            className="h-7 px-2.5 text-[11px] text-[#4bbd7e] hover:text-[#4bbd7e] hover:bg-[#4bbd7e]/10 font-medium gap-1"
             onClick={(e) => { e.stopPropagation(); onInstall(); }}
             disabled={isInstalling}
           >
@@ -345,18 +345,18 @@ function ExtensionDetailModal({
 
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="max-w-md bg-[#161619] border-white/10 text-slate-200 p-0 gap-0 overflow-hidden">
+      <DialogContent className="max-w-md bg-[#09090b] border-white/10 text-slate-200 p-0 gap-0 overflow-hidden">
         {/* Header */}
         <div className="p-5 pb-4">
           <div className="flex items-start gap-3.5">
-            <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-[#2563EB]/20 to-[#2563EB]/5 border border-white/10 flex items-center justify-center">
+            <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-[#4bbd7e]/20 to-[#4bbd7e]/5 border border-white/10 flex items-center justify-center">
               {detail.source === 'marketplace' && detail.ext.iconUrl ? (
                 <img src={detail.ext.iconUrl} alt="" className="w-7 h-7 rounded-lg" />
               ) : (
                 <ExtensionIcon
                   icon={isInstalled ? detail.ext.manifest.icon : undefined}
                   extensionPath={isInstalled ? detail.ext.path : undefined}
-                  className="w-5 h-5 text-[#2563EB]/60"
+                  className="w-5 h-5 text-[#4bbd7e]/60"
                 />
               )}
             </div>
@@ -420,7 +420,7 @@ function ExtensionDetailModal({
                 {detail.ext.tags.map((tag) => (
                   <span
                     key={tag}
-                    className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-[#2563EB]/10 text-[#2563EB]/70 font-medium"
+                    className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-[#4bbd7e]/10 text-[#4bbd7e]/70 font-medium"
                   >
                     <Tag className="w-2.5 h-2.5" />
                     {tag}
@@ -486,7 +486,7 @@ function ExtensionDetailModal({
           {detail.source === 'marketplace' && !detail.ext.installed && onInstall && (
             <Button
               size="sm"
-              className="h-8 px-3 text-[12px] bg-[#2563EB] hover:bg-[#2563EB]/90 text-white gap-1.5"
+              className="h-8 px-3 text-[12px] bg-[#4bbd7e] hover:bg-[#4bbd7e]/90 text-white gap-1.5"
               onClick={onInstall}
               disabled={isInstalling}
             >
@@ -549,7 +549,7 @@ function TabSwitcher({
               {isActive ? (
                 <motion.span
                   layoutId="extension-tab-pill"
-                  className="absolute inset-0 rounded-lg bg-[#2563EB]"
+                  className="absolute inset-0 rounded-lg bg-[#4bbd7e]"
                   transition={{ type: "spring", stiffness: 420, damping: 34 }}
                 />
               ) : null}
@@ -706,12 +706,12 @@ export default function ExtensionManager() {
   );
 
   return (
-    <div className="flex-[2] w-[332px] min-w-[280px] max-w-[332px] bg-[#161619] border border-white/10 rounded-2xl flex flex-col shadow-xl h-full overflow-hidden">
+    <div className="flex-[2] w-[332px] min-w-[280px] max-w-[332px] bg-[#09090b] border border-white/10 rounded-2xl flex flex-col shadow-xl h-full overflow-hidden">
       {/* Header */}
       <div className="flex-shrink-0 p-4 pb-3">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <Puzzle className="w-4 h-4 text-[#2563EB]" />
+            <Puzzle className="w-4 h-4 text-[#4bbd7e]" />
             <h3 className="text-[13px] font-semibold text-slate-200">{t("title")}</h3>
           </div>
           <div className="flex items-center gap-0.5">
@@ -974,7 +974,7 @@ function BrowseTab({
             e.stopPropagation();
             if (e.key === "Enter") onSearch();
           }}
-          className="w-full h-8 pl-8 pr-3 rounded-lg bg-white/[0.04] border border-white/[0.08] text-[12px] text-slate-200 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-[#2563EB]/50 focus:border-[#2563EB]/30 transition-colors"
+          className="w-full h-8 pl-8 pr-3 rounded-lg bg-white/[0.04] border border-white/[0.08] text-[12px] text-slate-200 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-[#4bbd7e]/50 focus:border-[#4bbd7e]/30 transition-colors"
         />
       </div>
 
