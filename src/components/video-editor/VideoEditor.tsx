@@ -5,7 +5,6 @@ import {
 	Download,
 	FolderOpen,
 	MousePointer2,
-	Puzzle,
 	Redo2,
 	Save,
 	Sparkles,
@@ -24,8 +23,6 @@ import {
 import { Toaster } from "@/components/ui/sonner";
 import { useI18n } from "@/contexts/I18nContext";
 import { useShortcuts } from "@/contexts/ShortcutsContext";
-import type { AppLocale } from "@/i18n/config";
-import { SUPPORTED_LOCALES } from "@/i18n/config";
 import {
 	calculateOutputDimensions,
 	DEFAULT_MP4_CODEC,
@@ -59,8 +56,6 @@ import { type AspectRatio, getAspectRatioValue } from "@/utils/aspectRatioUtils"
 import { resolveAutoCaptionSourcePath } from "./autoCaptionSource";
 import { CropControl } from "./CropControl";
 import { ExportSettingsMenu } from "./ExportSettingsMenu";
-import { ExtensionIcon } from "./ExtensionIcon";
-import ExtensionManager from "./ExtensionManager";
 import { loadEditorPreferences, saveEditorPreferences } from "./editorPreferences";
 import PlaybackControls from "./PlaybackControls";
 import ProjectBrowserDialog, { type ProjectLibraryEntry } from "./ProjectBrowserDialog";
@@ -74,7 +69,7 @@ import {
 	validateProjectData,
 } from "./projectPersistence";
 import { type EditorEffectSection, SettingsPanel } from "./SettingsPanel";
-import { DiscordLinkButton, FeedbackDialog, KeyboardShortcutsDialog } from "./TutorialHelp";
+import { DiscordLinkButton, KeyboardShortcutsDialog } from "./TutorialHelp";
 import TimelineEditor from "./timeline/TimelineEditor";
 import { normalizeCursorTelemetry } from "./timeline/zoomSuggestionUtils";
 import {
@@ -424,29 +419,6 @@ function getErrorMessage(error: unknown): string {
 	}
 
 	return "Something went wrong";
-}
-
-function LanguageSwitcher() {
-	const { locale, setLocale, t } = useI18n();
-	const idx = SUPPORTED_LOCALES.indexOf(locale as (typeof SUPPORTED_LOCALES)[number]);
-	const next = SUPPORTED_LOCALES[(idx + 1) % SUPPORTED_LOCALES.length] as AppLocale;
-	const labels: Record<string, string> = {
-		en: "EN",
-		"zh-CN": "中文",
-	};
-	return (
-		<Button
-			type="button"
-			variant="ghost"
-			size="sm"
-			onClick={() => setLocale(next)}
-			className="h-7 rounded-[5px] px-2 text-[11px] font-semibold leading-none text-slate-300 hover:bg-white/10 hover:text-white transition-all"
-			title={t("common.app.language", "Language")}
-			aria-label={t("common.app.language", "Language")}
-		>
-			<span className="leading-none">{labels[locale] ?? locale.toUpperCase()}</span>
-		</Button>
-	);
 }
 
 export default function VideoEditor() {
@@ -1021,26 +993,6 @@ export default function VideoEditor() {
 		mp4FrameRate,
 	]);
 
-	// Extension-contributed standalone section pages (no parentSection)
-	const [extensionSectionButtons, setExtensionSectionButtons] = useState<
-		{ id: EditorEffectSection; label: string; icon: typeof Puzzle | string }[]
-	>([]);
-	useEffect(() => {
-		const update = () => {
-			const panels = extensionHost.getSettingsPanels();
-			const standalone = panels
-				.filter((p) => !p.panel.parentSection)
-				.map((p) => ({
-					id: `ext:${p.extensionId}/${p.panel.id}` as EditorEffectSection,
-					label: p.panel.label,
-					icon: p.panel.icon || (Puzzle as typeof Puzzle | string),
-				}));
-			setExtensionSectionButtons(standalone);
-		};
-		update();
-		return extensionHost.onChange(update);
-	}, []);
-
 	const editorSectionButtons = useMemo(
 		() => [
 			{ id: "scene" as const, label: t("settings.sections.scene", "Scene"), icon: Sparkles },
@@ -1055,14 +1007,8 @@ export default function VideoEditor() {
 				label: t("settings.sections.captions", "Captions"),
 				icon: Captions,
 			},
-			...extensionSectionButtons,
-			{
-				id: "extensions" as const,
-				label: t("settings.sections.extensions", "Extensions"),
-				icon: Puzzle,
-			},
 		],
-		[t, extensionSectionButtons],
+		[t],
 	);
 
 	useEffect(() => {
@@ -4089,9 +4035,9 @@ export default function VideoEditor() {
 						ref={projectBrowserFallbackTriggerRef}
 						type="button"
 						onClick={handleOpenProjectBrowser}
-						className="rounded-[5px] bg-white px-3 py-1.5 text-sm font-semibold text-black shadow-[0_14px_32px_rgba(0,0,0,0.18)] transition-colors hover:bg-white/92"
+						className="rounded-[5px] bg-[#4bbd7e] px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-[#4bbd7e]/92"
 					>
-						Open Projects
+						{t("editor.project.openProjects", "Open Projects")}
 					</button>
 				</div>
 				{projectBrowser}
@@ -4103,14 +4049,13 @@ export default function VideoEditor() {
 	return (
 		<div className="flex flex-col h-screen bg-[#09090b] text-slate-200 overflow-hidden selection:bg-[#4bbd7e]/30">
 			<div
-				className="relative flex h-11 flex-shrink-0 items-center justify-between bg-[#09090b]/88 px-5 backdrop-blur-md border-b border-white/10 z-50"
+				className="edge-divider-b relative flex h-11 flex-shrink-0 items-center justify-between bg-[#09090b]/88 px-5 backdrop-blur-md z-50"
 				style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
 			>
 				<div
 					className={`flex items-center gap-1.5 justify-self-start ${headerLeftControlsPaddingClass}`}
 					style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
 				>
-					<LanguageSwitcher />
 					<Button
 						type="button"
 						variant="ghost"
@@ -4124,14 +4069,13 @@ export default function VideoEditor() {
 					</Button>
 					<DiscordLinkButton />
 					<KeyboardShortcutsDialog />
-					<FeedbackDialog />
-					<div className="ml-1 h-5 w-px bg-white/10" />
+					<div className="ml-1 h-5 divider-fade-y" />
 					<Button
 						type="button"
 						variant="ghost"
 						onClick={handleUndo}
 						disabled={!canUndo}
-						className="inline-flex h-8 w-8 items-center justify-center rounded-[5px] border border-white/10 bg-white/5 p-0 text-slate-200 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+						className="inline-flex h-8 w-8 items-center justify-center p-0 text-slate-400 transition-colors hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
 						title={t("common.actions.undo", "Undo")}
 						aria-label={t("common.actions.undo", "Undo")}
 					>
@@ -4142,7 +4086,7 @@ export default function VideoEditor() {
 						variant="ghost"
 						onClick={handleRedo}
 						disabled={!canRedo}
-						className="inline-flex h-8 w-8 items-center justify-center rounded-[5px] border border-white/10 bg-white/5 p-0 text-slate-200 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+						className="inline-flex h-8 w-8 items-center justify-center p-0 text-slate-400 transition-colors hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
 						title={t("common.actions.redo", "Redo")}
 						aria-label={t("common.actions.redo", "Redo")}
 					>
@@ -4168,7 +4112,7 @@ export default function VideoEditor() {
 						ref={projectBrowserTriggerRef}
 						type="button"
 						onClick={handleOpenProjectBrowser}
-						className="inline-flex h-8 min-w-[96px] items-center justify-center gap-1.5 rounded-[5px] bg-white px-4 text-black shadow-[0_14px_32px_rgba(0,0,0,0.18)] transition-colors hover:bg-white/92"
+						className="inline-flex h-8 min-w-[112px] items-center justify-center gap-2 rounded-[5px] bg-[#4bbd7e] px-4.5 text-white transition-colors hover:bg-[#4bbd7e]/92"
 					>
 						<FolderOpen className="h-4 w-4" />
 						<span className="text-sm font-semibold tracking-tight">
@@ -4178,20 +4122,20 @@ export default function VideoEditor() {
 					<Button
 						type="button"
 						onClick={handleSaveProject}
-						className="inline-flex h-8 min-w-[96px] items-center justify-center gap-1.5 rounded-[5px] bg-white px-4 text-black transition-colors hover:bg-white/92"
+						className="inline-flex h-8 min-w-[112px] items-center justify-center gap-2 rounded-[5px] bg-[#4bbd7e] px-4.5 text-white transition-colors hover:bg-[#4bbd7e]/92"
 					>
 						<span
 							className={`${hasUnsavedChanges ? "flex" : "hidden"} size-2 relative`}
 						>
-							<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#4bbd7e] opacity-75"></span>
-							<span className="relative inline-flex size-2 rounded-full bg-[#4bbd7e]"></span>
+							<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/75"></span>
+							<span className="relative inline-flex size-2 rounded-full bg-white"></span>
 						</span>
 						<Save className="h-4 w-4" />
 						<span className="text-sm font-semibold tracking-tight">
 							{t("common.actions.save")}
 						</span>
 					</Button>
-					<div className="mx-1 h-5 w-px bg-white/10" />
+					<div className="mx-1 h-5 divider-fade-y" />
 					<DropdownMenu
 						open={showExportDropdown}
 						onOpenChange={setShowExportDropdown}
@@ -4262,7 +4206,7 @@ export default function VideoEditor() {
 											<div className="indeterminate-progress h-full rounded-full bg-transparent" />
 										) : (
 											<div
-												className="h-full bg-[#4bbd7e] transition-all duration-300 ease-out"
+												className="h-full bg-[#2ecdb2] transition-all duration-300 ease-out"
 												style={{
 													width: `${Math.min(isRenderingAudio ? (exportProgress.audioProgress ?? 0) * 100 : (exportFinalizingProgress ?? exportProgress?.percentage ?? 8), 100)}%`,
 												}}
@@ -4389,7 +4333,7 @@ export default function VideoEditor() {
 
 			<div className="relative flex min-h-0 flex-1 flex-col gap-3 p-4">
 				{/* Top section: Video Preview + Settings */}
-				<div className="flex min-h-0 flex-1 gap-3">
+				<div className="flex min-h-0 flex-1">
 					{/* Left Column - Video Preview */}
 					<div className="order-2 flex h-full min-w-0 flex-[7] flex-col">
 						<div className="relative flex h-full flex-col overflow-hidden">
@@ -4398,9 +4342,9 @@ export default function VideoEditor() {
 								className="flex w-full min-h-0 flex-1 items-stretch"
 								style={{ flex: "1 1 auto", margin: "6px 0 0" }}
 							>
-								<div className="flex w-11 flex-shrink-0 items-center justify-center pl-1">
+								<div className="flex w-12 flex-shrink-0 items-center justify-center pl-3">
 									<LayoutGroup id="preview-icon-rail">
-										<div className="flex flex-col items-center gap-3">
+										<div className="flex flex-col items-center justify-center gap-3">
 											{editorSectionButtons.map((section) => {
 												const isActive = activeEffectSection === section.id;
 												return (
@@ -4430,14 +4374,7 @@ export default function VideoEditor() {
 															}}
 															transition={{ duration: 0.16 }}
 														>
-															{typeof section.icon === "string" ? (
-																<ExtensionIcon
-																	icon={section.icon}
-																	className="h-4 w-4"
-																/>
-															) : (
-																<section.icon className="h-4 w-4" />
-															)}
+															<section.icon className="h-4 w-4" />
 														</motion.span>
 														<AnimatePresence initial={false}>
 															{isActive ? (
@@ -4592,142 +4529,138 @@ export default function VideoEditor() {
 
 					{/* Left section: settings panel */}
 					<div className="order-1 flex">
-						{activeEffectSection === "extensions" ? (
-							<ExtensionManager />
-						) : (
-							<SettingsPanel
-								panelMode="editor"
-								activeEffectSection={activeEffectSection}
-								selected={wallpaper}
-								onWallpaperChange={setWallpaper}
-								selectedZoomDepth={
-									selectedZoomId
-										? zoomRegions.find((z) => z.id === selectedZoomId)?.depth
-										: null
-								}
-								onZoomDepthChange={(depth) =>
-									selectedZoomId && handleZoomDepthChange(depth)
-								}
-								selectedZoomId={selectedZoomId}
-								selectedZoomMode={
-									selectedZoomId
-										? (zoomRegions.find((z) => z.id === selectedZoomId)?.mode ??
-											"auto")
-										: null
-								}
-								onZoomModeChange={(mode) =>
-									selectedZoomId && handleZoomModeChange(mode)
-								}
-								onZoomDelete={handleZoomDelete}
-								selectedTrimId={selectedTrimId}
-								onTrimDelete={handleTrimDelete}
-								selectedClipId={selectedClipId}
-								selectedClipSpeed={
-									selectedClipId
-										? (clipRegions.find((c) => c.id === selectedClipId)
-												?.speed ?? 1)
-										: null
-								}
-								onClipSpeedChange={(speed) =>
-									selectedClipId && handleClipSpeedChange(speed)
-								}
-								onClipDelete={handleClipDelete}
-								shadowIntensity={shadowIntensity}
-								onShadowChange={setShadowIntensity}
-								backgroundBlur={backgroundBlur}
-								onBackgroundBlurChange={setBackgroundBlur}
-								zoomMotionBlur={zoomMotionBlur}
-								onZoomMotionBlurChange={setZoomMotionBlur}
-								connectZooms={connectZooms}
-								onConnectZoomsChange={setConnectZooms}
-								zoomInDurationMs={zoomInDurationMs}
-								onZoomInDurationMsChange={setZoomInDurationMs}
-								zoomInOverlapMs={zoomInOverlapMs}
-								onZoomInOverlapMsChange={setZoomInOverlapMs}
-								zoomOutDurationMs={zoomOutDurationMs}
-								onZoomOutDurationMsChange={setZoomOutDurationMs}
-								connectedZoomGapMs={connectedZoomGapMs}
-								onConnectedZoomGapMsChange={setConnectedZoomGapMs}
-								connectedZoomDurationMs={connectedZoomDurationMs}
-								onConnectedZoomDurationMsChange={setConnectedZoomDurationMs}
-								zoomInEasing={zoomInEasing}
-								onZoomInEasingChange={setZoomInEasing}
-								zoomOutEasing={zoomOutEasing}
-								onZoomOutEasingChange={setZoomOutEasing}
-								connectedZoomEasing={connectedZoomEasing}
-								onConnectedZoomEasingChange={setConnectedZoomEasing}
-								showCursor={showCursor}
-								onShowCursorChange={setShowCursor}
-								loopCursor={loopCursor}
-								onLoopCursorChange={setLoopCursor}
-								cursorStyle={cursorStyle}
-								onCursorStyleChange={setCursorStyle}
-								cursorSize={cursorSize}
-								onCursorSizeChange={setCursorSize}
-								cursorSmoothing={cursorSmoothing}
-								onCursorSmoothingChange={setCursorSmoothing}
-								zoomSmoothness={zoomSmoothness}
-								onZoomSmoothnessChange={setZoomSmoothness}
-								zoomClassicMode={zoomClassicMode}
-								onZoomClassicModeChange={setZoomClassicMode}
-								cursorMotionBlur={cursorMotionBlur}
-								onCursorMotionBlurChange={setCursorMotionBlur}
-								cursorClickBounce={cursorClickBounce}
-								onCursorClickBounceChange={setCursorClickBounce}
-								cursorClickBounceDuration={cursorClickBounceDuration}
-								onCursorClickBounceDurationChange={setCursorClickBounceDuration}
-								cursorSway={cursorSway}
-								onCursorSwayChange={setCursorSway}
-								borderRadius={borderRadius}
-								onBorderRadiusChange={setBorderRadius}
-								webcam={webcam}
-								onWebcamChange={setWebcam}
-								onUploadWebcam={handleUploadWebcam}
-								onClearWebcam={handleClearWebcam}
-								padding={padding}
-								onPaddingChange={setPadding}
-								frame={frame}
-								onFrameChange={setFrame}
-								cropRegion={cropRegion}
-								onCropChange={setCropRegion}
-								aspectRatio={aspectRatio}
-								onAspectRatioChange={setAspectRatio}
-								selectedAnnotationId={selectedAnnotationId}
-								annotationRegions={annotationRegions}
-								autoCaptions={autoCaptions}
-								autoCaptionSettings={autoCaptionSettings}
-								whisperExecutablePath={whisperExecutablePath}
-								whisperModelPath={whisperModelPath}
-								whisperModelDownloadStatus={whisperModelDownloadStatus}
-								whisperModelDownloadProgress={whisperModelDownloadProgress}
-								isGeneratingCaptions={isGeneratingCaptions}
-								onAutoCaptionSettingsChange={setAutoCaptionSettings}
-								onPickWhisperExecutable={handlePickWhisperExecutable}
-								onPickWhisperModel={handlePickWhisperModel}
-								onGenerateAutoCaptions={handleGenerateAutoCaptions}
-								onClearAutoCaptions={handleClearAutoCaptions}
-								onDownloadWhisperSmallModel={handleDownloadWhisperSmallModel}
-								onDeleteWhisperSmallModel={handleDeleteWhisperSmallModel}
-								onAnnotationContentChange={handleAnnotationContentChange}
-								onAnnotationTypeChange={handleAnnotationTypeChange}
-								onAnnotationStyleChange={handleAnnotationStyleChange}
-								onAnnotationFigureDataChange={handleAnnotationFigureDataChange}
-								onAnnotationBlurIntensityChange={
-									handleAnnotationBlurIntensityChange
-								}
-								onAnnotationBlurColorChange={handleAnnotationBlurColorChange}
-								onAnnotationDelete={handleAnnotationDelete}
-								selectedSpeedId={selectedSpeedId}
-								selectedSpeedValue={
-									selectedSpeedId
-										? (speedRegions.find((r) => r.id === selectedSpeedId)
-												?.speed ?? null)
-										: null
-								}
-								onSpeedChange={handleSpeedChange}
-								onSpeedDelete={handleSpeedDelete}
-							/>
-						)}
+						<SettingsPanel
+							panelMode="editor"
+							activeEffectSection={activeEffectSection}
+							selected={wallpaper}
+							onWallpaperChange={setWallpaper}
+							selectedZoomDepth={
+								selectedZoomId
+									? zoomRegions.find((z) => z.id === selectedZoomId)?.depth
+									: null
+							}
+							onZoomDepthChange={(depth) =>
+								selectedZoomId && handleZoomDepthChange(depth)
+							}
+							selectedZoomId={selectedZoomId}
+							selectedZoomMode={
+								selectedZoomId
+									? (zoomRegions.find((z) => z.id === selectedZoomId)?.mode ??
+										"auto")
+									: null
+							}
+							onZoomModeChange={(mode) =>
+								selectedZoomId && handleZoomModeChange(mode)
+							}
+							onZoomDelete={handleZoomDelete}
+							selectedTrimId={selectedTrimId}
+							onTrimDelete={handleTrimDelete}
+							selectedClipId={selectedClipId}
+							selectedClipSpeed={
+								selectedClipId
+									? (clipRegions.find((c) => c.id === selectedClipId)
+											?.speed ?? 1)
+									: null
+							}
+							onClipSpeedChange={(speed) =>
+								selectedClipId && handleClipSpeedChange(speed)
+							}
+							onClipDelete={handleClipDelete}
+							shadowIntensity={shadowIntensity}
+							onShadowChange={setShadowIntensity}
+							backgroundBlur={backgroundBlur}
+							onBackgroundBlurChange={setBackgroundBlur}
+							zoomMotionBlur={zoomMotionBlur}
+							onZoomMotionBlurChange={setZoomMotionBlur}
+							connectZooms={connectZooms}
+							onConnectZoomsChange={setConnectZooms}
+							zoomInDurationMs={zoomInDurationMs}
+							onZoomInDurationMsChange={setZoomInDurationMs}
+							zoomInOverlapMs={zoomInOverlapMs}
+							onZoomInOverlapMsChange={setZoomInOverlapMs}
+							zoomOutDurationMs={zoomOutDurationMs}
+							onZoomOutDurationMsChange={setZoomOutDurationMs}
+							connectedZoomGapMs={connectedZoomGapMs}
+							onConnectedZoomGapMsChange={setConnectedZoomGapMs}
+							connectedZoomDurationMs={connectedZoomDurationMs}
+							onConnectedZoomDurationMsChange={setConnectedZoomDurationMs}
+							zoomInEasing={zoomInEasing}
+							onZoomInEasingChange={setZoomInEasing}
+							zoomOutEasing={zoomOutEasing}
+							onZoomOutEasingChange={setZoomOutEasing}
+							connectedZoomEasing={connectedZoomEasing}
+							onConnectedZoomEasingChange={setConnectedZoomEasing}
+							showCursor={showCursor}
+							onShowCursorChange={setShowCursor}
+							loopCursor={loopCursor}
+							onLoopCursorChange={setLoopCursor}
+							cursorStyle={cursorStyle}
+							onCursorStyleChange={setCursorStyle}
+							cursorSize={cursorSize}
+							onCursorSizeChange={setCursorSize}
+							cursorSmoothing={cursorSmoothing}
+							onCursorSmoothingChange={setCursorSmoothing}
+							zoomSmoothness={zoomSmoothness}
+							onZoomSmoothnessChange={setZoomSmoothness}
+							zoomClassicMode={zoomClassicMode}
+							onZoomClassicModeChange={setZoomClassicMode}
+							cursorMotionBlur={cursorMotionBlur}
+							onCursorMotionBlurChange={setCursorMotionBlur}
+							cursorClickBounce={cursorClickBounce}
+							onCursorClickBounceChange={setCursorClickBounce}
+							cursorClickBounceDuration={cursorClickBounceDuration}
+							onCursorClickBounceDurationChange={setCursorClickBounceDuration}
+							cursorSway={cursorSway}
+							onCursorSwayChange={setCursorSway}
+							borderRadius={borderRadius}
+							onBorderRadiusChange={setBorderRadius}
+							webcam={webcam}
+							onWebcamChange={setWebcam}
+							onUploadWebcam={handleUploadWebcam}
+							onClearWebcam={handleClearWebcam}
+							padding={padding}
+							onPaddingChange={setPadding}
+							frame={frame}
+							onFrameChange={setFrame}
+							cropRegion={cropRegion}
+							onCropChange={setCropRegion}
+							aspectRatio={aspectRatio}
+							onAspectRatioChange={setAspectRatio}
+							selectedAnnotationId={selectedAnnotationId}
+							annotationRegions={annotationRegions}
+							autoCaptions={autoCaptions}
+							autoCaptionSettings={autoCaptionSettings}
+							whisperExecutablePath={whisperExecutablePath}
+							whisperModelPath={whisperModelPath}
+							whisperModelDownloadStatus={whisperModelDownloadStatus}
+							whisperModelDownloadProgress={whisperModelDownloadProgress}
+							isGeneratingCaptions={isGeneratingCaptions}
+							onAutoCaptionSettingsChange={setAutoCaptionSettings}
+							onPickWhisperExecutable={handlePickWhisperExecutable}
+							onPickWhisperModel={handlePickWhisperModel}
+							onGenerateAutoCaptions={handleGenerateAutoCaptions}
+							onClearAutoCaptions={handleClearAutoCaptions}
+							onDownloadWhisperSmallModel={handleDownloadWhisperSmallModel}
+							onDeleteWhisperSmallModel={handleDeleteWhisperSmallModel}
+							onAnnotationContentChange={handleAnnotationContentChange}
+							onAnnotationTypeChange={handleAnnotationTypeChange}
+							onAnnotationStyleChange={handleAnnotationStyleChange}
+							onAnnotationFigureDataChange={handleAnnotationFigureDataChange}
+							onAnnotationBlurIntensityChange={
+								handleAnnotationBlurIntensityChange
+							}
+							onAnnotationBlurColorChange={handleAnnotationBlurColorChange}
+							onAnnotationDelete={handleAnnotationDelete}
+							selectedSpeedId={selectedSpeedId}
+							selectedSpeedValue={
+								selectedSpeedId
+									? (speedRegions.find((r) => r.id === selectedSpeedId)
+											?.speed ?? null)
+									: null
+							}
+							onSpeedChange={handleSpeedChange}
+							onSpeedDelete={handleSpeedDelete}
+						/>
 					</div>
 				</div>
 

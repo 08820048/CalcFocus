@@ -26,15 +26,17 @@ export function SliderControl({
   accentColor = "blue",
 }: SliderControlProps) {
   const pct = Math.min(100, Math.max(0, ((value - min) / (max - min || 1)) * 100));
+  const labelTextClass = pct >= 22 ? "text-black/80" : "text-slate-200";
+  const valueTextClass = pct >= 84 ? "text-black/80" : "text-slate-100";
   const dividerClass =
     accentColor === "purple"
       ? "bg-white/95 shadow-[0_0_10px_rgba(139,92,246,0.28)]"
-      : "bg-white/95 shadow-[0_0_10px_rgba(75,189,126,0.28)]";
+      : "bg-white/95 shadow-[0_0_10px_rgba(46,205,178,0.28)]";
 
-  return (
-		<div className="relative flex h-10 w-full select-none items-center overflow-hidden rounded-xl bg-black/60 px-1.5">
+	return (
+		<div className="relative flex h-10 w-full select-none items-center overflow-hidden rounded-xl bg-[#09090b] px-1.5">
 			<div
-				className="absolute inset-y-[3px] left-[3px] right-auto rounded-[10px] bg-white/[0.08] shadow-[0_4px_10px_0_rgba(0,0,0,0.18)] transition-none"
+				className="absolute inset-y-[3px] left-[3px] right-auto rounded-[10px] bg-[#2ecdb2] shadow-[0_4px_10px_0_rgba(46,205,178,0.22)] transition-none"
 				style={{
 					width: pct > 0 ? `max(calc(${pct}% - 6px), 2.1rem)` : 0,
 				}}
@@ -46,10 +48,20 @@ export function SliderControl({
         )}
         style={{ left: `calc(${pct}% - 8px)` }}
       />
-      <span className="pointer-events-none relative z-10 flex-1 pl-3 text-[12px] font-medium text-slate-300">
+      <span
+        className={cn(
+          "pointer-events-none relative z-10 flex-1 pl-3 text-[12px] font-medium transition-colors",
+          labelTextClass,
+        )}
+      >
         {label}
       </span>
-      <span className="pointer-events-none relative z-10 pr-3 text-[12px] font-medium tabular-nums text-slate-100">
+      <span
+        className={cn(
+          "pointer-events-none relative z-10 pr-3 text-[12px] font-medium tabular-nums transition-colors",
+          valueTextClass,
+        )}
+      >
         {formatValue(value)}
       </span>
       <input

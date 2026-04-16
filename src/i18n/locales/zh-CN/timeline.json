@@ -30,7 +30,17 @@
 	"annotation": {
 		"label": "注释",
 		"image": "图片",
+		"emptyText": "空白文本",
 		"addAnnotation": "添加注释 (A)"
+	},
+	"audio": {
+		"label": "音频"
+	},
+	"hints": {
+		"splitClip": "按 C 分割片段",
+		"addZoom": "按 Z 添加缩放",
+		"addAnnotation": "按 A 添加注释",
+		"addAudio": "点击音乐图标添加音频"
 	},
 	"addSpeed": "添加变速 (S)",
 	"resizeLeft": "向左调整",

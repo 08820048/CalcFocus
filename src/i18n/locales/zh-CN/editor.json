@@ -108,7 +108,12 @@
 		"showInFolder": "在文件夹中显示"
 	},
 	"project": {
-		"untitled": "未命名"
+		"untitled": "未命名",
+		"projects": "项目",
+		"openProjects": "打开项目",
+		"current": "当前",
+		"noPreviewYet": "暂无预览",
+		"noSavedProjects": "还没有已保存项目"
 	},
 	"exportStatus": {
 		"exporting": "正在导出",

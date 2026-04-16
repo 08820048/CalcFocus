@@ -30,7 +30,17 @@
 	"annotation": {
 		"label": "Annotation",
 		"image": "Image",
+		"emptyText": "Empty text",
 		"addAnnotation": "Add Annotation (A)"
+	},
+	"audio": {
+		"label": "Audio"
+	},
+	"hints": {
+		"splitClip": "Press C to split clip",
+		"addZoom": "Press Z to add zoom",
+		"addAnnotation": "Press A to add annotation",
+		"addAudio": "Click music icon to add audio"
 	},
 	"addSpeed": "Add Speed (S)",
 	"resizeLeft": "Resize left",

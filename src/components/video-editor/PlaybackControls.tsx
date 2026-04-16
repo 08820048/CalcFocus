@@ -41,7 +41,7 @@ export default function PlaybackControls({
 	const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
 	return (
-		<div className="flex items-center gap-2 px-1.5 pr-3 py-0.5 rounded-full bg-black/75 backdrop-blur-md border border-white/10 transition-colors duration-300 hover:bg-black/80 hover:border-white/20">
+		<div className="flex items-center gap-2 px-1.5 pr-3 py-0.5">
 			<Button
 				onClick={onTogglePlayPause}
 				size="icon"
@@ -66,8 +66,8 @@ export default function PlaybackControls({
 
 			<div className="flex-1 relative h-6 flex items-center group">
 				{/* Custom Track Background */}
-				<div className="absolute left-0 right-0 h-0.5 bg-white/10 rounded-full overflow-hidden">
-					<div className="h-full bg-[#4bbd7e] rounded-full" style={{ width: `${progress}%` }} />
+				<div className="absolute left-0 right-0 h-0.5 bg-[#09090b] rounded-full overflow-hidden">
+					<div className="h-full bg-[#2ecdb2] rounded-full" style={{ width: `${progress}%` }} />
 				</div>
 
 				{/* Interactive Input */}
@@ -102,8 +102,8 @@ export default function PlaybackControls({
 					<Volume2 className="h-3.5 w-3.5 text-slate-400" />
 				)}
 				<div className="group relative flex h-6 w-20 items-center">
-					<div className="absolute left-0 right-0 h-0.5 rounded-full bg-white/10 overflow-hidden">
-						<div className="h-full rounded-full bg-white/70" style={{ width: `${volume * 100}%` }} />
+					<div className="absolute left-0 right-0 h-0.5 rounded-full bg-[#09090b] overflow-hidden">
+						<div className="h-full rounded-full bg-[#2ecdb2]" style={{ width: `${volume * 100}%` }} />
 					</div>
 					<input
 						type="range"

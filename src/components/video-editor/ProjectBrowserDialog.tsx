@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useScopedT } from "@/contexts/I18nContext";
 import { toFileUrl } from "./projectPersistence";
 
 export type ProjectLibraryEntry = {
@@ -30,6 +31,7 @@ export default function ProjectBrowserDialog({
 	onPanelHeightChange,
 	renderMode = "floating",
 }: ProjectBrowserDialogProps) {
+	const t = useScopedT("editor");
 	const panelRef = useRef<HTMLDivElement | null>(null);
 	const [position, setPosition] = useState({ top: 72, left: 16, maxHeight: 360 });
 	const visibleEntries = useMemo(() => entries.slice(0, 24), [entries]);
@@ -165,11 +167,13 @@ export default function ProjectBrowserDialog({
 			<div
 				ref={panelRef}
 				role="dialog"
-				aria-label="Projects"
+				aria-label={t("project.projects", "Projects")}
 				className="pointer-events-auto mb-1.5 w-[300px] max-h-[400px] overflow-hidden rounded-[14px] border border-white/[0.07] bg-[rgba(22,22,30,0.96)] text-slate-200 shadow-[0_12px_32px_rgba(0,0,0,0.22),0_2px_10px_rgba(0,0,0,0.1)] animate-in fade-in-0 duration-150"
 			>
-				<div className="border-b border-white/10 px-3 py-2.5">
-					<div className="text-sm font-medium tracking-tight text-white">Projects</div>
+				<div className="edge-divider-b px-3 py-2.5">
+					<div className="text-sm font-medium tracking-tight text-white">
+						{t("project.projects", "Projects")}
+					</div>
 				</div>
 				<div className="max-h-[360px] overflow-y-auto px-2.5 py-2.5">
 					{visibleEntries.length > 0 ? (
@@ -193,13 +197,13 @@ export default function ProjectBrowserDialog({
 												/>
 											) : (
 												<div className="flex h-full w-full items-center justify-center bg-[linear-gradient(180deg,_rgba(75,189,126,0.22),_rgba(13,17,23,0.92))] text-[10px] font-medium text-slate-300">
-													No preview yet
+													{t("project.noPreviewYet", "No preview yet")}
 												</div>
 											)}
 											{entry.isCurrent ? (
 												<div className="absolute right-1.5 top-1.5">
 													<span className="rounded-[5px] bg-[#4bbd7e] px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.14em] text-white shadow-[0_8px_20px_rgba(75,189,126,0.28)]">
-														Current
+														{t("project.current", "Current")}
 													</span>
 												</div>
 											) : null}
@@ -215,7 +219,9 @@ export default function ProjectBrowserDialog({
 						</div>
 					) : (
 						<div className="flex min-h-[140px] flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-white/10 bg-[#09090b] px-4 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-							<div className="text-sm font-semibold text-white">No saved projects yet</div>
+							<div className="text-sm font-semibold text-white">
+								{t("project.noSavedProjects", "No saved projects yet")}
+							</div>
 						</div>
 					)}
 				</div>
@@ -228,12 +234,14 @@ export default function ProjectBrowserDialog({
 			<div
 				ref={panelRef}
 				role="dialog"
-				aria-label="Projects"
+				aria-label={t("project.projects", "Projects")}
 				style={{ top: `${position.top}px`, left: `${position.left}px` }}
 				className="pointer-events-auto fixed w-[min(280px,calc(100vw-24px))] overflow-hidden rounded-2xl border border-white/10 bg-[#09090b] text-slate-200 shadow-2xl animate-in fade-in-0 duration-150"
 			>
-				<div className="border-b border-white/10 px-3 py-2.5">
-					<div className="text-sm font-medium tracking-tight text-white">Projects</div>
+				<div className="edge-divider-b px-3 py-2.5">
+					<div className="text-sm font-medium tracking-tight text-white">
+						{t("project.projects", "Projects")}
+					</div>
 				</div>
 				<div
 					className="overflow-y-auto px-2.5 py-2.5"
@@ -260,13 +268,13 @@ export default function ProjectBrowserDialog({
 												/>
 											) : (
 												<div className="flex h-full w-full items-center justify-center bg-[linear-gradient(180deg,_rgba(75,189,126,0.22),_rgba(13,17,23,0.92))] text-[10px] font-medium text-slate-300">
-													No preview yet
+													{t("project.noPreviewYet", "No preview yet")}
 												</div>
 											)}
 											{entry.isCurrent ? (
 												<div className="absolute right-1.5 top-1.5">
 													<span className="rounded-[5px] bg-[#4bbd7e] px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.14em] text-white shadow-[0_8px_20px_rgba(75,189,126,0.28)]">
-														Current
+														{t("project.current", "Current")}
 													</span>
 												</div>
 											) : null}
@@ -282,7 +290,9 @@ export default function ProjectBrowserDialog({
 						</div>
 					) : (
 						<div className="flex min-h-[140px] flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-white/10 bg-[#09090b] px-4 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-							<div className="text-sm font-semibold text-white">No saved projects yet</div>
+							<div className="text-sm font-semibold text-white">
+								{t("project.noSavedProjects", "No saved projects yet")}
+							</div>
 						</div>
 					)}
 				</div>

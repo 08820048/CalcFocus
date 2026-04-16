@@ -112,7 +112,6 @@ export type EditorEffectSection =
 	| "zoom"
 	| "frame"
 	| "crop"
-	| "extensions"
 	| `ext:${string}`;
 
 function isHexWallpaper(value: string): boolean {
@@ -188,7 +187,7 @@ function ExtensionSettingsSection({ extensionId, label, fields }: {
 										extensionHost.setExtensionSetting(extensionId, field.id, parseFloat(e.target.value));
 										forceUpdate(n => n + 1);
 									}}
-									className="w-20 h-1 accent-[#4bbd7e]"
+									className="h-1 w-20 appearance-none rounded-full bg-[#09090b] accent-[#2ecdb2]"
 								/>
 								<span className="text-[10px] text-slate-500 w-8 text-right font-mono">
 									{(typeof value === 'number' ? value : 0).toFixed(1)}
@@ -2456,7 +2455,12 @@ export function SettingsPanel({
 	})();
 
 	return (
-		<div className="flex-[2] w-[332px] min-w-[280px] max-w-[332px] bg-[#09090b] border border-white/10 rounded-2xl flex flex-col shadow-xl h-full overflow-hidden">
+		<div
+			className={cn(
+				"flex-[2] h-full w-[332px] min-w-[280px] max-w-[332px] overflow-hidden",
+					panelMode === "editor" && "edge-divider-r",
+			)}
+		>
 			<div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-4 pb-0" style={{ scrollbarGutter: 'stable' }}>
 				<AnimatePresence mode="wait" initial={false}>
 					<motion.div
@@ -2472,7 +2476,7 @@ export function SettingsPanel({
 			</div>
 
 			<div className={cn(
-				"flex-shrink-0 border-t border-white/10 bg-[#09090b] p-4 pt-3",
+				"edge-divider-t flex-shrink-0 bg-transparent p-4 pt-3",
 				!selectedZoomId && !selectedTrimId && !selectedSpeedId && !selectedClipId && "hidden"
 			)}>
 				{selectedZoomId && (

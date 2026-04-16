@@ -12,8 +12,10 @@
   }
 
   :root {
-    --brand-accent: #2563eb;
-    --brand-accent-rgb: 37, 99, 235;
+    --brand-accent: #4bbd7e;
+    --brand-accent-rgb: 75, 189, 126;
+    --progress-accent: #2ecdb2;
+    --progress-accent-rgb: 46, 205, 178;
     --background: 0 0% 100%;
     --foreground: 20 14.3% 4.1%;
     --card: 0 0% 100%;
@@ -117,8 +119,92 @@
     width: 38%;
     min-width: 3.5rem;
     border-radius: inherit;
-    background: linear-gradient(90deg, rgba(75, 189, 126, 0) 0%, rgba(75, 189, 126, 0.35) 18%, rgba(75, 189, 126, 0.92) 52%, rgba(75, 189, 126, 0.3) 82%, rgba(75, 189, 126, 0) 100%);
+    background: linear-gradient(90deg, rgba(46, 205, 178, 0) 0%, rgba(46, 205, 178, 0.35) 18%, rgba(46, 205, 178, 0.92) 52%, rgba(46, 205, 178, 0.3) 82%, rgba(46, 205, 178, 0) 100%);
     animation: indeterminate-progress 1.15s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+
+  .divider-fade-x {
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.03) 14%,
+      rgba(255, 255, 255, 0.12) 50%,
+      rgba(255, 255, 255, 0.03) 86%,
+      transparent 100%
+    );
+  }
+
+  .divider-fade-y {
+    width: 1px;
+    background: linear-gradient(
+      180deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.03) 14%,
+      rgba(255, 255, 255, 0.12) 50%,
+      rgba(255, 255, 255, 0.03) 86%,
+      transparent 100%
+    );
+  }
+
+  .edge-divider-b,
+  .edge-divider-r,
+  .edge-divider-t {
+    position: relative;
+  }
+
+  .edge-divider-b::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    pointer-events: none;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.03) 14%,
+      rgba(255, 255, 255, 0.12) 50%,
+      rgba(255, 255, 255, 0.03) 86%,
+      transparent 100%
+    );
+  }
+
+  .edge-divider-r::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    width: 1px;
+    pointer-events: none;
+    background: linear-gradient(
+      180deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.03) 14%,
+      rgba(255, 255, 255, 0.12) 50%,
+      rgba(255, 255, 255, 0.03) 86%,
+      transparent 100%
+    );
+  }
+
+  .edge-divider-t::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 1px;
+    pointer-events: none;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.03) 14%,
+      rgba(255, 255, 255, 0.12) 50%,
+      rgba(255, 255, 255, 0.03) 86%,
+      transparent 100%
+    );
   }
   
   /* Hidden scrollbar - still scrollable but invisible */
@@ -135,6 +221,25 @@
   input[type="range"] {
     -webkit-appearance: none;
     appearance: none;
+    background: transparent;
+  }
+
+  input[type="range"]::-webkit-slider-runnable-track {
+    height: 4px;
+    border-radius: 9999px;
+    background: #09090b;
+  }
+
+  input[type="range"]::-moz-range-track {
+    height: 4px;
+    border-radius: 9999px;
+    background: #09090b;
+  }
+
+  input[type="range"]::-moz-range-progress {
+    height: 4px;
+    border-radius: 9999px;
+    background: var(--progress-accent);
   }
   
   input[type="range"]::-webkit-slider-thumb {

@@ -108,7 +108,12 @@
 		"showInFolder": "Show In Folder"
 	},
 	"project": {
-		"untitled": "Untitled"
+		"untitled": "Untitled",
+		"projects": "Projects",
+		"openProjects": "Open Projects",
+		"current": "Current",
+		"noPreviewYet": "No preview yet",
+		"noSavedProjects": "No saved projects yet"
 	},
 	"exportStatus": {
 		"exporting": "Exporting",

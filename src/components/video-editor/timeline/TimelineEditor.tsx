@@ -396,7 +396,7 @@ function TimelineAxis({
 
 	return (
 		<div
-      className="h-8 bg-[#09090b] border-b border-white/10 relative overflow-hidden select-none"
+      className="edge-divider-b h-8 bg-[#09090b] relative overflow-hidden select-none"
 			style={{
 				[sideProperty === "right" ? "marginRight" : "marginLeft"]: `${sidebarWidth}px`,
 			}}
@@ -490,6 +490,7 @@ function Timeline({
   audioPeaks?: AudioPeaksData | null;
 }) {
 	const { setTimelineRef, style, sidebarWidth, range, pixelsToValue } = useTimelineContext();
+	const tTimeline = useScopedT("timeline");
 	const localTimelineRef = useRef<HTMLDivElement | null>(null);
 
 	const setRefs = useCallback(
@@ -550,7 +551,11 @@ function Timeline({
 			/>
 
       <div className="relative z-10 flex flex-1 min-h-0 flex-col">
-        <Row id={CLIP_ROW_ID} isEmpty={clipItems.length === 0} hint="Press C to split clip">
+        <Row
+          id={CLIP_ROW_ID}
+          isEmpty={clipItems.length === 0}
+          hint={tTimeline("hints.splitClip", "Press C to split clip")}
+        >
           {audioPeaks && <AudioWaveform peaks={audioPeaks} />}
           {clipItems.map((item) => (
             <Item
@@ -567,7 +572,11 @@ function Timeline({
           ))}
         </Row>
 
-        <Row id={ZOOM_ROW_ID} isEmpty={zoomItems.length === 0} hint="Press Z to add zoom">
+        <Row
+          id={ZOOM_ROW_ID}
+          isEmpty={zoomItems.length === 0}
+          hint={tTimeline("hints.addZoom", "Press Z to add zoom")}
+        >
           {zoomItems.map((item) => (
             <Item
               id={item.id}
@@ -588,7 +597,7 @@ function Timeline({
         <Row
           id={ANNOTATION_ROW_ID}
           isEmpty={annotationItems.length === 0}
-          hint="Press A to add annotation"
+          hint={tTimeline("hints.addAnnotation", "Press A to add annotation")}
         >
           {annotationItems.map((item) => (
             <Item
@@ -605,7 +614,11 @@ function Timeline({
           ))}
         </Row>
 
-        <Row id={AUDIO_ROW_ID} isEmpty={audioItems.length === 0} hint="Click music icon to add audio">
+        <Row
+          id={AUDIO_ROW_ID}
+          isEmpty={audioItems.length === 0}
+          hint={tTimeline("hints.addAudio", "Click music icon to add audio")}
+        >
           {audioItems.map((item) => (
             <Item
               id={item.id}
@@ -677,6 +690,7 @@ export default function TimelineEditor({
   videoPath,
 }: TimelineEditorProps) {
   const t = useScopedT("settings");
+  const tTimeline = useScopedT("timeline");
   const initialEditorPreferences = useMemo(() => loadEditorPreferences(), []);
   const totalMs = useMemo(() => Math.max(0, Math.round(videoDuration * 1000)), [videoDuration]);
   const currentTimeMs = useMemo(() => Math.round(currentTime * 1000), [currentTime]);
@@ -1374,12 +1388,12 @@ export default function TimelineEditor({
 
       if (region.type === 'text') {
         // Show text preview
-        const preview = region.content.trim() || 'Empty text';
+        const preview = region.content.trim() || tTimeline("annotation.emptyText", "Empty text");
         label = preview.length > 20 ? `${preview.substring(0, 20)}...` : preview;
       } else if (region.type === 'image') {
-        label = 'Image';
+        label = tTimeline("annotation.image", "Image");
       } else {
-        label = 'Annotation';
+        label = tTimeline("annotation.label", "Annotation");
       }
 
       return {
@@ -1392,7 +1406,9 @@ export default function TimelineEditor({
     });
 
     const audios: TimelineRenderItem[] = audioRegions.map((region) => {
-      const fileName = region.audioPath.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, '') || 'Audio';
+      const fileName =
+        region.audioPath.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, '')
+        || tTimeline("audio.label", "Audio");
       return {
         id: region.id,
         rowId: AUDIO_ROW_ID,
@@ -1403,7 +1419,7 @@ export default function TimelineEditor({
     });
 
     return [...zooms, ...clips, ...annotations, ...audios];
-  }, [zoomRegions, clipRegions, annotationRegions, audioRegions]);
+  }, [zoomRegions, clipRegions, annotationRegions, audioRegions, tTimeline]);
 
   // Flat list of draggable row spans for neighbour-clamping during drag/resize.
   const allRegionSpans = useMemo(() => {
@@ -1489,7 +1505,7 @@ export default function TimelineEditor({
 
   return (
     <div className="flex-1 min-h-0 flex flex-col bg-[#09090b] overflow-auto">
-      <div className="flex items-center gap-2 px-4 py-2 border-b border-white/10 bg-[#09090b]">
+      <div className="edge-divider-b flex items-center gap-2 px-4 py-2 bg-[#09090b]">
         <div className="flex items-center gap-1">
           <Button
             onClick={handleAddZoom}
@@ -1560,7 +1576,7 @@ export default function TimelineEditor({
                   {aspectRatio === ratio && <Check className="w-3 h-3 text-[#4bbd7e]" />}
                 </DropdownMenuItem>
               ))}
-              <div className="mx-1 my-1 h-px bg-white/10" />
+              <div className="mx-1 my-1 divider-fade-x" />
               <div className="px-2 py-1.5 flex items-center gap-2 text-slate-300">
                 <span className="text-sm">Custom</span>
                 <input
@@ -1594,7 +1610,7 @@ export default function TimelineEditor({
               </div>
             </DropdownMenuContent>
           </DropdownMenu>
-          <div className="w-[1px] h-4 bg-white/10" />
+          <div className="h-4 divider-fade-y" />
           <Button
             variant="ghost"
             size="sm"
