@@ -8,19 +8,23 @@ jobs:
   publish:
     runs-on: windows-latest
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    env:
+      WINGET_PACKAGE_IDENTIFIER: ${{ vars.WINGET_PACKAGE_IDENTIFIER || 'CalcFocus.CalcFocus' }}
     steps:
       - name: Get release tag
         id: tag
         shell: bash
         run: |
           TAG=$(gh api repos/${{ github.repository }}/releases/latest --jq '.tag_name')
+          VERSION="${TAG#v}"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: vedantmgoyal9/winget-releaser@v2
         with:
-          identifier: Webadderall.Recordly
-          installers-regex: 'windows\-x64\.exe$'
-          version: ${{ steps.tag.outputs.tag }}
+          identifier: ${{ env.WINGET_PACKAGE_IDENTIFIER }}
+          installers-regex: '^CalcFocus-windows-x64\.exe$'
+          version: ${{ steps.tag.outputs.version }}
           release-tag: ${{ steps.tag.outputs.tag }}
           token: ${{ secrets.WINGET_ACC_TOKEN }}

@@ -2,6 +2,9 @@
 name: Build Electron App
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
@@ -61,6 +64,7 @@ jobs:
 
       - name: Build macOS app
         run: |
+          export CSC_IDENTITY_AUTO_DISCOVERY=false
           npm run build:native-helpers
           npx tsc
           npx vite build
@@ -116,5 +120,3 @@ jobs:
             release/**/*.AppImage
             release/latest-linux.yml
           retention-days: 30
-
-

@@ -9,8 +9,7 @@ const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 export const UPDATE_REMINDER_DELAY_MS = 3 * 60 * 60 * 1000;
 const DISMISSED_READY_REMINDER_DELAY_MS = 5 * 60 * 1000;
 const UPDATE_FEED_URL_OVERRIDE = process.env.CALCFOCUS_UPDATE_FEED_URL?.trim() ?? "";
-const AUTO_UPDATES_DISABLED =
-	process.env.CALCFOCUS_ENABLE_AUTO_UPDATES !== "1" || UPDATE_FEED_URL_OVERRIDE.length === 0;
+const AUTO_UPDATES_DISABLED = process.env.CALCFOCUS_DISABLE_AUTO_UPDATES === "1";
 const AUTO_UPDATE_ERROR_TOASTS_DISABLED =
 	process.env.CALCFOCUS_DISABLE_AUTO_UPDATE_ERROR_TOASTS === "1";
 const UPDATER_LOG_PATH =
@@ -117,12 +116,19 @@ function shouldSurfaceAutomaticCheckErrors() {
 }
 
 function configureUpdateFeed() {
-	autoUpdater.setFeedURL({
-		provider: "generic",
-		url: UPDATE_FEED_URL_OVERRIDE,
-		channel: "latest",
-	});
-	writeUpdaterLog(`Using overridden update feed: ${UPDATE_FEED_URL_OVERRIDE}`);
+	if (UPDATE_FEED_URL_OVERRIDE.length > 0) {
+		autoUpdater.setFeedURL({
+			provider: "generic",
+			url: UPDATE_FEED_URL_OVERRIDE,
+			channel: "latest",
+		});
+		writeUpdaterLog(`Using overridden update feed: ${UPDATE_FEED_URL_OVERRIDE}`);
+		return;
+	}
+
+	writeUpdaterLog(
+		"Using packaged GitHub update provider from electron-builder app-update.yml.",
+	);
 }
 
 function canUseAutoUpdates() {
@@ -578,7 +584,7 @@ export async function checkForAppUpdates(
 				title: "Updates Not Enabled",
 				message: "Auto-updates are only available in packaged releases.",
 				detail: AUTO_UPDATES_DISABLED
-					? "Set CALCFOCUS_ENABLE_AUTO_UPDATES=1 and CALCFOCUS_UPDATE_FEED_URL to enable release updates for CalcFocus."
+					? "CALCFOCUS_DISABLE_AUTO_UPDATES=1 is set for this build, so in-app updates are turned off."
 					: "Development builds do not ship the packaged update metadata required by electron-updater.",
 			});
 		}

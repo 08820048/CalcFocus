@@ -7,7 +7,7 @@
 CalcFocus 是一款面向演示、讲解和教程内容的桌面录屏与编辑应用。
 
 - 官网：https://calcfocus.cc
-- 仓库：https://github.com/08820048/CalcFocus_Pro
+- 仓库：https://github.com/08820048/CalcFocus
 
 ## 当前状态
 
@@ -37,7 +37,7 @@ npm run build
 
 ## 说明
 
-- 自动更新默认关闭；后续配置 `CALCFOCUS_ENABLE_AUTO_UPDATES=1` 和 `CALCFOCUS_UPDATE_FEED_URL` 后再开启。
+- 打包后的正式版本默认通过 GitHub Releases 检查更新；如需改走自定义更新源，可额外设置 `CALCFOCUS_UPDATE_FEED_URL`。
 - 项目文件后缀现为 `.calcfocus`。
 - 应用内反馈弹窗现在已接入官网、QQ 社区和 GitHub issue。
 

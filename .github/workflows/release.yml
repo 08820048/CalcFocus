@@ -1,8 +1,9 @@
 name: Publish Release
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - "v*"
   workflow_dispatch:
     inputs:
       tag_name:
@@ -15,7 +16,7 @@ permissions:
   actions: write
 
 concurrency:
-  group: release-${{ github.event.release.tag_name || github.event.inputs.tag_name || github.run_id }}
+  group: release-${{ github.ref_name || github.event.inputs.tag_name || github.run_id }}
   cancel-in-progress: false
 
 jobs:
@@ -31,7 +32,7 @@ jobs:
       - name: Checkout release source
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || github.event.inputs.tag_name }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag_name || github.ref }}
           fetch-depth: 0
 
       - name: Validate release tag
@@ -39,12 +40,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [ "${{ github.event_name }}" = "release" ]; then
-            TAG_NAME="${{ github.event.release.tag_name }}"
-            IS_PRERELEASE="${{ github.event.release.prerelease }}"
-          else
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             TAG_NAME="${{ github.event.inputs.tag_name }}"
-            IS_PRERELEASE="false"
+          else
+            TAG_NAME="${GITHUB_REF_NAME}"
+          fi
+
+          IS_PRERELEASE="false"
+          if [[ "$TAG_NAME" == *-* ]]; then
+            IS_PRERELEASE="true"
           fi
 
           if [ -z "$TAG_NAME" ]; then
@@ -60,9 +64,20 @@ jobs:
             exit 1
           fi
 
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            gh release view "$TAG_NAME" --repo "${{ github.repository }}" >/dev/null 2>&1 || \
-              gh release create "$TAG_NAME" --repo "${{ github.repository }}" --verify-tag --draft --title "$TAG_NAME"
+          if ! gh release view "$TAG_NAME" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            CREATE_ARGS=(
+              "$TAG_NAME"
+              --repo "${{ github.repository }}"
+              --verify-tag
+              --title "$TAG_NAME"
+              --generate-notes
+            )
+
+            if [ "$IS_PRERELEASE" = "true" ]; then
+              CREATE_ARGS+=(--prerelease)
+            fi
+
+            gh release create "${CREATE_ARGS[@]}"
           fi
 
           echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"

@@ -16,6 +16,15 @@
   "directories": {
     "output": "release"
   },
+  "publish": [
+    {
+      "provider": "github",
+      "owner": "08820048",
+      "repo": "CalcFocus",
+      "releaseType": "release",
+      "vPrefixedTagName": true
+    }
+  ],
   "files": [
     "dist",
     "dist-electron",

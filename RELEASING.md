@@ -6,9 +6,10 @@ For this Electron app, that is the right path instead of wiring Sparkle.framewor
 
 ## What the release workflow does
 
-When you publish a GitHub release tagged like `v1.2.3`, `.github/workflows/release.yml` will:
+When you push a Git tag like `v1.2.3`, `.github/workflows/release.yml` will:
 
 - validate that `package.json` is also `1.2.3`
+- create the GitHub release automatically when it does not exist yet
 - build signed macOS x64 and arm64 artifacts
 - notarize the macOS builds
 - merge the dual-architecture `latest-mac.yml` metadata into one release asset
@@ -73,10 +74,10 @@ Optional repository variables:
 1. Bump `package.json` to the version you want to ship.
 2. Commit and push that version.
 3. Create a Git tag in the form `vX.Y.Z`.
-4. In GitHub, create and publish a release for that tag.
+4. Push that tag to GitHub.
 5. The `Publish Release` workflow builds, signs, notarizes, uploads, and publishes update metadata.
 
-That is the normal path if you want “click new release and let CI do the rest.”
+That is the normal path if you want “push a version tag and let CI do the rest.”
 
 ## Rebuilding an existing release
 
