@@ -1,9 +1,9 @@
 {
-	"id": "webadderall.more-wallpapers",
+	"id": "calcfocus.more-wallpapers",
 	"name": "More Wallpapers",
 	"version": "1.0.0",
 	"description": "180 vibrant and glassmorphic wallpapers across 9 collections — Energy, Glassmorphism, Iridescent, Midnight, Radiant, Raycast, Spring, Sunset, and macOS.",
-	"author": "webadderall",
+	"author": "CalcFocus",
 	"license": "MIT",
 	"icon": "icon.png",
 	"main": "index.js",
