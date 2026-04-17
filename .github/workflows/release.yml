@@ -113,33 +113,38 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Validate macOS signing secrets
+      - name: Configure macOS signing
+        id: macos_signing
         shell: bash
         env:
           APPLE_SIGNING_CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_SIGNING_CERTIFICATE_P12_BASE64 }}
           APPLE_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_SIGNING_CERTIFICATE_PASSWORD }}
         run: |
           set -euo pipefail
+          missing=()
           for name in APPLE_SIGNING_CERTIFICATE_P12_BASE64 APPLE_SIGNING_CERTIFICATE_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
             if [ -z "${!name:-}" ]; then
-              echo "Missing required macOS release secret: $name"
-              exit 1
+              missing+=("$name")
             fi
           done
 
-      - name: Prepare macOS signing certificate
-        shell: bash
-        env:
-          APPLE_SIGNING_CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_SIGNING_CERTIFICATE_P12_BASE64 }}
-          APPLE_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_SIGNING_CERTIFICATE_PASSWORD }}
-        run: |
-          set -euo pipefail
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "CSC_IDENTITY_AUTO_DISCOVERY=false" >> "$GITHUB_ENV"
+            echo "APPLE_ID=" >> "$GITHUB_ENV"
+            echo "APPLE_APP_SPECIFIC_PASSWORD=" >> "$GITHUB_ENV"
+            echo "APPLE_TEAM_ID=" >> "$GITHUB_ENV"
+            echo "Proceeding with unsigned macOS build because signing secrets are missing: ${missing[*]}"
+            exit 0
+          fi
+
           CERT_PATH="$RUNNER_TEMP/apple-signing-cert.p12"
           echo "$APPLE_SIGNING_CERTIFICATE_P12_BASE64" | base64 --decode > "$CERT_PATH"
           {
             echo "CSC_LINK=$CERT_PATH"
             echo "CSC_KEY_PASSWORD=$APPLE_SIGNING_CERTIFICATE_PASSWORD"
           } >> "$GITHUB_ENV"
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
 
       - name: Install dependencies
         run: npm ci --ignore-scripts
@@ -152,6 +157,9 @@ jobs:
 
       - name: Build macOS x64
         run: |
+          if [ "${{ steps.macos_signing.outputs.enabled }}" != "true" ]; then
+            echo "Building unsigned macOS x64 release because signing secrets are unavailable."
+          fi
           npx tsc
           npx vite build
           npx electron-builder --mac dmg zip --x64 --publish never
@@ -193,33 +201,38 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Validate macOS signing secrets
+      - name: Configure macOS signing
+        id: macos_signing
         shell: bash
         env:
           APPLE_SIGNING_CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_SIGNING_CERTIFICATE_P12_BASE64 }}
           APPLE_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_SIGNING_CERTIFICATE_PASSWORD }}
         run: |
           set -euo pipefail
+          missing=()
           for name in APPLE_SIGNING_CERTIFICATE_P12_BASE64 APPLE_SIGNING_CERTIFICATE_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
             if [ -z "${!name:-}" ]; then
-              echo "Missing required macOS release secret: $name"
-              exit 1
+              missing+=("$name")
             fi
           done
 
-      - name: Prepare macOS signing certificate
-        shell: bash
-        env:
-          APPLE_SIGNING_CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_SIGNING_CERTIFICATE_P12_BASE64 }}
-          APPLE_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_SIGNING_CERTIFICATE_PASSWORD }}
-        run: |
-          set -euo pipefail
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "CSC_IDENTITY_AUTO_DISCOVERY=false" >> "$GITHUB_ENV"
+            echo "APPLE_ID=" >> "$GITHUB_ENV"
+            echo "APPLE_APP_SPECIFIC_PASSWORD=" >> "$GITHUB_ENV"
+            echo "APPLE_TEAM_ID=" >> "$GITHUB_ENV"
+            echo "Proceeding with unsigned macOS build because signing secrets are missing: ${missing[*]}"
+            exit 0
+          fi
+
           CERT_PATH="$RUNNER_TEMP/apple-signing-cert.p12"
           echo "$APPLE_SIGNING_CERTIFICATE_P12_BASE64" | base64 --decode > "$CERT_PATH"
           {
             echo "CSC_LINK=$CERT_PATH"
             echo "CSC_KEY_PASSWORD=$APPLE_SIGNING_CERTIFICATE_PASSWORD"
           } >> "$GITHUB_ENV"
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
 
       - name: Install dependencies
         run: npm ci --ignore-scripts
@@ -232,6 +245,9 @@ jobs:
 
       - name: Build macOS arm64
         run: |
+          if [ "${{ steps.macos_signing.outputs.enabled }}" != "true" ]; then
+            echo "Building unsigned macOS arm64 release because signing secrets are unavailable."
+          fi
           npx tsc
           npx vite build
           npx electron-builder --mac dmg zip --arm64 --publish never
