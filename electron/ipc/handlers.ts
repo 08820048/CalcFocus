@@ -9,7 +9,7 @@ import type { Readable, Writable } from 'node:stream'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { promisify } from 'node:util'
 import type { SaveDialogOptions, WebContents } from 'electron'
-import { app, BrowserWindow, desktopCapturer, dialog, ipcMain, shell, systemPreferences } from 'electron'
+import { app, BrowserWindow, clipboard, desktopCapturer, dialog, ipcMain, nativeImage, shell, systemPreferences } from 'electron'
 import { RECORDINGS_DIR, USER_DATA_PATH } from '../appPaths'
 import { hideCursor, showCursor } from '../cursorHider'
 import {
@@ -36,6 +36,7 @@ const RECENT_PROJECTS_FILE = path.join(USER_DATA_PATH, 'recent-projects.json')
 const MAX_RECENT_PROJECTS = 16
 const SHORTCUTS_FILE = path.join(USER_DATA_PATH, 'shortcuts.json')
 const RECORDINGS_SETTINGS_FILE = path.join(USER_DATA_PATH, 'recordings-settings.json')
+const SCREENSHOTS_DIR = path.join(USER_DATA_PATH, 'screenshots')
 const COUNTDOWN_SETTINGS_FILE = path.join(USER_DATA_PATH, 'countdown-settings.json')
 const AUTO_RECORDING_PREFIX = 'recording-'
 const AUTO_RECORDING_RETENTION_COUNT = 20
@@ -156,6 +157,7 @@ let selectedSource: SelectedSource | null = null
 let currentProjectPath: string | null = null
 let nativeScreenRecordingActive = false
 let currentVideoPath: string | null = null
+let currentScreenshotPath: string | null = null
 let currentRecordingSession: RecordingSessionData | null = null
 const approvedLocalReadPaths = new Set<string>()
 let nativeCaptureProcess: ChildProcessWithoutNullStreams | null = null
@@ -201,6 +203,116 @@ type SystemCursorAsset = {
 type CursorVisualType = 'arrow' | 'text' | 'pointer' | 'crosshair' | 'open-hand' | 'closed-hand' | 'resize-ew' | 'resize-ns' | 'not-allowed'
 
 let currentCursorVisualType: CursorVisualType | undefined = undefined
+
+async function getScreenshotsDir() {
+  await fs.mkdir(SCREENSHOTS_DIR, { recursive: true })
+  return SCREENSHOTS_DIR
+}
+
+function buildAutoScreenshotFilePath() {
+  return path.join(SCREENSHOTS_DIR, `screenshot-${Date.now()}.png`)
+}
+
+function getScreenshotThumbnailSize(captureType: 'screen' | 'window', sourceId?: string | null) {
+  const displays = getScreen().getAllDisplays()
+  const sourceDisplayId = sourceId?.split(':')[1] ?? selectedSource?.display_id ?? null
+  const matchedDisplay = sourceDisplayId
+    ? displays.find((display) => String(display.id) === String(sourceDisplayId))
+    : null
+
+  const fallbackWidth = displays.reduce(
+    (maxWidth, display) => Math.max(maxWidth, Math.round(display.size.width * display.scaleFactor)),
+    1920,
+  )
+  const fallbackHeight = displays.reduce(
+    (maxHeight, display) => Math.max(maxHeight, Math.round(display.size.height * display.scaleFactor)),
+    1080,
+  )
+
+  if (captureType === 'screen' && matchedDisplay) {
+    return {
+      width: Math.min(Math.max(Math.round(matchedDisplay.size.width * matchedDisplay.scaleFactor), 1280), 7680),
+      height: Math.min(Math.max(Math.round(matchedDisplay.size.height * matchedDisplay.scaleFactor), 720), 4320),
+    }
+  }
+
+  return {
+    width: Math.min(Math.max(fallbackWidth, 1920), 7680),
+    height: Math.min(Math.max(fallbackHeight, 1080), 4320),
+  }
+}
+
+async function captureDesktopSourcePng(captureType: 'screen' | 'window', sourceId?: string | null) {
+  const resolvedSourceId = sourceId ?? selectedSource?.id ?? null
+  const sources = await desktopCapturer.getSources({
+    types: [captureType],
+    thumbnailSize: getScreenshotThumbnailSize(captureType, resolvedSourceId),
+    fetchWindowIcons: false,
+  })
+
+  let targetSource = resolvedSourceId
+    ? sources.find((source) => source.id === resolvedSourceId)
+    : null
+
+  if (!targetSource && captureType === 'screen' && selectedSource?.display_id) {
+    targetSource = sources.find((source) => source.display_id === selectedSource?.display_id) ?? null
+  }
+
+  if (!targetSource) {
+    targetSource = sources[0] ?? null
+  }
+
+  if (!targetSource || targetSource.thumbnail.isEmpty()) {
+    return null
+  }
+
+  return targetSource.thumbnail.toPNG()
+}
+
+async function finalizeScreenshotCapture(outputPath: string, pngData?: Buffer) {
+  if (pngData) {
+    await fs.writeFile(outputPath, pngData)
+  }
+
+  currentScreenshotPath = outputPath
+  await rememberApprovedLocalReadPath(outputPath)
+  return outputPath
+}
+
+async function takeMacScreenshot(
+  captureType: 'screen' | 'window' | 'area',
+  outputPath: string,
+  sourceId?: string | null,
+) {
+  const args = ['-x']
+
+  if (captureType === 'window') {
+    const windowId = parseWindowId(sourceId ?? selectedSource?.id)
+    if (!windowId) {
+      return null
+    }
+
+    args.push(`-l${windowId}`)
+  } else if (captureType === 'area') {
+    args.push('-i')
+  }
+
+  args.push(outputPath)
+
+  try {
+    await execFileAsync('screencapture', args)
+  } catch {
+    // Treat missing output as a cancellation below.
+  }
+
+  const screenshotStats = await fs.stat(outputPath).catch(() => null)
+  if (!screenshotStats || screenshotStats.size <= 0) {
+    await fs.rm(outputPath, { force: true }).catch(() => {})
+    return null
+  }
+
+  return outputPath
+}
 
 /** Returns the currently selected source ID for setDisplayMediaRequestHandler */
 export function getSelectedSourceId(): string | null {
@@ -3859,11 +3971,37 @@ async function startInteractionCapture() {
 
 export function registerIpcHandlers(
   createEditorWindow: () => void,
+  createImageEditorWindow: () => void,
+  createHudOverlayWindow: () => void,
   createSourceSelectorWindow: () => BrowserWindow,
   _getMainWindow: () => BrowserWindow | null,
   getSourceSelectorWindow: () => BrowserWindow | null,
   onRecordingStateChange?: (recording: boolean, sourceName: string) => void
 ) {
+  const isHudOverlayWindow = (window: BrowserWindow | null | undefined) => {
+    return Boolean(
+      window
+      && !window.isDestroyed()
+      && window.webContents.getURL().includes('windowType=hud-overlay')
+    )
+  }
+
+  const restoreHudOverlayWindow = () => {
+    const mainWindow = _getMainWindow()
+    if (isHudOverlayWindow(mainWindow)) {
+      if (mainWindow!.isMinimized()) {
+        mainWindow!.restore()
+      }
+
+      mainWindow!.show()
+      mainWindow!.moveTop()
+      mainWindow!.focus()
+      return
+    }
+
+    createHudOverlayWindow()
+  }
+
   ipcMain.handle('get-sources', async (_, opts) => {
     const includeScreens = Array.isArray(opts?.types) ? opts.types.includes('screen') : true
     const includeWindows = Array.isArray(opts?.types) ? opts.types.includes('window') : true
@@ -4218,6 +4356,190 @@ body{background:transparent;overflow:hidden;width:100vw;height:100vh}
       sourceSelectorWin.close()
     }
     createEditorWindow()
+  })
+  ipcMain.handle('switch-to-image-editor', () => {
+    console.log('[switch-to-image-editor] Opening image editor window')
+    const sourceSelectorWin = getSourceSelectorWindow()
+    if (sourceSelectorWin && !sourceSelectorWin.isDestroyed()) {
+      sourceSelectorWin.close()
+    }
+    createImageEditorWindow()
+  })
+  ipcMain.handle('switch-to-hud-overlay', (event) => {
+    const currentWindow = BrowserWindow.fromWebContents(event.sender)
+    const mainWindow = _getMainWindow()
+
+    if (isHudOverlayWindow(mainWindow)) {
+      if (currentWindow && currentWindow !== mainWindow && !currentWindow.isDestroyed()) {
+        currentWindow.close()
+      }
+
+      restoreHudOverlayWindow()
+      return { success: true }
+    }
+
+    createHudOverlayWindow()
+    return { success: true }
+  })
+  ipcMain.handle('capture-screenshot-flow', async (_, captureType: 'screen' | 'window' | 'area', sourceId?: string) => {
+    const mainWindow = _getMainWindow()
+    const hadHudOverlay = isHudOverlayWindow(mainWindow)
+    const resolvedSourceId = sourceId ?? selectedSource?.id ?? null
+
+    try {
+      if (hadHudOverlay) {
+        mainWindow!.hide()
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 350))
+
+      await getScreenshotsDir()
+      const outputPath = buildAutoScreenshotFilePath()
+
+      let finalScreenshotPath: string | null = null
+
+      if (process.platform === 'darwin') {
+        const macScreenshotPath = await takeMacScreenshot(captureType, outputPath, resolvedSourceId)
+        if (!macScreenshotPath) {
+          restoreHudOverlayWindow()
+          return { success: false, canceled: true, message: 'Screenshot canceled' }
+        }
+
+        finalScreenshotPath = await finalizeScreenshotCapture(macScreenshotPath)
+      } else {
+        if (captureType === 'area') {
+          restoreHudOverlayWindow()
+          return { success: false, error: 'Area screenshot is currently supported on macOS only.' }
+        }
+
+        const pngData = await captureDesktopSourcePng(captureType, resolvedSourceId)
+        if (!pngData) {
+          restoreHudOverlayWindow()
+          return { success: false, error: 'Unable to capture the selected source.' }
+        }
+
+        finalScreenshotPath = await finalizeScreenshotCapture(outputPath, pngData)
+      }
+
+      console.log('[capture-screenshot-flow] captured screenshot', {
+        captureType,
+        sourceId: resolvedSourceId,
+        path: finalScreenshotPath,
+      })
+
+      const sourceSelectorWin = getSourceSelectorWindow()
+      if (sourceSelectorWin && !sourceSelectorWin.isDestroyed()) {
+        sourceSelectorWin.close()
+      }
+
+      createImageEditorWindow()
+      return { success: true, path: finalScreenshotPath }
+    } catch (error) {
+      console.error('[capture-screenshot-flow] failed:', error)
+      restoreHudOverlayWindow()
+      return {
+        success: false,
+        error: String(error),
+      }
+    }
+  })
+  ipcMain.handle('take-screenshot', async (_, captureType: 'screen' | 'window' | 'area', sourceId?: string) => {
+    try {
+      await getScreenshotsDir()
+      const outputPath = buildAutoScreenshotFilePath()
+      const resolvedSourceId = sourceId ?? selectedSource?.id ?? null
+
+      if (process.platform === 'darwin') {
+        const screenshotPath = await takeMacScreenshot(captureType, outputPath, resolvedSourceId)
+        if (!screenshotPath) {
+          return { success: false, canceled: true, message: 'Screenshot canceled' }
+        }
+
+        return {
+          success: true,
+          path: await finalizeScreenshotCapture(screenshotPath),
+        }
+      }
+
+      if (captureType === 'area') {
+        return { success: false, error: 'Area screenshot is currently supported on macOS only.' }
+      }
+
+      const pngData = await captureDesktopSourcePng(captureType, resolvedSourceId)
+      if (!pngData) {
+        return { success: false, error: 'Unable to capture the selected source.' }
+      }
+
+      return {
+        success: true,
+        path: await finalizeScreenshotCapture(outputPath, pngData),
+      }
+    } catch (error) {
+      console.error('Failed to take screenshot:', error)
+      return {
+        success: false,
+        error: String(error),
+      }
+    }
+  })
+  ipcMain.handle('get-current-screenshot-path', () => {
+    return currentScreenshotPath
+      ? { success: true, path: currentScreenshotPath }
+      : { success: false }
+  })
+  ipcMain.handle('save-screenshot-file', async (event, imageData: ArrayBuffer, fileName: string) => {
+    try {
+      const parentWindow = BrowserWindow.fromWebContents(event.sender)
+      const saveDialogOptions: SaveDialogOptions = {
+        title: 'Save Screenshot',
+        defaultPath: path.join(app.getPath('downloads'), fileName),
+        filters: [{ name: 'PNG Image', extensions: ['png'] }],
+        properties: ['createDirectory', 'showOverwriteConfirmation'],
+      }
+
+      const result = parentWindow
+        ? await dialog.showSaveDialog(parentWindow, saveDialogOptions)
+        : await dialog.showSaveDialog(saveDialogOptions)
+
+      if (result.canceled || !result.filePath) {
+        return {
+          success: false,
+          canceled: true,
+          message: 'Save screenshot canceled',
+        }
+      }
+
+      await fs.writeFile(result.filePath, Buffer.from(imageData))
+      return {
+        success: true,
+        path: result.filePath,
+        message: 'Screenshot saved successfully',
+      }
+    } catch (error) {
+      console.error('Failed to save screenshot:', error)
+      return {
+        success: false,
+        error: String(error),
+        message: 'Failed to save screenshot',
+      }
+    }
+  })
+  ipcMain.handle('copy-image-to-clipboard', async (_, imageData: ArrayBuffer) => {
+    try {
+      const image = nativeImage.createFromBuffer(Buffer.from(imageData))
+      if (image.isEmpty()) {
+        return { success: false, error: 'Failed to decode image data.' }
+      }
+
+      clipboard.writeImage(image)
+      return { success: true }
+    } catch (error) {
+      console.error('Failed to copy image to clipboard:', error)
+      return {
+        success: false,
+        error: String(error),
+      }
+    }
   })
 
   ipcMain.handle('start-native-screen-recording', async (_, source: SelectedSource, options?: NativeMacRecordingOptions) => {

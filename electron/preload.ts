@@ -72,6 +72,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	hudOverlayHide: () => {
 		ipcRenderer.send("hud-overlay-hide");
 	},
+	hudOverlayHideForScreenshot: () => {
+		return ipcRenderer.invoke("hud-overlay-hide-for-screenshot");
+	},
 	hudOverlayClose: () => {
 		ipcRenderer.send("hud-overlay-close");
 	},
@@ -182,6 +185,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	switchToEditor: () => {
 		return ipcRenderer.invoke("switch-to-editor");
 	},
+	switchToImageEditor: () => {
+		return ipcRenderer.invoke("switch-to-image-editor");
+	},
+	switchToHudOverlay: () => {
+		return ipcRenderer.invoke("switch-to-hud-overlay");
+	},
 	openSourceSelector: () => {
 		return ipcRenderer.invoke("open-source-selector");
 	},
@@ -193,6 +202,21 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	},
 	getSelectedSource: () => {
 		return ipcRenderer.invoke("get-selected-source");
+	},
+	takeScreenshot: (captureType: "screen" | "window" | "area", sourceId?: string) => {
+		return ipcRenderer.invoke("take-screenshot", captureType, sourceId);
+	},
+	captureScreenshotFlow: (captureType: "screen" | "window" | "area", sourceId?: string) => {
+		return ipcRenderer.invoke("capture-screenshot-flow", captureType, sourceId);
+	},
+	getCurrentScreenshotPath: () => {
+		return ipcRenderer.invoke("get-current-screenshot-path");
+	},
+	saveScreenshotFile: (imageData: ArrayBuffer, fileName: string) => {
+		return ipcRenderer.invoke("save-screenshot-file", imageData, fileName);
+	},
+	copyImageToClipboard: (imageData: ArrayBuffer) => {
+		return ipcRenderer.invoke("copy-image-to-clipboard", imageData);
 	},
 	onSelectedSourceChanged: (callback: (source: any) => void) => {
 		const listener = (_event: Electron.IpcRendererEvent, payload: any) => callback(payload);

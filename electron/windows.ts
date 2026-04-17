@@ -18,6 +18,7 @@ const WINDOW_ICON_PATH = path.join(
 	"app-icons",
 	"calcfocus-512.png",
 );
+const PRELOAD_SCRIPT_PATH = resolvePreloadScriptPath();
 
 let hudOverlayWindow: BrowserWindow | null = null;
 let hudOverlayHiddenFromCapture = true;
@@ -37,6 +38,15 @@ const HUD_MIN_EXPANDED_HEIGHT = 520 + HUD_SHADOW_BLEED_DIP;
 const UPDATE_TOAST_WIDTH = 420;
 const UPDATE_TOAST_HEIGHT = 212;
 const UPDATE_TOAST_GAP_DIP = 18;
+
+function resolvePreloadScriptPath() {
+	const preloadJsPath = path.join(__dirname, "preload.js");
+	if (fs.existsSync(preloadJsPath)) {
+		return preloadJsPath;
+	}
+
+	return path.join(__dirname, "preload.mjs");
+}
 
 let hudOverlayExpanded = false;
 let hudOverlayCompactWidth = HUD_MIN_WINDOW_WIDTH;
@@ -92,6 +102,12 @@ function getEditorWindowQuery(): Record<string, string> {
 	}
 
 	return query;
+}
+
+function getImageEditorWindowQuery(): Record<string, string> {
+	return {
+		windowType: "image-editor",
+	};
 }
 
 function isHudOverlayCaptureProtectionSupported(): boolean {
@@ -341,6 +357,15 @@ ipcMain.on("hud-overlay-hide", () => {
 	}
 });
 
+ipcMain.handle("hud-overlay-hide-for-screenshot", () => {
+	if (!hudOverlayWindow || hudOverlayWindow.isDestroyed()) {
+		return { success: false };
+	}
+
+	hudOverlayWindow.hide();
+	return { success: true };
+});
+
 ipcMain.on("set-hud-overlay-expanded", (_event, expanded: boolean) => {
 	applyHudOverlayBounds(Boolean(expanded));
 });
@@ -439,12 +464,12 @@ export function createHudOverlayWindow(): BrowserWindow {
 		alwaysOnTop: true,
 		skipTaskbar: true,
 		hasShadow: false,
-		show: false,
-		webPreferences: {
-			preload: path.join(__dirname, "preload.mjs"),
-			nodeIntegration: false,
-			contextIsolation: true,
-			webSecurity: false,
+			show: false,
+			webPreferences: {
+				preload: PRELOAD_SCRIPT_PATH,
+				nodeIntegration: false,
+				contextIsolation: true,
+				webSecurity: false,
 			backgroundThrottling: false,
 		},
 	});
@@ -566,12 +591,12 @@ export function createUpdateToastWindow(): BrowserWindow {
 		show: false,
 		focusable: true,
 		...(parentWindow ? { parent: parentWindow } : {}),
-		backgroundColor: useTransparentToastWindow ? "#00000000" : "#101418",
-		webPreferences: {
-			preload: path.join(__dirname, "preload.mjs"),
-			nodeIntegration: false,
-			contextIsolation: true,
-			backgroundThrottling: false,
+			backgroundColor: useTransparentToastWindow ? "#00000000" : "#101418",
+			webPreferences: {
+				preload: PRELOAD_SCRIPT_PATH,
+				nodeIntegration: false,
+				contextIsolation: true,
+				backgroundThrottling: false,
 		},
 	});
 
@@ -628,8 +653,11 @@ export function hideUpdateToastWindow(): void {
 	updateToastWindow.hide();
 }
 
-function loadPackagedEditorWindow(win: BrowserWindow) {
-	const query = getEditorWindowQuery();
+function loadPackagedRendererWindow(
+	win: BrowserWindow,
+	query: Record<string, string>,
+	logPrefix: string,
+) {
 	const queryString = new URLSearchParams(query).toString();
 	const indexHtmlPath = path.join(RENDERER_DIST, "index.html");
 	const packagedRendererBaseUrl = getPackagedRendererBaseUrl();
@@ -640,7 +668,7 @@ function loadPackagedEditorWindow(win: BrowserWindow) {
 			return;
 		}
 
-		console.log("[editor-window] load-file", indexHtmlPath);
+		console.log(`[${logPrefix}] load-file`, indexHtmlPath);
 		void win.loadFile(indexHtmlPath, { query });
 	};
 
@@ -679,7 +707,7 @@ function loadPackagedEditorWindow(win: BrowserWindow) {
 
 		settled = true;
 		detachLoadListeners();
-		console.warn("[editor-window] packaged renderer URL failed, falling back to file", {
+		console.warn(`[${logPrefix}] packaged renderer URL failed, falling back to file`, {
 			reason,
 			targetUrl,
 			...details,
@@ -718,7 +746,7 @@ function loadPackagedEditorWindow(win: BrowserWindow) {
 	webContents.on("did-finish-load", handleDidFinishLoad);
 	win.once("closed", clearTimeoutIfNeeded);
 
-	console.log("[editor-window] load-url", targetUrl);
+	console.log(`[${logPrefix}] load-url`, targetUrl);
 	void win.loadURL(targetUrl).catch((error) => {
 		fallbackToFile("load-url-rejected", {
 			error: error instanceof Error ? error.message : String(error),
@@ -731,6 +759,7 @@ export function createEditorWindow(): BrowserWindow {
 	const { workArea, workAreaSize } = getScreen().getPrimaryDisplay();
 	const initialWidth = isMac ? Math.round(workAreaSize.width * 0.85) : workArea.width;
 	const initialHeight = isMac ? Math.round(workAreaSize.height * 0.85) : workArea.height;
+	const query = getEditorWindowQuery();
 
 	const win = new BrowserWindow({
 		width: initialWidth,
@@ -754,13 +783,13 @@ export function createEditorWindow(): BrowserWindow {
 		alwaysOnTop: false,
 		skipTaskbar: false,
 		title: "CalcFocus",
-		show: false,
-		backgroundColor: "#000000",
-		webPreferences: {
-			preload: path.join(__dirname, "preload.mjs"),
-			nodeIntegration: false,
-			contextIsolation: true,
-			webSecurity: false,
+			show: false,
+			backgroundColor: "#000000",
+			webPreferences: {
+				preload: PRELOAD_SCRIPT_PATH,
+				nodeIntegration: false,
+				contextIsolation: true,
+				webSecurity: false,
 			backgroundThrottling: false,
 		},
 	});
@@ -796,10 +825,80 @@ export function createEditorWindow(): BrowserWindow {
 	});
 
 	if (VITE_DEV_SERVER_URL) {
-		const query = new URLSearchParams(getEditorWindowQuery());
-		win.loadURL(`${VITE_DEV_SERVER_URL}?${query.toString()}`);
+		win.loadURL(`${VITE_DEV_SERVER_URL}?${new URLSearchParams(query).toString()}`);
 	} else {
-		loadPackagedEditorWindow(win);
+		loadPackagedRendererWindow(win, query, "editor-window");
+	}
+
+	return win;
+}
+
+export function createImageEditorWindow(): BrowserWindow {
+	const isMac = process.platform === "darwin";
+	const { workArea, workAreaSize } = getScreen().getPrimaryDisplay();
+	const initialWidth = isMac ? Math.round(workAreaSize.width * 0.82) : workArea.width;
+	const initialHeight = isMac ? Math.round(workAreaSize.height * 0.82) : workArea.height;
+	const query = getImageEditorWindowQuery();
+
+	const win = new BrowserWindow({
+		width: initialWidth,
+		height: initialHeight,
+		...(!isMac && {
+			x: workArea.x,
+			y: workArea.y,
+		}),
+		minWidth: 900,
+		minHeight: 620,
+		...(process.platform !== "darwin" && {
+			icon: WINDOW_ICON_PATH,
+		}),
+		...(isMac && {
+			titleBarStyle: "hiddenInset",
+			trafficLightPosition: { x: 12, y: 12 },
+		}),
+		autoHideMenuBar: !isMac,
+		transparent: false,
+		resizable: true,
+		alwaysOnTop: false,
+		skipTaskbar: false,
+		title: "CalcFocus Screenshot Editor",
+			show: false,
+			backgroundColor: "#09090b",
+			webPreferences: {
+				preload: PRELOAD_SCRIPT_PATH,
+				nodeIntegration: false,
+				contextIsolation: true,
+				webSecurity: false,
+			backgroundThrottling: false,
+		},
+	});
+
+	win.once("ready-to-show", () => {
+		console.log("[image-editor-window] ready-to-show");
+		win.show();
+	});
+
+	win.webContents.on("did-finish-load", () => {
+		console.log("[image-editor-window] did-finish-load", win.webContents.getURL());
+		win?.webContents.send("main-process-message", new Date().toLocaleString());
+	});
+
+	win.webContents.on("did-fail-load", (_event, errorCode, errorDescription, validatedURL) => {
+		console.error("[image-editor-window] did-fail-load", {
+			errorCode,
+			errorDescription,
+			validatedURL,
+		});
+	});
+
+	win.webContents.on("render-process-gone", (_event, details) => {
+		console.error("[image-editor-window] render-process-gone", details);
+	});
+
+	if (VITE_DEV_SERVER_URL) {
+		win.loadURL(`${VITE_DEV_SERVER_URL}?${new URLSearchParams(query).toString()}`);
+	} else {
+		loadPackagedRendererWindow(win, query, "image-editor-window");
 	}
 
 	return win;
@@ -822,13 +921,13 @@ export function createSourceSelectorWindow(): BrowserWindow {
 		show: false,
 		...(process.platform !== "darwin" && {
 			icon: WINDOW_ICON_PATH,
-		}),
-		backgroundColor: "#00000000",
-		webPreferences: {
-			preload: path.join(__dirname, "preload.mjs"),
-			nodeIntegration: false,
-			contextIsolation: true,
-		},
+			}),
+			backgroundColor: "#00000000",
+			webPreferences: {
+				preload: PRELOAD_SCRIPT_PATH,
+				nodeIntegration: false,
+				contextIsolation: true,
+			},
 	});
 
 	win.webContents.on("did-finish-load", () => {
@@ -869,13 +968,13 @@ export function createCountdownWindow(): BrowserWindow {
 		alwaysOnTop: true,
 		skipTaskbar: true,
 		hasShadow: false,
-		focusable: true,
-		show: false,
-		webPreferences: {
-			preload: path.join(__dirname, "preload.mjs"),
-			nodeIntegration: false,
-			contextIsolation: true,
-		},
+			focusable: true,
+			show: false,
+			webPreferences: {
+				preload: PRELOAD_SCRIPT_PATH,
+				nodeIntegration: false,
+				contextIsolation: true,
+			},
 	});
 
 	countdownWindow = win;

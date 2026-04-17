@@ -65,6 +65,7 @@ interface Window {
 		hudOverlaySetIgnoreMouse: (ignore: boolean) => void;
 		hudOverlayDrag: (phase: "start" | "move" | "end", screenX: number, screenY: number) => void;
 		hudOverlayHide: () => void;
+		hudOverlayHideForScreenshot: () => Promise<{ success: boolean }>;
 		hudOverlayClose: () => void;
 		setHudOverlayExpanded: (expanded: boolean) => void;
 		setHudOverlayCompactWidth: (width: number) => void;
@@ -75,10 +76,28 @@ interface Window {
 		) => Promise<{ success: boolean; enabled: boolean }>;
 		getSources: (opts: Electron.SourcesOptions) => Promise<ProcessedDesktopSource[]>;
 		switchToEditor: () => Promise<void>;
+		switchToImageEditor: () => Promise<{ success: boolean } | void>;
+		switchToHudOverlay: () => Promise<{ success: boolean } | void>;
 		openSourceSelector: () => Promise<void>;
 		selectSource: (source: any) => Promise<any>;
 		showSourceHighlight: (source: any) => Promise<{ success: boolean }>;
 		getSelectedSource: () => Promise<any>;
+		takeScreenshot: (
+			captureType: "screen" | "window" | "area",
+			sourceId?: string,
+		) => Promise<{ success: boolean; path?: string; canceled?: boolean; message?: string; error?: string }>;
+		captureScreenshotFlow: (
+			captureType: "screen" | "window" | "area",
+			sourceId?: string,
+		) => Promise<{ success: boolean; path?: string; canceled?: boolean; message?: string; error?: string }>;
+		getCurrentScreenshotPath: () => Promise<{ success: boolean; path?: string }>;
+		saveScreenshotFile: (
+			imageData: ArrayBuffer,
+			fileName: string,
+		) => Promise<{ success: boolean; path?: string; message?: string; canceled?: boolean; error?: string }>;
+		copyImageToClipboard: (
+			imageData: ArrayBuffer,
+		) => Promise<{ success: boolean; error?: string }>;
 		onSelectedSourceChanged: (callback: (source: any) => void) => () => void;
 		startNativeScreenRecording: (
 			source: any,

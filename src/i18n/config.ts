@@ -5,6 +5,7 @@ export const SUPPORTED_LOCALES = ['en', 'zh-CN'] as const
 export const I18N_NAMESPACES = [
   'common',
   'launch',
+  'image',
   'editor',
   'timeline',
   'settings',

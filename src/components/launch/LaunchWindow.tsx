@@ -1,6 +1,9 @@
 import {
 	AppWindow,
 	ArrowUpCircle,
+	BoxSelect,
+	Camera,
+	ChevronLeft,
 	ChevronUp,
 	CheckCircle2,
 	Eye,
@@ -69,12 +72,14 @@ function IconButton({
 	title,
 	className = "",
 	buttonRef,
+	disabled = false,
 	children,
 }: {
 	onClick?: () => void;
 	title?: string;
 	className?: string;
 	buttonRef?: React.Ref<HTMLButtonElement>;
+	disabled?: boolean;
 	children: ReactNode;
 }) {
 	return (
@@ -84,6 +89,7 @@ function IconButton({
 			className={`${styles.ib} ${styles.electronNoDrag} ${className}`}
 			onClick={onClick}
 			title={title}
+			disabled={disabled}
 		>
 			{children}
 		</button>
@@ -180,7 +186,17 @@ export function LaunchWindow() {
 	const [elapsed, setElapsed] = useState(0);
 	const [pausedAt, setPausedAt] = useState<number | null>(null);
 	const [pausedTotal, setPausedTotal] = useState(0);
+	const [hudMode, setHudMode] = useState<"recording" | "screenshot">(
+		"recording",
+	);
+	const [screenshotMode, setScreenshotMode] = useState<
+		"screen" | "window" | "area" | null
+	>(null);
+	const [isCapturingScreenshot, setIsCapturingScreenshot] = useState(false);
 	const [selectedSource, setSelectedSource] = useState("Screen");
+	const [selectedSourceType, setSelectedSourceType] = useState<
+		"screen" | "window" | null
+	>(null);
 	const [hasSelectedSource, setHasSelectedSource] = useState(false);
 	const [, setRecordingsDirectory] = useState<string | null>(null);
 	const [activeDropdown, setActiveDropdown] = useState<
@@ -668,7 +684,10 @@ export function LaunchWindow() {
 		let mounted = true;
 
 		const applySelectedSource = (
-			source: { name?: string } | null | undefined,
+			source:
+				| { name?: string; sourceType?: "screen" | "window" }
+				| null
+				| undefined,
 		) => {
 			if (!mounted) {
 				return;
@@ -676,11 +695,13 @@ export function LaunchWindow() {
 
 			if (source?.name) {
 				setSelectedSource(source.name);
+				setSelectedSourceType(source.sourceType ?? null);
 				setHasSelectedSource(true);
 				return;
 			}
 
 			setSelectedSource("Screen");
+			setSelectedSourceType(null);
 			setHasSelectedSource(false);
 		};
 
@@ -956,6 +977,7 @@ export function LaunchWindow() {
 	const handleSourceSelect = async (source: DesktopSource) => {
 		await window.electronAPI.selectSource(source);
 		setSelectedSource(source.name);
+		setSelectedSourceType(source.sourceType ?? null);
 		setHasSelectedSource(true);
 		setActiveDropdown("none");
 		window.electronAPI.showSourceHighlight?.({
@@ -1047,6 +1069,21 @@ export function LaunchWindow() {
 
 	const screenSources = sources.filter((s) => s.sourceType === "screen");
 	const windowSources = sources.filter((s) => s.sourceType === "window");
+	const screenshotCompatibleSourceSelected =
+		screenshotMode === "screen"
+			? selectedSourceType === "screen"
+			: screenshotMode === "window"
+				? selectedSourceType === "window"
+				: false;
+	const screenshotSourceLabel =
+		screenshotMode === "window"
+			? screenshotCompatibleSourceSelected
+				? selectedSource
+				: t("screenshot.selectWindow", "Select a window")
+			: screenshotCompatibleSourceSelected
+				? selectedSource
+				: t("screenshot.selectScreen", "Select a screen");
+	const areaCaptureSupported = platform === "darwin";
 	const hudStateTransition = {
 		duration: 0.24,
 		ease: [0.22, 1, 0.36, 1] as const,
@@ -1135,6 +1172,54 @@ export function LaunchWindow() {
 			console.error("Failed to handle update button action:", error);
 		} finally {
 			setUpdateActionPending(false);
+		}
+	};
+
+	const openScreenshotMode = async (mode: "screen" | "window" | "area") => {
+		setProjectBrowserOpen(false);
+		setActiveDropdown("none");
+		setHudMode("screenshot");
+		setScreenshotMode(mode);
+		if (mode !== "area") {
+			await fetchSources();
+			if (
+				(mode === "screen" && selectedSourceType !== "screen") ||
+				(mode === "window" && selectedSourceType !== "window")
+			) {
+				setActiveDropdown("sources");
+			}
+		}
+	};
+
+	const handleScreenshotCapture = async () => {
+		if (!screenshotMode || isCapturingScreenshot) {
+			return;
+		}
+
+		if (screenshotMode !== "area" && !screenshotCompatibleSourceSelected) {
+			await fetchSources();
+			setActiveDropdown("sources");
+			return;
+		}
+
+		setActiveDropdown("none");
+		setProjectBrowserOpen(false);
+		setIsCapturingScreenshot(true);
+
+		try {
+			const result =
+				await window.electronAPI.captureScreenshotFlow(screenshotMode);
+
+			if (!result.success && !result.canceled) {
+				console.error(
+					"Failed to capture screenshot:",
+					result.error ?? "Unknown screenshot capture error",
+				);
+			}
+		} catch (error) {
+			console.error("Failed to capture screenshot:", error);
+		} finally {
+			setIsCapturingScreenshot(false);
 		}
 	};
 
@@ -1229,6 +1314,16 @@ export function LaunchWindow() {
 			<Separator />
 
 			<IconButton
+				onClick={() => {
+					void openScreenshotMode("screen");
+				}}
+				title={t("screenshot.open", "Screenshot")}
+				className={hudMode === "screenshot" ? styles.ibActive : ""}
+			>
+				<Camera size={18} />
+			</IconButton>
+
+			<IconButton
 				onClick={toggleMicrophone}
 				title={
 					microphoneEnabled
@@ -1274,6 +1369,130 @@ export function LaunchWindow() {
 				title={t("recording.record")}
 			>
 				<div className={styles.recDot} />
+			</button>
+
+			<Separator />
+
+			<IconButton
+				buttonRef={moreButtonRef}
+				onClick={() => toggleDropdown("more")}
+				title={t("recording.more")}
+			>
+				<MoreVertical size={18} />
+			</IconButton>
+
+			<IconButton
+				onClick={() => window.electronAPI?.hudOverlayHide?.()}
+				title={t("recording.hideHud")}
+			>
+				<Minus size={16} />
+			</IconButton>
+
+			<IconButton
+				onClick={() => window.electronAPI?.hudOverlayClose?.()}
+				title={t("recording.closeApp")}
+			>
+				<X size={16} />
+			</IconButton>
+		</>
+	);
+
+	const screenshotControls = (
+		<>
+			<IconButton
+				onClick={() => {
+					setHudMode("recording");
+					setScreenshotMode(null);
+					setActiveDropdown("none");
+				}}
+				title={t("back", "Back")}
+			>
+				<ChevronLeft size={18} />
+			</IconButton>
+
+			<Separator />
+
+			<div className={`${styles.captureModeGroup} ${styles.electronNoDrag}`}>
+				<button
+					type="button"
+					className={`${styles.captureModeButton} ${screenshotMode === "screen" ? styles.captureModeButtonActive : ""}`}
+					onClick={() => {
+						void openScreenshotMode("screen");
+					}}
+					title={t("screenshot.captureEntireScreen", "Capture Entire Screen")}
+				>
+					<Monitor size={16} />
+				</button>
+				<button
+					type="button"
+					className={`${styles.captureModeButton} ${screenshotMode === "window" ? styles.captureModeButtonActive : ""}`}
+					onClick={() => {
+						void openScreenshotMode("window");
+					}}
+					title={t("screenshot.captureWindow", "Capture Window")}
+				>
+					<AppWindow size={16} />
+				</button>
+				<button
+					type="button"
+					className={`${styles.captureModeButton} ${screenshotMode === "area" ? styles.captureModeButtonActive : ""}`}
+					onClick={() => {
+						void openScreenshotMode("area");
+					}}
+					title={
+						areaCaptureSupported
+							? t("screenshot.captureArea", "Capture Area")
+							: t(
+									"screenshot.areaUnavailable",
+									"Area capture is available on macOS.",
+								)
+					}
+					disabled={!areaCaptureSupported}
+				>
+					<BoxSelect size={16} />
+				</button>
+			</div>
+
+			{screenshotMode !== "area" && (
+				<>
+					<Separator />
+
+					<button
+						type="button"
+						className={`${styles.screenSel} ${styles.electronNoDrag}`}
+						onClick={() => toggleDropdown("sources")}
+						title={screenshotSourceLabel}
+					>
+						{screenshotMode === "window" ? (
+							<AppWindow size={16} />
+						) : (
+							<Monitor size={16} />
+						)}
+						<ContentClamp className={styles.sourceLabel} truncateLength={32}>
+							{screenshotSourceLabel}
+						</ContentClamp>
+						<ChevronUp
+							size={10}
+							className={`text-[#6b6b78] ml-0.5 transition-transform duration-200 ${activeDropdown === "sources" ? "" : "rotate-180"}`}
+						/>
+					</button>
+				</>
+			)}
+
+			<Separator />
+
+			<button
+				type="button"
+				className={`${styles.captureButton} ${styles.electronNoDrag}`}
+				onClick={() => {
+					void handleScreenshotCapture();
+				}}
+				disabled={isCapturingScreenshot || !screenshotMode}
+				title={t("screenshot.take", "Take Screenshot")}
+			>
+				{isCapturingScreenshot
+					? t("screenshot.capturing", "Capturing...")
+					: t("screenshot.take", "Take Screenshot")}
 			</button>
 
 			<Separator />
@@ -1356,7 +1575,9 @@ export function LaunchWindow() {
 										</div>
 									) : (
 										<>
-											{screenSources.length > 0 && (
+											{(hudMode !== "screenshot" ||
+												screenshotMode !== "window") &&
+												screenSources.length > 0 && (
 												<>
 													<div
 														className={
@@ -1392,7 +1613,9 @@ export function LaunchWindow() {
 													)}
 												</>
 											)}
-											{windowSources.length > 0 && (
+											{(hudMode !== "screenshot" ||
+												screenshotMode !== "screen") &&
+												windowSources.length > 0 && (
 												<>
 													<div
 														className={
@@ -1440,8 +1663,15 @@ export function LaunchWindow() {
 													)}
 												</>
 											)}
-											{screenSources.length === 0 &&
-												windowSources.length === 0 && (
+											{((hudMode === "screenshot" &&
+												screenshotMode === "screen" &&
+												screenSources.length === 0) ||
+												(hudMode === "screenshot" &&
+													screenshotMode === "window" &&
+													windowSources.length === 0) ||
+												(hudMode !== "screenshot" &&
+													screenSources.length === 0 &&
+													windowSources.length === 0)) && (
 													<div className="text-center text-xs text-[#6b6b78] py-4">
 														{t(
 															"recording.noSourcesFound",
@@ -1779,7 +2009,7 @@ export function LaunchWindow() {
 							<div className={styles.barStateViewport}>
 								<AnimatePresence initial={false} mode="wait">
 									<motion.div
-										key={recording ? "recording" : "idle"}
+										key={recording ? "recording" : hudMode}
 										layout={!showRecordingWebcamPreview}
 										className={styles.barState}
 										initial={{
@@ -1804,7 +2034,9 @@ export function LaunchWindow() {
 									>
 										{recording
 											? recordingControls
-											: idleControls}
+											: hudMode === "screenshot"
+												? screenshotControls
+												: idleControls}
 									</motion.div>
 								</AnimatePresence>
 							</div>

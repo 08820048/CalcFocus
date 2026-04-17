@@ -1,4 +1,16 @@
 {
+	"back": "Back",
+	"screenshot": {
+		"open": "Screenshot",
+		"captureEntireScreen": "Capture Entire Screen",
+		"captureWindow": "Capture Window",
+		"captureArea": "Capture Area",
+		"take": "Take Screenshot",
+		"capturing": "Capturing...",
+		"selectScreen": "Select a screen",
+		"selectWindow": "Select a window",
+		"areaUnavailable": "Area capture is available on macOS."
+	},
 	"recording": {
 		"disableSystemAudio": "Disable system audio",
 		"enableSystemAudio": "Enable system audio",

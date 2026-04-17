@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { CountdownOverlay } from "./components/countdown/CountdownOverlay";
+import ImageEditor from "./components/image-editor/ImageEditor";
 import { LaunchWindow } from "./components/launch/LaunchWindow";
 import { SourceSelector } from "./components/launch/SourceSelector";
 import { UpdateToastWindow } from "./components/launch/UpdateToastWindow";
@@ -44,7 +45,11 @@ export default function App() {
 
 	useEffect(() => {
 		document.title =
-			windowType === "editor" ? t("app.editorTitle", "CalcFocus Editor") : t("app.name", "CalcFocus");
+			windowType === "editor"
+				? t("app.editorTitle", "CalcFocus Editor")
+				: windowType === "image-editor"
+					? t("image.appTitle", "CalcFocus Screenshot Editor")
+					: t("app.name", "CalcFocus");
 	}, [windowType, locale, t]);
 
 	switch (windowType) {
@@ -68,6 +73,8 @@ export default function App() {
 					<ShortcutsConfigDialog />
 				</ShortcutsProvider>
 			);
+		case "image-editor":
+			return <ImageEditor />;
 		default:
 			return (
 				<div className="flex h-full w-full items-center justify-center bg-slate-950 text-white">

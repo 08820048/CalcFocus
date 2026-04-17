@@ -1,4 +1,16 @@
 {
+	"back": "返回",
+	"screenshot": {
+		"open": "截图",
+		"captureEntireScreen": "截取整个屏幕",
+		"captureWindow": "截取窗口",
+		"captureArea": "截取区域",
+		"take": "开始截图",
+		"capturing": "截图中...",
+		"selectScreen": "选择一个屏幕",
+		"selectWindow": "选择一个窗口",
+		"areaUnavailable": "区域截图当前仅在 macOS 可用。"
+	},
 	"recording": {
 		"disableSystemAudio": "禁用系统音频",
 		"enableSystemAudio": "启用系统音频",

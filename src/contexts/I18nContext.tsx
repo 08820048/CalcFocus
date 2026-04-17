@@ -17,6 +17,7 @@ import {
 import enCommon from '@/i18n/locales/en/common.json'
 import enDialogs from '@/i18n/locales/en/dialogs.json'
 import enEditor from '@/i18n/locales/en/editor.json'
+import enImage from '@/i18n/locales/en/image.json'
 import enLaunch from '@/i18n/locales/en/launch.json'
 import enSettings from '@/i18n/locales/en/settings.json'
 import enShortcuts from '@/i18n/locales/en/shortcuts.json'
@@ -25,6 +26,7 @@ import enExtensions from '@/i18n/locales/en/extensions.json'
 import zhCNCommon from '@/i18n/locales/zh-CN/common.json'
 import zhCNDialogs from '@/i18n/locales/zh-CN/dialogs.json'
 import zhCNEditor from '@/i18n/locales/zh-CN/editor.json'
+import zhCNImage from '@/i18n/locales/zh-CN/image.json'
 import zhCNLaunch from '@/i18n/locales/zh-CN/launch.json'
 import zhCNSettings from '@/i18n/locales/zh-CN/settings.json'
 import zhCNShortcuts from '@/i18n/locales/zh-CN/shortcuts.json'
@@ -39,6 +41,7 @@ const messages: Record<AppLocale, LocaleBundle> = {
   en: {
     common: enCommon,
     launch: enLaunch,
+    image: enImage,
     editor: enEditor,
     timeline: enTimeline,
     settings: enSettings,
@@ -49,6 +52,7 @@ const messages: Record<AppLocale, LocaleBundle> = {
   'zh-CN': {
     common: zhCNCommon,
     launch: zhCNLaunch,
+    image: zhCNImage,
     editor: zhCNEditor,
     timeline: zhCNTimeline,
     settings: zhCNSettings,

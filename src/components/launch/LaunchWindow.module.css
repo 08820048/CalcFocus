@@ -134,6 +134,16 @@
 	color: #eeeef2;
 }
 
+.ib:disabled {
+	opacity: 0.35;
+	cursor: not-allowed;
+}
+
+.ib:disabled:hover {
+	background: transparent;
+	color: #6b6b78;
+}
+
 .ibActive {
 	color: #6360f5;
 }
@@ -190,6 +200,82 @@
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.captureModeGroup {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 4px;
+	border-radius: 12px;
+	border: 1px solid #2a2a34;
+	background: rgba(255, 255, 255, 0.03);
+}
+
+.captureModeButton {
+	width: 36px;
+	height: 36px;
+	border: none;
+	border-radius: 9px;
+	background: transparent;
+	color: #6b6b78;
+	cursor: pointer;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	transition: all 0.15s ease;
+}
+
+.captureModeButton:hover {
+	background: rgba(255, 255, 255, 0.07);
+	color: #eeeef2;
+}
+
+.captureModeButton:disabled {
+	opacity: 0.35;
+	cursor: not-allowed;
+}
+
+.captureModeButton:disabled:hover {
+	background: transparent;
+	color: #6b6b78;
+}
+
+.captureModeButtonActive {
+	background: rgba(75, 189, 126, 0.14);
+	color: #4bbd7e;
+}
+
+.captureModeButtonActive:hover {
+	background: rgba(75, 189, 126, 0.2);
+	color: #66d08f;
+}
+
+.captureButton {
+	height: 40px;
+	padding: 0 16px;
+	border: none;
+	border-radius: 11px;
+	background: #4bbd7e;
+	color: #09090b;
+	font-size: 12px;
+	font-weight: 700;
+	cursor: pointer;
+	transition: all 0.15s ease;
+	flex-shrink: 0;
+}
+
+.captureButton:hover {
+	background: #63d892;
+}
+
+.captureButton:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+
+.captureButton:disabled:hover {
+	background: #4bbd7e;
 }
 
 .menuArea {

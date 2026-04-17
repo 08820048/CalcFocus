@@ -41,6 +41,7 @@ import {
 import {
 	createEditorWindow,
 	createHudOverlayWindow,
+	createImageEditorWindow,
 	createSourceSelectorWindow,
 	getHudOverlayWindow,
 	getUpdateToastWindow,
@@ -737,6 +738,48 @@ function createEditorWindowWrapper() {
 	});
 }
 
+function createImageEditorWindowWrapper() {
+	const previousWindow = mainWindow;
+	if (previousWindow && !previousWindow.isDestroyed()) {
+		const closingEditorWindow = isEditorWindow(previousWindow);
+		closeEditorWindowBypassingUnsavedPrompt(previousWindow);
+		if (!closingEditorWindow) {
+			isForceClosing = false;
+		}
+		if (mainWindow === previousWindow) {
+			mainWindow = null;
+		}
+	}
+
+	const imageEditorWindow = createImageEditorWindow();
+	mainWindow = imageEditorWindow;
+	editorHasUnsavedChanges = false;
+
+	imageEditorWindow.on("closed", () => {
+		if (mainWindow === imageEditorWindow) {
+			mainWindow = null;
+		}
+		isForceClosing = false;
+		editorHasUnsavedChanges = false;
+	});
+}
+
+function createHudOverlayWindowWrapper() {
+	const previousWindow = mainWindow;
+	if (previousWindow && !previousWindow.isDestroyed()) {
+		const closingEditorWindow = isEditorWindow(previousWindow);
+		closeEditorWindowBypassingUnsavedPrompt(previousWindow);
+		if (!closingEditorWindow) {
+			isForceClosing = false;
+		}
+		if (mainWindow === previousWindow) {
+			mainWindow = null;
+		}
+	}
+
+	createWindow();
+}
+
 function createSourceSelectorWindowWrapper() {
 	sourceSelectorWindow = createSourceSelectorWindow();
 	sourceSelectorWindow.on("closed", () => {
@@ -832,6 +875,8 @@ app.whenReady().then(async () => {
 
 	registerIpcHandlers(
 		createEditorWindowWrapper,
+		createImageEditorWindowWrapper,
+		createHudOverlayWindowWrapper,
 		createSourceSelectorWindowWrapper,
 		() => mainWindow,
 		() => sourceSelectorWindow,
